@@ -12,6 +12,10 @@ export interface TerminalCommandResult {
 const commandTimeout = 120_000
 const maximumOutputSize = 1_048_576
 const execFileAsync = promisify(execFile)
+const bashPath =
+  process.platform === 'win32'
+    ? 'C:\\Program Files\\Git\\bin\\bash.exe'
+    : '/bin/bash'
 
 interface BashExecutionError extends Error {
   readonly code?: number | string
@@ -44,17 +48,13 @@ export const executeBash = async (
   }
   const cwd = getWorkspacePath(workspaceUri)
   try {
-    const { stderr, stdout } = await execFileAsync(
-      '/bin/bash',
-      ['-c', command],
-      {
-        cwd,
-        encoding: 'utf8',
-        killSignal: 'SIGTERM',
-        maxBuffer: maximumOutputSize,
-        timeout: commandTimeout,
-      },
-    )
+    const { stderr, stdout } = await execFileAsync(bashPath, ['-c', command], {
+      cwd,
+      encoding: 'utf8',
+      killSignal: 'SIGTERM',
+      maxBuffer: maximumOutputSize,
+      timeout: commandTimeout,
+    })
     return { exitCode: 0, stderr, stdout, timedOut: false }
   } catch (error) {
     if (!(error instanceof Error)) {
