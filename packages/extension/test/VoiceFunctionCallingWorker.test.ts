@@ -31,6 +31,7 @@ const readFile = jest.fn<(uri: string) => Promise<string>>(
 const setWorkspaceUri = jest.fn<(uri: string) => Promise<void>>(
   async () => undefined,
 )
+const showFileQuickPick = jest.fn(async () => undefined)
 const writeFile = jest.fn<(uri: string, content: string) => Promise<void>>(
   async () => undefined,
 )
@@ -50,6 +51,7 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
     readDirWithFileTypes,
     readFile,
     setWorkspaceUri,
+    showFileQuickPick,
     writeFile,
   }
 })
@@ -71,6 +73,7 @@ beforeEach(() => {
   readDirWithFileTypes.mockClear()
   readFile.mockClear()
   setWorkspaceUri.mockClear()
+  showFileQuickPick.mockClear()
   writeFile.mockClear()
   VoiceFunctionCallingWorker.state.rpcPromise = undefined
 })
@@ -103,6 +106,7 @@ test('creates a web worker RPC and queries registered tools', async () => {
       'WorkspaceMainArea.closeUri': closeUri,
       'WorkspaceMainArea.getWorkspaceUri': getWorkspaceUri,
       'WorkspaceMainArea.openUri': openUri,
+      'WorkspaceMainArea.showFileQuickPick': showFileQuickPick,
     },
     contentSecurityPolicy: "default-src 'none'; script-src 'self'",
     name: 'Voice Function Calling Worker',

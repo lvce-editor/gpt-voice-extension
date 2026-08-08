@@ -7,6 +7,7 @@ import {
   readDirWithFileTypes,
   readFile,
   setWorkspaceUri,
+  showFileQuickPick,
   writeFile,
 } from '@lvce-editor/api'
 import * as TerminalNode from '../TerminalNode/TerminalNode.ts'
@@ -58,6 +59,7 @@ const commandMap = {
   'WorkspaceMainArea.closeUri': closeUri,
   'WorkspaceMainArea.getWorkspaceUri': getWorkspaceUri,
   'WorkspaceMainArea.openUri': openUri,
+  'WorkspaceMainArea.showFileQuickPick': showFileQuickPick,
 }
 
 export const state: {
