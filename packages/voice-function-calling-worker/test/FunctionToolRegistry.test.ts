@@ -54,6 +54,20 @@ test('returns registered function tool definitions', () => {
   ])
 })
 
+test('includes the terminal tool only when enabled', () => {
+  expect(
+    getRegisteredTools().some((tool) => tool.name === 'execute_bash'),
+  ).toBe(false)
+  expect(
+    getRegisteredTools(true).find((tool) => tool.name === 'execute_bash'),
+  ).toEqual(
+    expect.objectContaining({
+      name: 'execute_bash',
+      type: 'function',
+    }),
+  )
+})
+
 test('executes a registered function tool call', () => {
   expect(
     executeRegisteredFunctionTool('getweather', '{"location":"London"}'),

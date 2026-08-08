@@ -12,7 +12,13 @@
     "connect-src 'self' https://api.openai.com"
   ],
   "categories": ["Other"],
-  "configuration": {},
+  "configuration": {
+    "gptvoice.tools.terminal.enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Allow Gpt Voice to execute Bash commands in the opened workspace. Enabling this gives the voice model arbitrary code execution access."
+    }
+  },
   "activation": [
     "onCommand:gpt-voice.show",
     "onView:gpt-voice.views.default",
@@ -100,6 +106,12 @@
     }
   ],
   "rpc": [
+    {
+      "id": "builtin.gpt-voice.terminal-node",
+      "type": "node",
+      "name": "Gpt Voice Terminal",
+      "url": "dist/terminalNodeMain.js"
+    },
     {
       "id": "builtin.gpt-voice.voice-function-calling-worker",
       "type": "web-worker",

@@ -9,6 +9,7 @@ import {
   setWorkspaceUri,
   writeFile,
 } from '@lvce-editor/api'
+import * as TerminalNode from '../TerminalNode/TerminalNode.ts'
 
 export interface FunctionToolDefinition {
   readonly description: string
@@ -48,6 +49,7 @@ const openPanel = async (view?: string): Promise<void> => {
 const commandMap = {
   'Panel.close': closePanel,
   'Panel.open': openPanel,
+  'Terminal.executeBash': TerminalNode.executeBash,
   'Workspace.setWorkspaceUri': setWorkspaceUri,
   'WorkspaceFileSystem.getWorkspaceUri': getWorkspaceUri,
   'WorkspaceFileSystem.readDirWithFileTypes': readDirWithFileTypes,
@@ -85,9 +87,11 @@ export const getRegisteredTools = async (): Promise<
   readonly FunctionToolDefinition[]
 > => {
   const rpc = await getRpc()
-  return rpc.invoke('VoiceFunctionCalling.getRegisteredTools') as Promise<
-    readonly FunctionToolDefinition[]
-  >
+  const terminalEnabled = await TerminalNode.isEnabled()
+  return rpc.invoke(
+    'VoiceFunctionCalling.getRegisteredTools',
+    terminalEnabled,
+  ) as Promise<readonly FunctionToolDefinition[]>
 }
 
 export const executeFunctionToolCall = async (

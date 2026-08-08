@@ -1,5 +1,4 @@
 import * as esbuild from 'esbuild'
-import fs from 'node:fs'
 import path from 'node:path'
 import { root } from './root.ts'
 
@@ -12,10 +11,7 @@ const voiceFunctionCallingWorker = path.join(
 )
 const outdir = path.join(extension, 'dist')
 
-fs.rmSync(outdir, { recursive: true, force: true })
-fs.mkdirSync(outdir, { recursive: true })
-
-await esbuild.build({
+const browserContext = await esbuild.context({
   bundle: true,
   entryPoints: {
     gptVoiceMain: path.join(extension, 'src', 'gptVoiceMain.ts'),
@@ -33,7 +29,7 @@ await esbuild.build({
   target: 'esnext',
 })
 
-await esbuild.build({
+const nodeContext = await esbuild.context({
   bundle: true,
   entryPoints: [path.join(node, 'src', 'terminalNodeMain.ts')],
   external: ['node:*'],
@@ -43,3 +39,5 @@ await esbuild.build({
   sourcemap: true,
   target: 'node24',
 })
+
+await Promise.all([browserContext.watch(), nodeContext.watch()])

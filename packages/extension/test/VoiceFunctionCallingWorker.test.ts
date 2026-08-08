@@ -9,10 +9,19 @@ const createRpc = jest.fn<typeof Api.createRpc>(
       invoke,
     }) as never,
 )
+const nodeInvoke =
+  jest.fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
+const createNodeRpc = jest.fn<typeof Api.createNodeRpc>(
+  async () =>
+    ({
+      invoke: nodeInvoke,
+    }) as never,
+)
 const closeUri = jest.fn<(uri: string) => Promise<void>>(async () => undefined)
 const openUri = jest.fn<(uri: string) => Promise<void>>(async () => undefined)
 const executeCommand = jest.fn<typeof Api.executeCommand>(async () => undefined)
 const getWorkspaceUri = jest.fn(async () => 'file:///workspace')
+const getPreference = jest.fn<() => Promise<unknown>>(async () => false)
 const readDirWithFileTypes = jest.fn(async () => [
   { name: 'package.json', type: 7 },
 ])
@@ -32,8 +41,10 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
   return {
     ...actual,
     closeUri,
+    createNodeRpc,
     createRpc,
     executeCommand,
+    getPreference,
     getWorkspaceUri,
     openUri,
     readDirWithFileTypes,
@@ -48,10 +59,14 @@ const VoiceFunctionCallingWorker =
 
 beforeEach(() => {
   createRpc.mockClear()
+  createNodeRpc.mockClear()
   closeUri.mockClear()
   executeCommand.mockClear()
   invoke.mockReset()
   getWorkspaceUri.mockClear()
+  getPreference.mockReset()
+  getPreference.mockResolvedValue(false)
+  nodeInvoke.mockReset()
   openUri.mockClear()
   readDirWithFileTypes.mockClear()
   readFile.mockClear()
@@ -79,6 +94,7 @@ test('creates a web worker RPC and queries registered tools', async () => {
     commandMap: {
       'Panel.close': expect.any(Function),
       'Panel.open': expect.any(Function),
+      'Terminal.executeBash': expect.any(Function),
       'Workspace.setWorkspaceUri': setWorkspaceUri,
       'WorkspaceFileSystem.getWorkspaceUri': getWorkspaceUri,
       'WorkspaceFileSystem.readDirWithFileTypes': readDirWithFileTypes,
@@ -95,7 +111,22 @@ test('creates a web worker RPC and queries registered tools', async () => {
       import.meta.url,
     ).href.replace('/test/', '/src/parts/VoiceFunctionCallingWorker/'),
   })
-  expect(invoke).toHaveBeenCalledWith('VoiceFunctionCalling.getRegisteredTools')
+  expect(invoke).toHaveBeenCalledWith(
+    'VoiceFunctionCalling.getRegisteredTools',
+    false,
+  )
+})
+
+test('registers the terminal tool only when its setting is enabled', async () => {
+  getPreference.mockResolvedValue(true)
+  invoke.mockResolvedValue([])
+
+  await VoiceFunctionCallingWorker.getRegisteredTools()
+
+  expect(invoke).toHaveBeenCalledWith(
+    'VoiceFunctionCalling.getRegisteredTools',
+    true,
+  )
 })
 
 test('bridges panel commands from the function calling worker', async () => {
