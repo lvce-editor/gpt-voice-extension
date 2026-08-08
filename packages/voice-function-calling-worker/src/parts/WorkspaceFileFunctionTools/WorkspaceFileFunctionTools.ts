@@ -8,6 +8,7 @@ import {
 import {
   closeWorkspaceFile,
   openWorkspaceFile,
+  showFileQuickPick,
   type WorkspaceMainAreaApi,
 } from '../WorkspaceMainArea/WorkspaceMainArea.ts'
 
@@ -127,6 +128,9 @@ const getErrorMessage = (error: unknown): string => {
 }
 
 const getToolErrorHint = (toolName: string): string => {
+  if (toolName === 'show_file_quick_pick') {
+    return 'Call show_file_quick_pick with no arguments: {}.'
+  }
   if (toolName === 'list_workspace_directory') {
     return 'To list the workspace root, call list_workspace_directory with no arguments: {}. To list a subdirectory, pass only a relative path such as {"path":"src"}. Never pass an absolute path or URI.'
   }
@@ -240,12 +244,25 @@ const closeWorkspaceFileTool: FunctionToolDefinition = {
   type: 'function',
 }
 
+const showFileQuickPickTool: FunctionToolDefinition = {
+  description:
+    'Show the editor file quick pick so the user can interactively search for and open a file from the current workspace.',
+  name: 'show_file_quick_pick',
+  parameters: {
+    additionalProperties: false,
+    properties: {},
+    type: 'object',
+  },
+  type: 'function',
+}
+
 export const workspaceFileFunctionTools: readonly FunctionToolDefinition[] = [
   listWorkspaceDirectoryTool,
   readWorkspaceFileTool,
   writeWorkspaceFileTool,
   openWorkspaceFileTool,
   closeWorkspaceFileTool,
+  showFileQuickPickTool,
 ]
 
 const workspaceFileFunctionToolNames = workspaceFileFunctionTools.map(
@@ -291,6 +308,9 @@ export const executeWorkspaceFileFunctionToolCall = async (
           getRequiredString(argumentsValue, 'path'),
           fileSystemApi,
         )
+        break
+      case 'show_file_quick_pick':
+        output = await showFileQuickPick(mainAreaApi)
         break
       case 'write_workspace_file':
         output = await writeWorkspaceFile(

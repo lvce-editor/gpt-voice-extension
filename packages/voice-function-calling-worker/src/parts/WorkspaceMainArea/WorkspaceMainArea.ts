@@ -5,6 +5,7 @@ export interface WorkspaceMainAreaApi {
   readonly closeUri: (uri: string) => Promise<void>
   readonly getWorkspaceUri: () => Promise<string>
   readonly openUri: (uri: string) => Promise<void>
+  readonly showFileQuickPick: () => Promise<void>
 }
 
 const defaultApi: WorkspaceMainAreaApi = {
@@ -12,6 +13,15 @@ const defaultApi: WorkspaceMainAreaApi = {
   getWorkspaceUri: () =>
     Rpc.invoke<string>('WorkspaceMainArea.getWorkspaceUri'),
   openUri: (uri) => Rpc.invoke<void>('WorkspaceMainArea.openUri', uri),
+  showFileQuickPick: () =>
+    Rpc.invoke<void>('WorkspaceMainArea.showFileQuickPick'),
+}
+
+export const showFileQuickPick = async (
+  api: WorkspaceMainAreaApi = defaultApi,
+): Promise<Readonly<{ shown: boolean }>> => {
+  await api.showFileQuickPick()
+  return { shown: true }
 }
 
 export const closeWorkspaceFile = async (

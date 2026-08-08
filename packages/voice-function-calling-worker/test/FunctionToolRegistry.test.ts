@@ -29,6 +29,7 @@ test('returns registered function tool definitions', () => {
     expect.objectContaining({ name: 'write_workspace_file' }),
     expect.objectContaining({ name: 'open_workspace_file' }),
     expect.objectContaining({ name: 'close_workspace_file' }),
+    expect.objectContaining({ name: 'show_file_quick_pick' }),
   ])
 })
 
