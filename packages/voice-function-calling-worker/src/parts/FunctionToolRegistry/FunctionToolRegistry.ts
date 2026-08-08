@@ -39,7 +39,27 @@ const getWeatherTool: RegisteredFunctionTool = {
   },
 }
 
-const registeredTools: readonly RegisteredFunctionTool[] = [getWeatherTool]
+const stopTalkingTool: RegisteredFunctionTool = {
+  definition: {
+    description:
+      'Stop the voice conversation immediately when the user asks you to stop talking or end the conversation.',
+    name: 'stop_talking',
+    parameters: {
+      additionalProperties: false,
+      properties: {},
+      type: 'object',
+    },
+    type: 'function',
+  },
+  execute() {
+    return { stopped: true }
+  },
+}
+
+const registeredTools: readonly RegisteredFunctionTool[] = [
+  getWeatherTool,
+  stopTalkingTool,
+]
 
 const parseArguments = (value: string): Readonly<Record<string, unknown>> => {
   const parsed: unknown = JSON.parse(value)

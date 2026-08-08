@@ -22,6 +22,17 @@ test('returns registered function tool definitions', () => {
       },
       type: 'function',
     },
+    {
+      description:
+        'Stop the voice conversation immediately when the user asks you to stop talking or end the conversation.',
+      name: 'stop_talking',
+      parameters: {
+        additionalProperties: false,
+        properties: {},
+        type: 'object',
+      },
+      type: 'function',
+    },
     expect.objectContaining({ name: 'set_panel' }),
     expect.objectContaining({ name: 'open_workspace_folder' }),
     expect.objectContaining({ name: 'list_workspace_directory' }),
@@ -42,6 +53,12 @@ test('executes a registered function tool call', () => {
     location: 'london',
     temperature: 14,
     unit: 'C',
+  })
+})
+
+test('executes the stop talking function tool', () => {
+  expect(executeRegisteredFunctionTool('stop_talking', '{}')).toEqual({
+    stopped: true,
   })
 })
 

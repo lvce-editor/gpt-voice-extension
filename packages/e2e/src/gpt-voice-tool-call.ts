@@ -6,6 +6,12 @@ export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
   await Command.executeExtensionCommand('GptVoice.setIsTest')
   await SideBar.open('gpt-voice.views.default')
   await Command.executeExtensionCommand(
+    'GptVoice.addTranscript',
+    'user-message',
+    'What is the weather in Paris?',
+    'user',
+  )
+  await Command.executeExtensionCommand(
     'GptVoice.handleData',
     JSON.stringify({
       arguments: JSON.stringify({ location: 'Paris' }),
@@ -13,6 +19,12 @@ export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
       name: 'getweather',
       type: 'response.function_call_arguments.done',
     }),
+  )
+  await Command.executeExtensionCommand(
+    'GptVoice.addTranscript',
+    'assistant-message',
+    'In Paris, it is sunny and mild.',
+    'ai',
   )
 
   const toolCall = Locator('.GptVoiceToolCall')
@@ -31,6 +43,7 @@ export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
   })
 
   await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  await expect(toolCall).toHaveCSS('flex-shrink', '0')
   await expect(toolCall.locator('.GptVoiceToolCallDetails')).toContainText(
     '"location": "Paris"',
   )

@@ -19,3 +19,30 @@ npm ci
 npm run build
 npm test
 ```
+
+### Voice e2e fixtures
+
+The voice e2e tests replay committed Realtime API event traces, so the regular
+test suite does not need a microphone, network access, or an OpenAI API key.
+Client events are checkpoints: fixture replay fails if a tool result or its
+follow-up `response.create` event is missing or different.
+
+Generate a fixture from text with the real application and OpenAI APIs:
+
+```sh
+OPENAI_API_KEY=... npm run fixture:generate -- \
+  --name weather-paris \
+  --text "What is the weather in Paris?"
+```
+
+The generator uses OpenAI text-to-speech to create a WAV file, launches the
+Electron app with that file as its fake microphone, records both sides of the
+Realtime data channel, and normalizes volatile IDs. It writes `input.wav` and
+`fixture.json` under `packages/e2e/fixtures/<name>/`, plus a self-contained
+replay test under `packages/e2e/src/`. Pass `--force` to replace one existing
+fixture. Raw capture data stays under `.tmp/voice-fixtures/` when generation
+fails, which makes API changes easier to diagnose.
+
+Output audio is intentionally not part of replay. The stable test contract is
+the transcript, tool-call UI, and exact client JSON generated in response to
+recorded server events.

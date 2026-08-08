@@ -24,6 +24,7 @@ const stopWebRtcAudioStream = jest.fn<(uid: number) => Promise<void>>(
   async () => undefined,
 )
 const storeSecret = jest.fn<(key: string, value: string) => Promise<void>>()
+const writeFile = jest.fn<(uri: string, content: string) => Promise<void>>()
 const getRegisteredTools = jest.fn(async () => [
   {
     description: 'Get weather for a location.',
@@ -70,6 +71,7 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
     startWebRtcAudioStream,
     stopWebRtcAudioStream,
     storeSecret,
+    writeFile,
   }
 })
 
@@ -153,6 +155,7 @@ beforeEach(() => {
   startWebRtcAudioStream.mockReset().mockResolvedValue('offer-sdp')
   stopWebRtcAudioStream.mockReset().mockResolvedValue(undefined)
   storeSecret.mockReset().mockResolvedValue(undefined)
+  writeFile.mockReset().mockResolvedValue(undefined)
   executeFunctionToolCall.mockClear()
   getRegisteredTools.mockClear()
   // eslint-disable-next-line unicorn/no-top-level-assignment-in-function
@@ -555,6 +558,27 @@ test('instance - shows a tool call while it is running and ignores duplicate eve
   expect(instance.render()).toContainEqual(text('Ran list_workspace_directory'))
 })
 
+test('instance - stops talking when the stop talking tool is called', async () => {
+  const instance = await createInstance()
+  executeFunctionToolCall.mockResolvedValueOnce([
+    createToolOutput('stop-call', JSON.stringify({ stopped: true })),
+  ])
+
+  instance.handleData(
+    JSON.stringify({
+      arguments: '{}',
+      call_id: 'stop-call',
+      name: 'stop_talking',
+      type: 'response.function_call_arguments.done',
+    }),
+  )
+  await flushAnimation()
+
+  expect(instance.render()).toContainEqual(text('Start talking'))
+  expect(instance.render()).toContainEqual(text('Ran stop_talking'))
+  expect(stopWebRtcAudioStream).toHaveBeenCalledWith(-1)
+})
+
 test('instance - shows failed tool calls', async () => {
   const instance = await createInstance()
   const consoleError = jest
@@ -588,6 +612,122 @@ test('instance - shows failed tool calls', async () => {
   instance.toggleToolCall('stopped-call')
   expect(instance.render()).toContainEqual(text('worker stopped'))
   expect(consoleError).toHaveBeenCalledTimes(2)
+})
+
+test('instance - replays a fixture through tool handling and reports mismatches', async () => {
+  const instance = await createInstance()
+  const fixture = {
+    schemaVersion: 1,
+    trace: [
+      {
+        atMs: 0,
+        direction: 'server',
+        event: {
+          delta: 'Weather?',
+          item_id: 'user',
+          type: 'conversation.item.input_audio_transcription.delta',
+        },
+      },
+      {
+        atMs: 1,
+        direction: 'server',
+        event: {
+          arguments: '{"location":"Paris"}',
+          call_id: 'call',
+          name: 'getweather',
+          type: 'response.function_call_arguments.done',
+        },
+      },
+      {
+        atMs: 2,
+        direction: 'client',
+        event: {
+          item: {
+            call_id: 'call',
+            output: '{"temperature":21}',
+            type: 'function_call_output',
+          },
+          type: 'conversation.item.create',
+        },
+      },
+      {
+        atMs: 3,
+        direction: 'client',
+        event: { type: 'response.create' },
+      },
+      {
+        atMs: 4,
+        direction: 'server',
+        event: {
+          delta: '21 degrees',
+          item_id: 'assistant',
+          type: 'response.output_audio_transcript.delta',
+        },
+      },
+    ],
+  }
+
+  await instance.replayFixture(fixture)
+  expect(instance.render()).toContainEqual(text('Weather?'))
+  expect(instance.render()).toContainEqual(text('Ran getweather'))
+  expect(instance.render()).toContainEqual(text('21 degrees'))
+
+  await expect(
+    instance.replayFixture({
+      schemaVersion: 1,
+      trace: [
+        {
+          atMs: 0,
+          direction: 'client',
+          event: { type: 'missing' },
+        },
+      ],
+    }),
+  ).rejects.toThrow('Missing client event')
+})
+
+test('instance - records a live fixture and writes it after completion', async () => {
+  const instance = await createInstance()
+  readMicLevels.mockReturnValue(new Promise(() => {}))
+  jest
+    .spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce({
+      json: async () => ({ value: 'ephemeral-key' }),
+      ok: true,
+    } as Response)
+    .mockResolvedValueOnce({ text: async () => 'answer-sdp' } as Response)
+
+  const capture = instance.captureFixture({
+    outputUri: 'file:///tmp/raw-recording.json',
+    source: { name: 'arithmetic', text: 'What is 1+1?' },
+  })
+  await flushAnimation()
+  await flushAnimation()
+  if (!latestPort2?.onmessage) {
+    throw new Error('Expected fixture capture data channel')
+  }
+  latestPort2.onmessage({
+    data: JSON.stringify({
+      delta: 'What is 1+1?',
+      item_id: 'user',
+      type: 'conversation.item.input_audio_transcription.delta',
+    }),
+  })
+  latestPort2.onmessage({
+    data: JSON.stringify({
+      delta: '2',
+      item_id: 'assistant',
+      type: 'response.output_audio_transcript.delta',
+    }),
+  })
+  latestPort2.onmessage({ data: JSON.stringify({ type: 'response.done' }) })
+  await capture
+
+  expect(writeFile).toHaveBeenCalledWith(
+    'file:///tmp/raw-recording.json',
+    expect.stringContaining('"direction": "server"'),
+  )
+  expect(stopWebRtcAudioStream).toHaveBeenCalledWith(-1)
 })
 
 test('instance - enters test mode before and after creation', async () => {
