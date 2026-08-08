@@ -17,10 +17,12 @@
     "onCommand:gpt-voice.show",
     "onView:gpt-voice.views.default",
     "onCommand:GptVoice.handleClickStart",
+    "onCommand:GptVoice.captureFixture",
     "onCommand:GptVoice.handleData",
     "onCommand:GptVoice.handleClearOpenAiApiKey",
     "onCommand:GptVoice.handleOpenAiApiKeyInput",
     "onCommand:GptVoice.handleSaveOpenAiApiKey",
+    "onCommand:GptVoice.replayFixture",
     "onCommand:GptVoice.setIsTest",
     "onCommand:GptVoice.setAnimation",
     "onCommand:GptVoice.setRealtimeModelMini",
@@ -38,6 +40,10 @@
       "label": "gpt-voice: Handle Click Start"
     },
     {
+      "id": "GptVoice.captureFixture",
+      "label": "gpt-voice: Capture fixture"
+    },
+    {
       "id": "GptVoice.handleData",
       "label": "gpt-voice: Handle Data"
     },
@@ -52,6 +58,10 @@
     {
       "id": "GptVoice.handleSaveOpenAiApiKey",
       "label": "gpt-voice: Save OpenAI API key"
+    },
+    {
+      "id": "GptVoice.replayFixture",
+      "label": "gpt-voice: Replay fixture"
     },
     {
       "id": "GptVoice.setIsTest",
