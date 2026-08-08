@@ -11,6 +11,13 @@ const createRpc = jest.fn<typeof Api.createRpc>(
 )
 const closeUri = jest.fn<(uri: string) => Promise<void>>(async () => undefined)
 const openUri = jest.fn<(uri: string) => Promise<void>>(async () => undefined)
+const openDebugConsole = jest.fn<typeof Api.openDebugConsole>(
+  async () => undefined,
+)
+const openOutputView = jest.fn<typeof Api.openOutputView>(async () => undefined)
+const openProblemsView = jest.fn<typeof Api.openProblemsView>(
+  async () => undefined,
+)
 const executeCommand = jest.fn<typeof Api.executeCommand>(async () => undefined)
 const getWorkspaceUri = jest.fn(async () => 'file:///workspace')
 const readDirWithFileTypes = jest.fn(async () => [
@@ -35,6 +42,9 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
     createRpc,
     executeCommand,
     getWorkspaceUri,
+    openDebugConsole,
+    openOutputView,
+    openProblemsView,
     openUri,
     readDirWithFileTypes,
     readFile,
@@ -52,6 +62,9 @@ beforeEach(() => {
   executeCommand.mockClear()
   invoke.mockReset()
   getWorkspaceUri.mockClear()
+  openDebugConsole.mockClear()
+  openOutputView.mockClear()
+  openProblemsView.mockClear()
   openUri.mockClear()
   readDirWithFileTypes.mockClear()
   readFile.mockClear()
@@ -79,6 +92,9 @@ test('creates a web worker RPC and queries registered tools', async () => {
     commandMap: {
       'Panel.close': expect.any(Function),
       'Panel.open': expect.any(Function),
+      'PanelView.openDebugConsole': expect.any(Function),
+      'PanelView.openOutputView': expect.any(Function),
+      'PanelView.openProblemsView': expect.any(Function),
       'Workspace.setWorkspaceUri': setWorkspaceUri,
       'WorkspaceFileSystem.getWorkspaceUri': getWorkspaceUri,
       'WorkspaceFileSystem.readDirWithFileTypes': readDirWithFileTypes,
@@ -117,6 +133,23 @@ test('bridges panel commands from the function calling worker', async () => {
   )
   expect(executeCommand).toHaveBeenNthCalledWith(2, 'Layout.showPanel')
   expect(executeCommand).toHaveBeenNthCalledWith(3, 'Layout.hidePanel')
+})
+
+test('bridges panel view commands from the function calling worker', async () => {
+  invoke.mockResolvedValue([])
+  await VoiceFunctionCallingWorker.getRegisteredTools()
+
+  const options = createRpc.mock.calls[0]?.[0]
+  const commandMap = options?.commandMap as Readonly<
+    Record<string, (...args: readonly unknown[]) => Promise<void>>
+  >
+  await commandMap['PanelView.openProblemsView']?.({ filter: 'typescript' })
+  await commandMap['PanelView.openOutputView']?.({ channel: 'Window' })
+  await commandMap['PanelView.openDebugConsole']?.({ input: 'process.version' })
+
+  expect(openProblemsView).toHaveBeenCalledWith({ filter: 'typescript' })
+  expect(openOutputView).toHaveBeenCalledWith({ channel: 'Window' })
+  expect(openDebugConsole).toHaveBeenCalledWith({ input: 'process.version' })
 })
 
 test('invokes a workspace file tool on the worker', async () => {
