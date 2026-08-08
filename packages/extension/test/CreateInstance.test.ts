@@ -555,6 +555,27 @@ test('instance - shows a tool call while it is running and ignores duplicate eve
   expect(instance.render()).toContainEqual(text('Ran list_workspace_directory'))
 })
 
+test('instance - stops talking when the stop talking tool is called', async () => {
+  const instance = await createInstance()
+  executeFunctionToolCall.mockResolvedValueOnce([
+    createToolOutput('stop-call', JSON.stringify({ stopped: true })),
+  ])
+
+  instance.handleData(
+    JSON.stringify({
+      arguments: '{}',
+      call_id: 'stop-call',
+      name: 'stop_talking',
+      type: 'response.function_call_arguments.done',
+    }),
+  )
+  await flushAnimation()
+
+  expect(instance.render()).toContainEqual(text('Start talking'))
+  expect(instance.render()).toContainEqual(text('Ran stop_talking'))
+  expect(stopWebRtcAudioStream).toHaveBeenCalledWith(-1)
+})
+
 test('instance - shows failed tool calls', async () => {
   const instance = await createInstance()
   const consoleError = jest

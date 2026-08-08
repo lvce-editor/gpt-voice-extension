@@ -45,6 +45,27 @@ test('executes completed function call output items', async () => {
   expect(result[0]).toContain('london')
 })
 
+test('executes stop talking function calls', async () => {
+  const result = await executeFunctionToolCall({
+    arguments: '{}',
+    call_id: 'stop-call',
+    name: 'stop_talking',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(result).toEqual([
+    JSON.stringify({
+      item: {
+        call_id: 'stop-call',
+        output: JSON.stringify({ stopped: true }),
+        type: 'function_call_output',
+      },
+      type: 'conversation.item.create',
+    }),
+    JSON.stringify({ type: 'response.create' }),
+  ])
+})
+
 test('executes workspace file function calls in the worker', async () => {
   const invoke = jest
     .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
