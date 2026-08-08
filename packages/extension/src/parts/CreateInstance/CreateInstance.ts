@@ -163,6 +163,7 @@ export const createInstance = async (
     uid: -1,
   }
   let dataChannelPort: MessagePort | undefined
+  const handledToolCallIds = new Set<string>()
 
   const sendToDataChannel = async (data: string): Promise<void> => {
     if (!dataChannelPort) {
@@ -176,29 +177,30 @@ export const createInstance = async (
     if (!toolCall) {
       return
     }
+    const isSilentWait = toolCall.name === 'wait_for_user'
     const { messages } = state
-    const existing = messages.some(
-      (message) => message.type === 'tool' && message.id === toolCall.callId,
-    )
-    if (existing) {
+    if (handledToolCallIds.has(toolCall.callId)) {
       return
     }
-    state = {
-      ...state,
-      messages: [
-        ...messages,
-        {
-          argumentsValue: toolCall.argumentsValue,
-          expanded: false,
-          id: toolCall.callId,
-          name: toolCall.name,
-          output: '',
-          status: 'in-progress',
-          type: 'tool',
-        },
-      ],
+    handledToolCallIds.add(toolCall.callId)
+    if (!isSilentWait) {
+      state = {
+        ...state,
+        messages: [
+          ...messages,
+          {
+            argumentsValue: toolCall.argumentsValue,
+            expanded: false,
+            id: toolCall.callId,
+            name: toolCall.name,
+            output: '',
+            status: 'in-progress',
+            type: 'tool',
+          },
+        ],
+      }
+      context?.requestRerender()
     }
-    context?.requestRerender()
     let responseMessages: readonly string[]
     try {
       responseMessages =

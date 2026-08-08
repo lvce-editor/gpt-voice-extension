@@ -104,8 +104,12 @@ export const executeFunctionToolCall = async (
     functionCall.name,
     functionCall.argumentsValue,
   )
-  return [
-    createToolOutputMessage(functionCall.callId, JSON.stringify(result)),
-    createFunctionResultResponseMessage(),
-  ]
+  const outputMessage = createToolOutputMessage(
+    functionCall.callId,
+    JSON.stringify(result),
+  )
+  if (functionCall.name === 'wait_for_user') {
+    return [outputMessage]
+  }
+  return [outputMessage, createFunctionResultResponseMessage()]
 }

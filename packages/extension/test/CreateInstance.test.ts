@@ -576,6 +576,38 @@ test('instance - stops talking when the stop talking tool is called', async () =
   expect(stopWebRtcAudioStream).toHaveBeenCalledWith(-1)
 })
 
+test('instance - hides silent wait tool calls', async () => {
+  const instance = await createInstance()
+  jest.spyOn(console, 'error').mockImplementation(() => undefined)
+  executeFunctionToolCall.mockResolvedValueOnce([
+    createToolOutput('wait-call', JSON.stringify({ waiting: true })),
+  ])
+
+  instance.handleData(
+    JSON.stringify({
+      arguments: '{}',
+      call_id: 'wait-call',
+      name: 'wait_for_user',
+      type: 'response.function_call_arguments.done',
+    }),
+  )
+  instance.handleData(
+    JSON.stringify({
+      item: {
+        arguments: '{}',
+        call_id: 'wait-call',
+        name: 'wait_for_user',
+        type: 'function_call',
+      },
+      type: 'response.output_item.done',
+    }),
+  )
+  await flushAnimation()
+
+  expect(executeFunctionToolCall).toHaveBeenCalledTimes(1)
+  expect(instance.render()).not.toContainEqual(text('Ran wait_for_user'))
+})
+
 test('instance - shows failed tool calls', async () => {
   const instance = await createInstance()
   const consoleError = jest
