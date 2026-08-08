@@ -33,6 +33,17 @@ test('returns registered function tool definitions', () => {
       },
       type: 'function',
     },
+    {
+      description:
+        'Wait silently when the latest audio is silence, background noise, hold music, media audio, side conversation, or speech not addressed to the assistant.',
+      name: 'wait_for_user',
+      parameters: {
+        additionalProperties: false,
+        properties: {},
+        type: 'object',
+      },
+      type: 'function',
+    },
     expect.objectContaining({ name: 'set_panel' }),
     expect.objectContaining({ name: 'open_workspace_folder' }),
     expect.objectContaining({ name: 'list_workspace_directory' }),
@@ -58,6 +69,12 @@ test('executes a registered function tool call', () => {
 test('executes the stop talking function tool', () => {
   expect(executeRegisteredFunctionTool('stop_talking', '{}')).toEqual({
     stopped: true,
+  })
+})
+
+test('executes the wait for user function tool', () => {
+  expect(executeRegisteredFunctionTool('wait_for_user', '{}')).toEqual({
+    waiting: true,
   })
 })
 
