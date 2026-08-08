@@ -1,5 +1,6 @@
 import { executeRegisteredFunctionTool } from '../FunctionToolRegistry/FunctionToolRegistry.ts'
 import { executePanelFunctionToolCall } from '../PanelFunctionTools/PanelFunctionTools.ts'
+import { executeTerminalFunctionToolCall } from '../TerminalFunctionTools/TerminalFunctionTools.ts'
 import { executeWorkspaceFileFunctionToolCall } from '../WorkspaceFileFunctionTools/WorkspaceFileFunctionTools.ts'
 import { executeWorkspaceFunctionToolCall } from '../WorkspaceFunctionTools/WorkspaceFunctionTools.ts'
 
@@ -94,6 +95,10 @@ export const executeFunctionToolCall = async (
     await executeWorkspaceFileFunctionToolCall(parsed)
   if (workspaceFileMessages) {
     return workspaceFileMessages
+  }
+  const terminalMessages = await executeTerminalFunctionToolCall(parsed)
+  if (terminalMessages) {
+    return terminalMessages
   }
   const functionCall = parseFunctionCall(parsed)
   if (!functionCall) {

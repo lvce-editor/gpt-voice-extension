@@ -10,7 +10,7 @@
     "build": "node packages/build/src/build.ts",
     "build:extension": "node packages/build/src/build-extension.ts",
     "build:static": "node scripts/build-static.ts",
-    "build:watch": "npm exec --workspace=packages/build -- esbuild --format=esm --bundle --external:electron --external:node:* --watch --entry-names=[name] ../../packages/extension/src/gptVoiceMain.ts ../../packages/voice-function-calling-worker/src/voiceFunctionCallingWorkerMain.ts --outdir=../../packages/extension/dist",
+    "build:watch": "node packages/build/src/build-watch.ts",
     "dev": "node packages/build/src/dev.ts",
     "e2e": "npm run e2e --workspace=packages/e2e",
     "e2e:headless": "npm run e2e:headless --workspace=packages/e2e",

@@ -14,3 +14,20 @@ test('declares the voice function calling web worker', () => {
     url: 'dist/voiceFunctionCallingWorkerMain.js',
   })
 })
+
+test('declares the opt-in terminal tool and node process', () => {
+  expect(extensionManifest.configuration).toEqual({
+    'gptvoice.tools.terminal.enabled': {
+      default: false,
+      description:
+        'Allow Gpt Voice to execute Bash commands in the opened workspace. Enabling this gives the voice model arbitrary code execution access.',
+      type: 'boolean',
+    },
+  })
+  expect(extensionManifest.rpc).toContainEqual({
+    id: 'builtin.gpt-voice.terminal-node',
+    name: 'Gpt Voice Terminal',
+    type: 'node',
+    url: 'dist/terminalNodeMain.js',
+  })
+})

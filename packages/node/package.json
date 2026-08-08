@@ -1,0 +1,14 @@
+{
+  "name": "builtin.gpt-voice-node",
+  "version": "0.0.0-dev",
+  "description": "Node-specific terminal execution for the Gpt Voice extension",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/terminalNodeMain.ts",
+  "scripts": {
+    "test": "node --test test/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0"
+  }
+}
