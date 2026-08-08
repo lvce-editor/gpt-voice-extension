@@ -14,6 +14,7 @@
     "dev": "node packages/build/src/dev.ts",
     "e2e": "npm run e2e --workspace=packages/e2e",
     "e2e:headless": "npm run e2e:headless --workspace=packages/e2e",
+    "fixture:generate": "node packages/fixture-generator/src/generateFixture.ts",
     "format": "prettier --write .",
     "install:extension": "node packages/build/src/install-extension.ts",
     "lint": "eslint . && prettier --check .",

@@ -18,6 +18,14 @@ import {
 import type { MenuEntry } from '../MenuEntries/MenuEntries.ts'
 import { animateBubble } from '../AnimateBubble/AnimateBubble.ts'
 import * as ClassNames from '../ClassNames/ClassNames.ts'
+import {
+  createFixtureRecording,
+  type FixtureRecording,
+} from '../FixtureRecording/FixtureRecording.ts'
+import {
+  createFixtureReplay,
+  type FixtureReplay,
+} from '../FixtureReplay/FixtureReplay.ts'
 import { getCss } from '../GetCss/GetCss.ts'
 import { getTitle } from '../GetTitle/GetTitle.ts'
 import * as GptVoiceStrings from '../GptVoiceStrings/GptVoiceStrings.ts'
@@ -49,6 +57,7 @@ export interface ActiveGptVoiceViewInstance extends VirtualDomViewInstance {
     value: string,
     type: 'user' | 'ai',
   ) => void
+  readonly captureFixture: (options: CaptureFixtureOptions) => Promise<void>
   readonly createOrUpdateTranscript: (parsed: any, type: 'user' | 'ai') => void
   readonly doAnimate: () => Promise<void>
   readonly getContext: () => Readonly<Record<string, boolean>>
@@ -62,12 +71,18 @@ export interface ActiveGptVoiceViewInstance extends VirtualDomViewInstance {
   readonly handleOutputTranscript: (parsed: any) => void
   readonly handleSaveOpenAiApiKey: () => Promise<void>
   readonly renderTitle: () => string
+  readonly replayFixture: (fixture: unknown) => Promise<void>
   readonly setAnimation: (enabled: boolean, scale: number) => void
   readonly setRealtimeModelMini: () => void
   readonly setRealtimeModelStandard: () => void
   readonly stop: () => Promise<void>
   readonly toggleToolCall: (callId: string) => void
   readonly updateTranscript: (id: string, value: string) => void
+}
+
+export interface CaptureFixtureOptions {
+  readonly outputUri: string
+  readonly source: Readonly<Record<string, unknown>>
 }
 
 export interface ITranscript {
@@ -129,6 +144,10 @@ const isLikelyOpenAiApiKey = (value: string): boolean => {
   return openAiApiKeyRegex.test(value)
 }
 
+const toError = (value: unknown): Error => {
+  return value instanceof Error ? value : new Error('Unknown recording error')
+}
+
 export const createInstance = async (
   context?: ViewContext,
 ): Promise<ActiveGptVoiceViewInstance> => {
@@ -163,8 +182,15 @@ export const createInstance = async (
     uid: -1,
   }
   let dataChannelPort: MessagePort | undefined
+  let fixtureRecording: FixtureRecording | undefined
+  let fixtureReplay: FixtureReplay | undefined
 
   const sendToDataChannel = async (data: string): Promise<void> => {
+    fixtureRecording?.recordClientMessage(data)
+    if (fixtureReplay) {
+      fixtureReplay.acceptClientMessage(data)
+      return
+    }
     if (!dataChannelPort) {
       throw new Error('data channel port not connected')
     }
@@ -237,7 +263,7 @@ export const createInstance = async (
       return
     }
     const { isTest } = state
-    if (isTest) {
+    if (isTest && !fixtureReplay) {
       return
     }
     for (const message of responseMessages) {
@@ -269,6 +295,28 @@ export const createInstance = async (
     return apiKey
   }
 
+  const processData = async (data: string): Promise<void> => {
+    const parsed = JSON.parse(data)
+    fixtureRecording?.recordServerEvent(parsed)
+    const { parsedData } = state
+    state = {
+      ...state,
+      parsedData: [...parsedData, parsed],
+    }
+
+    if (parsed && parsed.type === 'response.output_audio_transcript.delta') {
+      instance.handleOutputTranscript(parsed)
+    }
+    if (
+      parsed &&
+      parsed.type === 'conversation.item.input_audio_transcription.delta'
+    ) {
+      instance.handleInputTranscript(parsed)
+    }
+
+    await handleFunctionCall(parsed)
+  }
+
   const instance: ActiveGptVoiceViewInstance = {
     addTranscript(id, value, type) {
       const { messages } = state
@@ -277,6 +325,40 @@ export const createInstance = async (
         messages: [...messages, { id, text: value, type }],
       }
       context?.requestRerender()
+    },
+    async captureFixture(options): Promise<void> {
+      if (fixtureRecording) {
+        throw new Error('A voice fixture recording is already active')
+      }
+      const recording = createFixtureRecording()
+      fixtureRecording = recording
+      let recordingError: Error | undefined
+      try {
+        await instance.handleClickStart()
+        await recording.waitForCompletion()
+      } catch (error) {
+        recordingError = toError(error)
+      } finally {
+        try {
+          await instance.stop()
+        } catch (error) {
+          recordingError ??= toError(error)
+        } finally {
+          fixtureRecording = undefined
+          const output = {
+            ...(recordingError && { error: recordingError.message }),
+            source: options.source,
+            trace: recording.snapshot(),
+          }
+          await ExtensionApi.writeFile(
+            options.outputUri,
+            `${JSON.stringify(output, null, 2)}\n`,
+          )
+        }
+      }
+      if (recordingError) {
+        throw recordingError
+      }
     },
     createOrUpdateTranscript(parsed, type) {
       const { delta, item_id } = parsed
@@ -483,26 +565,9 @@ export const createInstance = async (
       }
     },
     handleData(data: string): void {
-      const parsed = JSON.parse(data)
-      const { parsedData } = state
-      state = {
-        ...state,
-        parsedData: [...parsedData, parsed],
-      }
-
-      void handleFunctionCall(parsed).catch((error) => {
+      void processData(data).catch((error) => {
         console.error(error)
       })
-
-      if (parsed && parsed.type === 'response.output_audio_transcript.delta') {
-        instance.handleOutputTranscript(parsed)
-      }
-      if (
-        parsed &&
-        parsed.type === 'conversation.item.input_audio_transcription.delta'
-      ) {
-        instance.handleInputTranscript(parsed)
-      }
     },
     handleInputTranscript(parsed) {
       instance.createOrUpdateTranscript(parsed, 'user')
@@ -587,6 +652,24 @@ export const createInstance = async (
     },
     renderTitle(): string {
       return getTitle(state)
+    },
+    async replayFixture(fixture): Promise<void> {
+      if (fixtureReplay) {
+        throw new Error('A voice fixture replay is already active')
+      }
+      state = {
+        ...state,
+        hasOpenAiApiKey: true,
+        isTest: true,
+      }
+      const replay = createFixtureReplay(fixture)
+      fixtureReplay = replay
+      try {
+        await replay.run(processData)
+      } finally {
+        fixtureReplay = undefined
+      }
+      await context?.requestRerender()
     },
     saveState(): unknown {
       return {}
