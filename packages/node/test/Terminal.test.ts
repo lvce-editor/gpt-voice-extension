@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, realpath, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, test } from 'node:test'
@@ -26,6 +26,7 @@ afterEach(async () => {
 test('executes Bash in the opened workspace', async () => {
   const workspace = await mkdtemp(path.join(tmpdir(), 'gpt-voice-terminal-'))
   temporaryDirectories.push(workspace)
+  const canonicalWorkspace = await realpath(workspace)
 
   const result = await executeBash(
     'printf "%s\\n" "$PWD"; printf output; printf error >&2',
@@ -35,7 +36,7 @@ test('executes Bash in the opened workspace', async () => {
   assert.deepEqual(result, {
     exitCode: 0,
     stderr: 'error',
-    stdout: `${workspace}\noutput`,
+    stdout: `${canonicalWorkspace}\noutput`,
     timedOut: false,
   })
 })
