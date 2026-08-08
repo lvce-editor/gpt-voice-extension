@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url'
 import { root } from './root.ts'
 
 const extensionId = 'builtin.gpt-voice'
+const staticPathPrefix = '/gpt-voice-extension'
 
 const assertFileExists = async (file: string): Promise<void> => {
   try {
@@ -58,13 +59,13 @@ const assertStaticgptvoiceExtension = async (
     extensionsJson,
     extensionsJsonPath,
   )
-  const expectedPathSuffix = `/${commitHash}/extensions/${extensionId}`
+  const expectedPath = `${staticPathPrefix}/${commitHash}/extensions/${extensionId}`
   if (
     typeof extensionEntry.path !== 'string' ||
-    !extensionEntry.path.endsWith(expectedPathSuffix)
+    extensionEntry.path !== expectedPath
   ) {
     throw new Error(
-      `Expected ${extensionsJsonPath} path for ${extensionId} to end with ${expectedPathSuffix}, got ${extensionEntry.path}`,
+      `Expected ${extensionsJsonPath} path for ${extensionId} to be ${expectedPath}, got ${extensionEntry.path}`,
     )
   }
 
@@ -111,6 +112,7 @@ await cp(path.join(root, 'dist'), path.join(root, 'dist2'), {
   force: true,
 })
 
+process.env.PATH_PREFIX = staticPathPrefix
 const { commitHash } = await exportStatic({
   extensionPath: 'packages/extension',
   testPath: 'packages/e2e',

@@ -33,6 +33,17 @@ test('returns registered function tool definitions', () => {
       },
       type: 'function',
     },
+    {
+      description:
+        'Wait silently when the latest audio is silence, background noise, hold music, media audio, side conversation, or speech not addressed to the assistant.',
+      name: 'wait_for_user',
+      parameters: {
+        additionalProperties: false,
+        properties: {},
+        type: 'object',
+      },
+      type: 'function',
+    },
     expect.objectContaining({ name: 'set_panel' }),
     expect.objectContaining({ name: 'open_problems_view' }),
     expect.objectContaining({ name: 'open_output_view' }),
@@ -43,7 +54,22 @@ test('returns registered function tool definitions', () => {
     expect.objectContaining({ name: 'write_workspace_file' }),
     expect.objectContaining({ name: 'open_workspace_file' }),
     expect.objectContaining({ name: 'close_workspace_file' }),
+    expect.objectContaining({ name: 'show_file_quick_pick' }),
   ])
+})
+
+test('includes the terminal tool only when enabled', () => {
+  expect(
+    getRegisteredTools().some((tool) => tool.name === 'execute_bash'),
+  ).toBe(false)
+  expect(
+    getRegisteredTools(true).find((tool) => tool.name === 'execute_bash'),
+  ).toEqual(
+    expect.objectContaining({
+      name: 'execute_bash',
+      type: 'function',
+    }),
+  )
 })
 
 test('executes a registered function tool call', () => {
@@ -61,6 +87,12 @@ test('executes a registered function tool call', () => {
 test('executes the stop talking function tool', () => {
   expect(executeRegisteredFunctionTool('stop_talking', '{}')).toEqual({
     stopped: true,
+  })
+})
+
+test('executes the wait for user function tool', () => {
+  expect(executeRegisteredFunctionTool('wait_for_user', '{}')).toEqual({
+    waiting: true,
   })
 })
 

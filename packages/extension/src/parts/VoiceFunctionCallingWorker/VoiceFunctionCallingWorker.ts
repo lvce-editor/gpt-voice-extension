@@ -10,8 +10,10 @@ import {
   readDirWithFileTypes,
   readFile,
   setWorkspaceUri,
+  showFileQuickPick,
   writeFile,
 } from '@lvce-editor/api'
+import * as TerminalNode from '../TerminalNode/TerminalNode.ts'
 
 export interface FunctionToolDefinition {
   readonly description: string
@@ -54,6 +56,7 @@ const commandMap = {
   'PanelView.openDebugConsole': openDebugConsole,
   'PanelView.openOutputView': openOutputView,
   'PanelView.openProblemsView': openProblemsView,
+  'Terminal.executeBash': TerminalNode.executeBash,
   'Workspace.setWorkspaceUri': setWorkspaceUri,
   'WorkspaceFileSystem.getWorkspaceUri': getWorkspaceUri,
   'WorkspaceFileSystem.readDirWithFileTypes': readDirWithFileTypes,
@@ -62,6 +65,7 @@ const commandMap = {
   'WorkspaceMainArea.closeUri': closeUri,
   'WorkspaceMainArea.getWorkspaceUri': getWorkspaceUri,
   'WorkspaceMainArea.openUri': openUri,
+  'WorkspaceMainArea.showFileQuickPick': showFileQuickPick,
 }
 
 export const state: {
@@ -91,9 +95,11 @@ export const getRegisteredTools = async (): Promise<
   readonly FunctionToolDefinition[]
 > => {
   const rpc = await getRpc()
-  return rpc.invoke('VoiceFunctionCalling.getRegisteredTools') as Promise<
-    readonly FunctionToolDefinition[]
-  >
+  const terminalEnabled = await TerminalNode.isEnabled()
+  return rpc.invoke(
+    'VoiceFunctionCalling.getRegisteredTools',
+    terminalEnabled,
+  ) as Promise<readonly FunctionToolDefinition[]>
 }
 
 export const executeFunctionToolCall = async (

@@ -3,7 +3,10 @@
   "include": [],
   "references": [
     { "path": "./packages/e2e" },
+    { "path": "./packages/fixture-generator" },
+    { "path": "./packages/fixture-generator/e2e" },
     { "path": "./packages/extension" },
+    { "path": "./packages/node" },
     { "path": "./packages/voice-function-calling-worker" },
     { "path": "./packages/build" }
   ]

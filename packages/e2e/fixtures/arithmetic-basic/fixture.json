@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "name": "arithmetic-basic",
+  "source": {
+    "text": "What is 1+1?",
+    "realtimeModel": "gpt-realtime-2.1-mini"
+  },
+  "expect": {
+    "userText": "What is 1+1?",
+    "assistantText": "1 + 1 is 2.",
+    "toolCalls": []
+  },
+  "trace": [
+    {
+      "atMs": 0,
+      "direction": "server",
+      "event": {
+        "type": "conversation.item.input_audio_transcription.delta",
+        "item_id": "user_item_1",
+        "delta": "What is 1+1?"
+      }
+    },
+    {
+      "atMs": 400,
+      "direction": "server",
+      "event": {
+        "type": "response.output_audio_transcript.delta",
+        "item_id": "assistant_item_1",
+        "delta": "1 + 1 is 2."
+      }
+    }
+  ]
+}

@@ -22,6 +22,7 @@ const createMainAreaApi = (): WorkspaceMainAreaApi => ({
   closeUri: jest.fn(async () => undefined),
   getWorkspaceUri: jest.fn(async () => 'file:///workspace'),
   openUri: jest.fn(async () => undefined),
+  showFileQuickPick: jest.fn(async () => undefined),
 })
 
 const getToolOutput = (messages: readonly string[]): unknown => {
@@ -36,6 +37,7 @@ test('exposes workspace file tool definitions', () => {
     'write_workspace_file',
     'open_workspace_file',
     'close_workspace_file',
+    'show_file_quick_pick',
   ])
   expect(workspaceFileFunctionTools[0]?.parameters.required).toBeUndefined()
   expect(workspaceFileFunctionTools[1]?.parameters.required).toEqual(['path'])
@@ -45,6 +47,24 @@ test('exposes workspace file tool definitions', () => {
   ])
   expect(workspaceFileFunctionTools[3]?.parameters.required).toEqual(['path'])
   expect(workspaceFileFunctionTools[4]?.parameters.required).toEqual(['path'])
+  expect(workspaceFileFunctionTools[5]?.parameters.required).toBeUndefined()
+})
+
+test('shows the file quick pick', async () => {
+  const mainAreaApi = createMainAreaApi()
+  const messages = await executeWorkspaceFileFunctionToolCall(
+    {
+      arguments: '{}',
+      call_id: 'show-file-quick-pick-call',
+      name: 'show_file_quick_pick',
+      type: 'response.function_call_arguments.done',
+    },
+    createFileSystemApi(),
+    mainAreaApi,
+  )
+
+  expect(mainAreaApi.showFileQuickPick).toHaveBeenCalledWith()
+  expect(getToolOutput(messages || [])).toEqual({ shown: true })
 })
 
 test.each([

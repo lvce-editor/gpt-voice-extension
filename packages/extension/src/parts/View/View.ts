@@ -22,6 +22,10 @@ export const view: GptVoiceView = {
       context.addTranscript(id, value, type)
       return context
     },
+    async 'GptVoice.captureFixture'(context, options) {
+      await context.captureFixture(options)
+      return context
+    },
     async 'GptVoice.handleClearOpenAiApiKey'(context) {
       await context.handleClearOpenAiApiKey()
       return context
@@ -40,6 +44,10 @@ export const view: GptVoiceView = {
     },
     async 'GptVoice.handleSaveOpenAiApiKey'(context) {
       await context.handleSaveOpenAiApiKey()
+      return context
+    },
+    async 'GptVoice.replayFixture'(context, fixture: unknown) {
+      await context.replayFixture(fixture)
       return context
     },
     async 'GptVoice.setAnimation'(context, enabled: boolean, scale: number) {

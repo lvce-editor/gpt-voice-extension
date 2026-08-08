@@ -1,6 +1,7 @@
 import { executeRegisteredFunctionTool } from '../FunctionToolRegistry/FunctionToolRegistry.ts'
 import { executePanelFunctionToolCall } from '../PanelFunctionTools/PanelFunctionTools.ts'
 import { executePanelViewFunctionToolCall } from '../PanelViewFunctionTools/PanelViewFunctionTools.ts'
+import { executeTerminalFunctionToolCall } from '../TerminalFunctionTools/TerminalFunctionTools.ts'
 import { executeWorkspaceFileFunctionToolCall } from '../WorkspaceFileFunctionTools/WorkspaceFileFunctionTools.ts'
 import { executeWorkspaceFunctionToolCall } from '../WorkspaceFunctionTools/WorkspaceFunctionTools.ts'
 
@@ -100,6 +101,10 @@ export const executeFunctionToolCall = async (
   if (workspaceFileMessages) {
     return workspaceFileMessages
   }
+  const terminalMessages = await executeTerminalFunctionToolCall(parsed)
+  if (terminalMessages) {
+    return terminalMessages
+  }
   const functionCall = parseFunctionCall(parsed)
   if (!functionCall) {
     return []
@@ -109,8 +114,12 @@ export const executeFunctionToolCall = async (
     functionCall.name,
     functionCall.argumentsValue,
   )
-  return [
-    createToolOutputMessage(functionCall.callId, JSON.stringify(result)),
-    createFunctionResultResponseMessage(),
-  ]
+  const outputMessage = createToolOutputMessage(
+    functionCall.callId,
+    JSON.stringify(result),
+  )
+  if (functionCall.name === 'wait_for_user') {
+    return [outputMessage]
+  }
+  return [outputMessage, createFunctionResultResponseMessage()]
 }

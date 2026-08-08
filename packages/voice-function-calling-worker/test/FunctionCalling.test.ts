@@ -66,6 +66,26 @@ test('executes stop talking function calls', async () => {
   ])
 })
 
+test('waits silently after background noise', async () => {
+  const result = await executeFunctionToolCall({
+    arguments: '{}',
+    call_id: 'wait-call',
+    name: 'wait_for_user',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(result).toEqual([
+    JSON.stringify({
+      item: {
+        call_id: 'wait-call',
+        output: JSON.stringify({ waiting: true }),
+        type: 'function_call_output',
+      },
+      type: 'conversation.item.create',
+    }),
+  ])
+})
+
 test('executes workspace file function calls in the worker', async () => {
   const invoke = jest
     .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
@@ -194,6 +214,26 @@ test.each([
     'file:///workspace/src/index.ts',
   )
   expect(result[0]).toContain(`\\"${resultProperty}\\":true`)
+})
+
+test('executes show file quick pick calls in the worker', async () => {
+  const invoke = jest
+    .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
+    .mockResolvedValue(undefined)
+  const globalScope = globalThis as typeof globalThis & {
+    rpc: { readonly invoke: typeof invoke }
+  }
+  globalScope.rpc = { invoke }
+
+  const result = await executeFunctionToolCall({
+    arguments: '{}',
+    call_id: 'show-file-quick-pick-call',
+    name: 'show_file_quick_pick',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(invoke).toHaveBeenCalledWith('WorkspaceMainArea.showFileQuickPick')
+  expect(result[0]).toContain('\\"shown\\":true')
 })
 
 test.each([

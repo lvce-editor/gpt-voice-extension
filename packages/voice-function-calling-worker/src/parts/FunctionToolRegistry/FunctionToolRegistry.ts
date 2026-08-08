@@ -1,6 +1,7 @@
 import { getFakeWeather } from '../FakeWeather/FakeWeather.ts'
 import { panelFunctionTools } from '../PanelFunctionTools/PanelFunctionTools.ts'
 import { panelViewFunctionTools } from '../PanelViewFunctionTools/PanelViewFunctionTools.ts'
+import { terminalFunctionTools } from '../TerminalFunctionTools/TerminalFunctionTools.ts'
 import { workspaceFileFunctionTools } from '../WorkspaceFileFunctionTools/WorkspaceFileFunctionTools.ts'
 import { workspaceFunctionTools } from '../WorkspaceFunctionTools/WorkspaceFunctionTools.ts'
 
@@ -57,9 +58,27 @@ const stopTalkingTool: RegisteredFunctionTool = {
   },
 }
 
+const waitForUserTool: RegisteredFunctionTool = {
+  definition: {
+    description:
+      'Wait silently when the latest audio is silence, background noise, hold music, media audio, side conversation, or speech not addressed to the assistant.',
+    name: 'wait_for_user',
+    parameters: {
+      additionalProperties: false,
+      properties: {},
+      type: 'object',
+    },
+    type: 'function',
+  },
+  execute() {
+    return { waiting: true }
+  },
+}
+
 const registeredTools: readonly RegisteredFunctionTool[] = [
   getWeatherTool,
   stopTalkingTool,
+  waitForUserTool,
 ]
 
 const parseArguments = (value: string): Readonly<Record<string, unknown>> => {
@@ -70,13 +89,16 @@ const parseArguments = (value: string): Readonly<Record<string, unknown>> => {
   return parsed as Readonly<Record<string, unknown>>
 }
 
-export const getRegisteredTools = (): readonly FunctionToolDefinition[] => {
+export const getRegisteredTools = (
+  terminalEnabled = false,
+): readonly FunctionToolDefinition[] => {
   return [
     ...registeredTools.map((tool) => tool.definition),
     ...panelFunctionTools,
     ...panelViewFunctionTools,
     ...workspaceFunctionTools,
     ...workspaceFileFunctionTools,
+    ...(terminalEnabled ? terminalFunctionTools : []),
   ]
 }
 

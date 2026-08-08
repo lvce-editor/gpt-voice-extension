@@ -4,6 +4,7 @@ import path from 'node:path'
 import { root } from './root.ts'
 
 const extension = path.join(root, 'packages', 'extension')
+const node = path.join(root, 'packages', 'node')
 const voiceFunctionCallingWorker = path.join(
   root,
   'packages',
@@ -11,7 +12,7 @@ const voiceFunctionCallingWorker = path.join(
 )
 const outdir = path.join(extension, 'dist')
 
-const context = await esbuild.context({
+const browserContext = await esbuild.context({
   bundle: true,
   entryPoints: {
     gptVoiceMain: path.join(extension, 'src', 'gptVoiceMain.ts'),
@@ -29,8 +30,19 @@ const context = await esbuild.context({
   target: 'esnext',
 })
 
-await context.rebuild()
-await context.watch()
+const nodeContext = await esbuild.context({
+  bundle: true,
+  entryPoints: [path.join(node, 'src', 'terminalNodeMain.ts')],
+  external: ['node:*'],
+  format: 'esm',
+  outfile: path.join(outdir, 'terminalNodeMain.js'),
+  platform: 'node',
+  sourcemap: true,
+  target: 'node24',
+})
+
+await Promise.all([browserContext.rebuild(), nodeContext.rebuild()])
+await Promise.all([browserContext.watch(), nodeContext.watch()])
 
 const server = spawn(
   process.execPath,
@@ -58,7 +70,7 @@ const server = spawn(
 
 const stop = async () => {
   server.kill()
-  await context.dispose()
+  await Promise.all([browserContext.dispose(), nodeContext.dispose()])
 }
 
 process.on('SIGINT', async () => {
@@ -72,6 +84,6 @@ process.on('SIGTERM', async () => {
 })
 
 server.on('exit', async (code) => {
-  await context.dispose()
+  await Promise.all([browserContext.dispose(), nodeContext.dispose()])
   process.exit(code ?? 0)
 })

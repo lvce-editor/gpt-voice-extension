@@ -9,6 +9,14 @@ const createRpc = jest.fn<typeof Api.createRpc>(
       invoke,
     }) as never,
 )
+const nodeInvoke =
+  jest.fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
+const createNodeRpc = jest.fn<typeof Api.createNodeRpc>(
+  async () =>
+    ({
+      invoke: nodeInvoke,
+    }) as never,
+)
 const closeUri = jest.fn<(uri: string) => Promise<void>>(async () => undefined)
 const openUri = jest.fn<(uri: string) => Promise<void>>(async () => undefined)
 const openDebugConsole = jest.fn<typeof Api.openDebugConsole>(
@@ -20,6 +28,7 @@ const openProblemsView = jest.fn<typeof Api.openProblemsView>(
 )
 const executeCommand = jest.fn<typeof Api.executeCommand>(async () => undefined)
 const getWorkspaceUri = jest.fn(async () => 'file:///workspace')
+const getPreference = jest.fn<() => Promise<unknown>>(async () => false)
 const readDirWithFileTypes = jest.fn(async () => [
   { name: 'package.json', type: 7 },
 ])
@@ -29,6 +38,7 @@ const readFile = jest.fn<(uri: string) => Promise<string>>(
 const setWorkspaceUri = jest.fn<(uri: string) => Promise<void>>(
   async () => undefined,
 )
+const showFileQuickPick = jest.fn(async () => undefined)
 const writeFile = jest.fn<(uri: string, content: string) => Promise<void>>(
   async () => undefined,
 )
@@ -39,8 +49,10 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
   return {
     ...actual,
     closeUri,
+    createNodeRpc,
     createRpc,
     executeCommand,
+    getPreference,
     getWorkspaceUri,
     openDebugConsole,
     openOutputView,
@@ -49,6 +61,7 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
     readDirWithFileTypes,
     readFile,
     setWorkspaceUri,
+    showFileQuickPick,
     writeFile,
   }
 })
@@ -58,6 +71,7 @@ const VoiceFunctionCallingWorker =
 
 beforeEach(() => {
   createRpc.mockClear()
+  createNodeRpc.mockClear()
   closeUri.mockClear()
   executeCommand.mockClear()
   invoke.mockReset()
@@ -65,10 +79,14 @@ beforeEach(() => {
   openDebugConsole.mockClear()
   openOutputView.mockClear()
   openProblemsView.mockClear()
+  getPreference.mockReset()
+  getPreference.mockResolvedValue(false)
+  nodeInvoke.mockReset()
   openUri.mockClear()
   readDirWithFileTypes.mockClear()
   readFile.mockClear()
   setWorkspaceUri.mockClear()
+  showFileQuickPick.mockClear()
   writeFile.mockClear()
   VoiceFunctionCallingWorker.state.rpcPromise = undefined
 })
@@ -95,6 +113,7 @@ test('creates a web worker RPC and queries registered tools', async () => {
       'PanelView.openDebugConsole': expect.any(Function),
       'PanelView.openOutputView': expect.any(Function),
       'PanelView.openProblemsView': expect.any(Function),
+      'Terminal.executeBash': expect.any(Function),
       'Workspace.setWorkspaceUri': setWorkspaceUri,
       'WorkspaceFileSystem.getWorkspaceUri': getWorkspaceUri,
       'WorkspaceFileSystem.readDirWithFileTypes': readDirWithFileTypes,
@@ -103,6 +122,7 @@ test('creates a web worker RPC and queries registered tools', async () => {
       'WorkspaceMainArea.closeUri': closeUri,
       'WorkspaceMainArea.getWorkspaceUri': getWorkspaceUri,
       'WorkspaceMainArea.openUri': openUri,
+      'WorkspaceMainArea.showFileQuickPick': showFileQuickPick,
     },
     contentSecurityPolicy: "default-src 'none'; script-src 'self'",
     name: 'Voice Function Calling Worker',
@@ -111,7 +131,22 @@ test('creates a web worker RPC and queries registered tools', async () => {
       import.meta.url,
     ).href.replace('/test/', '/src/parts/VoiceFunctionCallingWorker/'),
   })
-  expect(invoke).toHaveBeenCalledWith('VoiceFunctionCalling.getRegisteredTools')
+  expect(invoke).toHaveBeenCalledWith(
+    'VoiceFunctionCalling.getRegisteredTools',
+    false,
+  )
+})
+
+test('registers the terminal tool only when its setting is enabled', async () => {
+  getPreference.mockResolvedValue(true)
+  invoke.mockResolvedValue([])
+
+  await VoiceFunctionCallingWorker.getRegisteredTools()
+
+  expect(invoke).toHaveBeenCalledWith(
+    'VoiceFunctionCalling.getRegisteredTools',
+    true,
+  )
 })
 
 test('bridges panel commands from the function calling worker', async () => {

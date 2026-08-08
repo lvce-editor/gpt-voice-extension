@@ -12,15 +12,23 @@
     "connect-src 'self' https://api.openai.com"
   ],
   "categories": ["Other"],
-  "configuration": {},
+  "configuration": {
+    "gptvoice.tools.terminal.enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Allow Gpt Voice to execute Bash commands in the opened workspace. Enabling this gives the voice model arbitrary code execution access."
+    }
+  },
   "activation": [
     "onCommand:gpt-voice.show",
     "onView:gpt-voice.views.default",
     "onCommand:GptVoice.handleClickStart",
+    "onCommand:GptVoice.captureFixture",
     "onCommand:GptVoice.handleData",
     "onCommand:GptVoice.handleClearOpenAiApiKey",
     "onCommand:GptVoice.handleOpenAiApiKeyInput",
     "onCommand:GptVoice.handleSaveOpenAiApiKey",
+    "onCommand:GptVoice.replayFixture",
     "onCommand:GptVoice.setIsTest",
     "onCommand:GptVoice.setAnimation",
     "onCommand:GptVoice.setRealtimeModelMini",
@@ -38,6 +46,10 @@
       "label": "gpt-voice: Handle Click Start"
     },
     {
+      "id": "GptVoice.captureFixture",
+      "label": "gpt-voice: Capture fixture"
+    },
+    {
       "id": "GptVoice.handleData",
       "label": "gpt-voice: Handle Data"
     },
@@ -52,6 +64,10 @@
     {
       "id": "GptVoice.handleSaveOpenAiApiKey",
       "label": "gpt-voice: Save OpenAI API key"
+    },
+    {
+      "id": "GptVoice.replayFixture",
+      "label": "gpt-voice: Replay fixture"
     },
     {
       "id": "GptVoice.setIsTest",
@@ -90,6 +106,12 @@
     }
   ],
   "rpc": [
+    {
+      "id": "builtin.gpt-voice.terminal-node",
+      "type": "node",
+      "name": "Gpt Voice Terminal",
+      "url": "dist/terminalNodeMain.js"
+    },
     {
       "id": "builtin.gpt-voice.voice-function-calling-worker",
       "type": "web-worker",

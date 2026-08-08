@@ -4,11 +4,13 @@ import fs from 'node:fs'
 import { createRequire } from 'node:module'
 import path, { join } from 'node:path'
 import { type Plugin, rollup } from 'rollup'
+import { build as esbuildBuild } from 'esbuild'
 import esbuild from 'rollup-plugin-esbuild'
 import { root } from './root.ts'
 
 const extension = path.join(root, 'packages', 'extension')
 const media = path.join(extension, 'media')
+const node = path.join(root, 'packages', 'node')
 const voiceFunctionCallingWorker = path.join(
   root,
   'packages',
@@ -75,6 +77,15 @@ await Promise.all([
     ),
     join(root, 'dist', 'dist', 'voiceFunctionCallingWorkerMain.js'),
   ),
+  esbuildBuild({
+    bundle: true,
+    entryPoints: [join(node, 'src', 'terminalNodeMain.ts')],
+    external: ['node:*'],
+    format: 'esm',
+    outfile: join(root, 'dist', 'dist', 'terminalNodeMain.js'),
+    platform: 'node',
+    target: 'node24',
+  }),
 ])
 
 await packageExtension({
