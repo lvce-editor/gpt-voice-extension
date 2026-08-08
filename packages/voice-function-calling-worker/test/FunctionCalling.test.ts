@@ -66,6 +66,26 @@ test('executes stop talking function calls', async () => {
   ])
 })
 
+test('waits silently after background noise', async () => {
+  const result = await executeFunctionToolCall({
+    arguments: '{}',
+    call_id: 'wait-call',
+    name: 'wait_for_user',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(result).toEqual([
+    JSON.stringify({
+      item: {
+        call_id: 'wait-call',
+        output: JSON.stringify({ waiting: true }),
+        type: 'function_call_output',
+      },
+      type: 'conversation.item.create',
+    }),
+  ])
+})
+
 test('executes workspace file function calls in the worker', async () => {
   const invoke = jest
     .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()

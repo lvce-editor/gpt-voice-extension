@@ -56,9 +56,27 @@ const stopTalkingTool: RegisteredFunctionTool = {
   },
 }
 
+const waitForUserTool: RegisteredFunctionTool = {
+  definition: {
+    description:
+      'Wait silently when the latest audio is silence, background noise, hold music, media audio, side conversation, or speech not addressed to the assistant.',
+    name: 'wait_for_user',
+    parameters: {
+      additionalProperties: false,
+      properties: {},
+      type: 'object',
+    },
+    type: 'function',
+  },
+  execute() {
+    return { waiting: true }
+  },
+}
+
 const registeredTools: readonly RegisteredFunctionTool[] = [
   getWeatherTool,
   stopTalkingTool,
+  waitForUserTool,
 ]
 
 const parseArguments = (value: string): Readonly<Record<string, unknown>> => {
