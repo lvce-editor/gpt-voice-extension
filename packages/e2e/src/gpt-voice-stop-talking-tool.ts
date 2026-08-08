@@ -19,6 +19,9 @@ export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
       type: 'response.function_call_arguments.done',
     }),
   )
+  await new Promise((resolve) => {
+    setTimeout(resolve, 1000)
+  })
 
   await expect(button).toHaveText('Start talking')
 }
