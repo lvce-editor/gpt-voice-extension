@@ -232,6 +232,10 @@ export const createInstance = async (
       ),
     }
     context?.requestRerender()
+    if (toolCall.name === 'stop_talking') {
+      await instance.stop()
+      return
+    }
     const { isTest } = state
     if (isTest) {
       return
