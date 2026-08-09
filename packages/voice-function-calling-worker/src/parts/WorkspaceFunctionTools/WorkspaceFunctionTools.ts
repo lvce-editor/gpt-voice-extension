@@ -8,17 +8,32 @@ interface FunctionCallArguments {
 }
 
 interface WorkspaceApi {
+  readonly getRecentlyOpenedWorkspaceUris: () => Promise<readonly string[]>
   readonly getWorkspaceUri: () => Promise<string>
   readonly setWorkspaceUri: (uri: string) => Promise<void>
 }
 
 const defaultApi: WorkspaceApi = {
+  getRecentlyOpenedWorkspaceUris: () =>
+    Rpc.invoke<readonly string[]>('Workspace.getRecentlyOpenedWorkspaceUris'),
   getWorkspaceUri: () =>
     Rpc.invoke<string>('WorkspaceFileSystem.getWorkspaceUri'),
   setWorkspaceUri: (uri) => Rpc.invoke<void>('Workspace.setWorkspaceUri', uri),
 }
 
 const uriSchemeRegex = /^[A-Za-z][A-Za-z\d+.-]*:\/\//
+
+const getRecentlyOpenedFoldersTool: FunctionToolDefinition = {
+  description:
+    'Get recently opened LVCE Editor workspace folders, including a friendly folder name and full URI. Use this to resolve an ambiguous request such as "open about-view" before asking for clarification or treating the name as a file in the current workspace.',
+  name: 'get_recently_opened_folders',
+  parameters: {
+    additionalProperties: false,
+    properties: {},
+    type: 'object',
+  },
+  type: 'function',
+}
 
 const openWorkspaceFolderTool: FunctionToolDefinition = {
   description:
@@ -52,8 +67,15 @@ const getWorkspaceFolderUriTool: FunctionToolDefinition = {
 }
 
 export const workspaceFunctionTools: readonly FunctionToolDefinition[] = [
+  getRecentlyOpenedFoldersTool,
   getWorkspaceFolderUriTool,
   openWorkspaceFolderTool,
+]
+
+const workspaceToolNames: readonly string[] = [
+  'get_recently_opened_folders',
+  'get_workspace_folder_uri',
+  'open_workspace_folder',
 ]
 
 const parseFunctionCall = (
@@ -69,8 +91,7 @@ const parseFunctionCall = (
     typeof parsed.call_id === 'string' &&
     'name' in parsed &&
     typeof parsed.name === 'string' &&
-    (parsed.name === 'get_workspace_folder_uri' ||
-      parsed.name === 'open_workspace_folder') &&
+    workspaceToolNames.includes(parsed.name) &&
     'arguments' in parsed &&
     typeof parsed.arguments === 'string'
   ) {
@@ -92,8 +113,7 @@ const parseFunctionCall = (
     typeof parsed.item.call_id === 'string' &&
     'name' in parsed.item &&
     typeof parsed.item.name === 'string' &&
-    (parsed.item.name === 'get_workspace_folder_uri' ||
-      parsed.item.name === 'open_workspace_folder') &&
+    workspaceToolNames.includes(parsed.item.name) &&
     'arguments' in parsed.item &&
     typeof parsed.item.arguments === 'string'
   ) {
@@ -144,7 +164,7 @@ const getWorkspaceUriArgument = (value: string): string => {
   return trimmedUri
 }
 
-const validateEmptyArguments = (value: string): void => {
+const validateEmptyArguments = (value: string, toolName: string): void => {
   let parsed: unknown
   try {
     parsed = JSON.parse(value)
@@ -155,14 +175,41 @@ const validateEmptyArguments = (value: string): void => {
     throw new TypeError('Function tool arguments must be a JSON object.')
   }
   if (Object.keys(parsed).length > 0) {
-    throw new TypeError(
-      'The get_workspace_folder_uri tool does not accept arguments.',
-    )
+    throw new TypeError(`The ${toolName} tool does not accept arguments.`)
+  }
+}
+
+const getFolderName = (uri: string): string => {
+  const suffixIndices = [uri.indexOf('?'), uri.indexOf('#')].filter(
+    (index) => index !== -1,
+  )
+  const pathEnd =
+    suffixIndices.length === 0 ? uri.length : Math.min(...suffixIndices)
+  let path = uri.slice(0, pathEnd)
+  while (path.endsWith('/')) {
+    path = path.slice(0, -1)
+  }
+  const slashIndex = path.lastIndexOf('/')
+  const encodedName = slashIndex === -1 ? path : path.slice(slashIndex + 1)
+  try {
+    return decodeURIComponent(encodedName)
+  } catch {
+    return encodedName
   }
 }
 
 const getErrorMessage = (error: unknown): string => {
   return error instanceof Error ? error.message : String(error)
+}
+
+const getErrorHint = (toolName: string): string => {
+  if (toolName === 'get_recently_opened_folders') {
+    return 'Call get_recently_opened_folders with no arguments: {}.'
+  }
+  if (toolName === 'get_workspace_folder_uri') {
+    return 'Call get_workspace_folder_uri with no arguments: {}.'
+  }
+  return 'Pass a full workspace folder URI, such as {"uri":"file:///home/user/project"}.'
 }
 
 export const executeWorkspaceFunctionToolCall = async (
@@ -175,8 +222,16 @@ export const executeWorkspaceFunctionToolCall = async (
   }
   let output: unknown
   try {
-    if (functionCall.name === 'get_workspace_folder_uri') {
-      validateEmptyArguments(functionCall.argumentsValue)
+    if (functionCall.name === 'get_recently_opened_folders') {
+      validateEmptyArguments(functionCall.argumentsValue, functionCall.name)
+      const uris = await api.getRecentlyOpenedWorkspaceUris()
+      output = {
+        folders: uris
+          .filter((uri): uri is string => typeof uri === 'string')
+          .map((uri) => ({ name: getFolderName(uri), uri })),
+      }
+    } else if (functionCall.name === 'get_workspace_folder_uri') {
+      validateEmptyArguments(functionCall.argumentsValue, functionCall.name)
       const uri = await api.getWorkspaceUri()
       if (!uri) {
         throw new Error('No workspace folder is open.')
@@ -190,10 +245,7 @@ export const executeWorkspaceFunctionToolCall = async (
   } catch (error) {
     output = {
       error: getErrorMessage(error),
-      hint:
-        functionCall.name === 'get_workspace_folder_uri'
-          ? 'Call get_workspace_folder_uri with no arguments: {}.'
-          : 'Pass a full workspace folder URI, such as {"uri":"file:///home/user/project"}.',
+      hint: getErrorHint(functionCall.name),
       tool: functionCall.name,
     }
   }
