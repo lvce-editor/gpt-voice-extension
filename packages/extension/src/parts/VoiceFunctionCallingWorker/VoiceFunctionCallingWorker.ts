@@ -50,6 +50,10 @@ const openPanel = async (view?: string): Promise<void> => {
   await executeCommand('Layout.showPanel', view)
 }
 
+const setQuickPickValue = async (value: string): Promise<void> => {
+  await executeCommand('QuickPick.setValue', value)
+}
+
 const commandMap = {
   'Panel.close': closePanel,
   'Panel.open': openPanel,
@@ -65,6 +69,7 @@ const commandMap = {
   'WorkspaceMainArea.closeUri': closeUri,
   'WorkspaceMainArea.getWorkspaceUri': getWorkspaceUri,
   'WorkspaceMainArea.openUri': openUri,
+  'WorkspaceMainArea.setQuickPickValue': setQuickPickValue,
   'WorkspaceMainArea.showFileQuickPick': showFileQuickPick,
 }
 

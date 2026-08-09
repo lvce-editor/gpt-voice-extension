@@ -22,6 +22,7 @@ const createMainAreaApi = (): WorkspaceMainAreaApi => ({
   closeUri: jest.fn(async () => undefined),
   getWorkspaceUri: jest.fn(async () => 'file:///workspace'),
   openUri: jest.fn(async () => undefined),
+  setQuickPickValue: jest.fn(async () => undefined),
   showFileQuickPick: jest.fn(async () => undefined),
 })
 
@@ -38,6 +39,7 @@ test('exposes workspace file tool definitions', () => {
     'open_workspace_file',
     'close_workspace_file',
     'show_file_quick_pick',
+    'set_quick_pick_value',
   ])
   expect(workspaceFileFunctionTools[0]?.parameters.required).toBeUndefined()
   expect(workspaceFileFunctionTools[1]?.parameters.required).toEqual(['path'])
@@ -48,6 +50,48 @@ test('exposes workspace file tool definitions', () => {
   expect(workspaceFileFunctionTools[3]?.parameters.required).toEqual(['path'])
   expect(workspaceFileFunctionTools[4]?.parameters.required).toEqual(['path'])
   expect(workspaceFileFunctionTools[5]?.parameters.required).toBeUndefined()
+  expect(workspaceFileFunctionTools[6]?.parameters.required).toEqual(['value'])
+})
+
+test('sets the open quick pick value', async () => {
+  const mainAreaApi = createMainAreaApi()
+  const messages = await executeWorkspaceFileFunctionToolCall(
+    {
+      arguments: '{"value":"ci.yaml"}',
+      call_id: 'set-quick-pick-value-call',
+      name: 'set_quick_pick_value',
+      type: 'response.function_call_arguments.done',
+    },
+    createFileSystemApi(),
+    mainAreaApi,
+  )
+
+  expect(mainAreaApi.setQuickPickValue).toHaveBeenCalledWith('ci.yaml')
+  expect(getToolOutput(messages || [])).toEqual({
+    updated: true,
+    value: 'ci.yaml',
+  })
+})
+
+test('returns quick pick value guidance for invalid arguments', async () => {
+  const mainAreaApi = createMainAreaApi()
+  const messages = await executeWorkspaceFileFunctionToolCall(
+    {
+      arguments: '{}',
+      call_id: 'set-quick-pick-value-call',
+      name: 'set_quick_pick_value',
+      type: 'response.function_call_arguments.done',
+    },
+    createFileSystemApi(),
+    mainAreaApi,
+  )
+
+  expect(mainAreaApi.setQuickPickValue).not.toHaveBeenCalled()
+  expect(getToolOutput(messages || [])).toEqual({
+    error: 'Function tool argument "value" must be a string.',
+    hint: 'Pass the text to type into the open quick pick, such as {"value":"package.json"}.',
+    tool: 'set_quick_pick_value',
+  })
 })
 
 test('shows the file quick pick', async () => {

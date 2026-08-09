@@ -65,6 +65,25 @@ const createCapabilityTestSource = (
     )
   }
 
+  const setQuickPickValueToolCall = fixture.expect.toolCalls.find(
+    (toolCall) => toolCall.name === 'set_quick_pick_value',
+  )
+  const setQuickPickValueArguments = setQuickPickValueToolCall?.arguments
+  const quickPickValue =
+    setQuickPickValueArguments &&
+    typeof setQuickPickValueArguments === 'object' &&
+    'value' in setQuickPickValueArguments &&
+    typeof setQuickPickValueArguments.value === 'string'
+      ? setQuickPickValueArguments.value
+      : undefined
+  if (quickPickValue !== undefined) {
+    assertions.push(
+      `const quickPickInput = Locator('#QuickPick .InputBox')`,
+      'await expect(quickPickInput).toBeVisible()',
+      `await expect(quickPickInput).toHaveValue(${JSON.stringify(quickPickValue)})`,
+    )
+  }
+
   return {
     apiNames: [...apiNames],
     assertions,

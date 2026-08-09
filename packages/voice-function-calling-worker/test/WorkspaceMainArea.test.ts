@@ -2,6 +2,7 @@ import { expect, jest, test } from '@jest/globals'
 import {
   closeWorkspaceFile,
   openWorkspaceFile,
+  setQuickPickValue,
   showFileQuickPick,
   type WorkspaceMainAreaApi,
 } from '../src/parts/WorkspaceMainArea/WorkspaceMainArea.ts'
@@ -12,7 +13,18 @@ const createApi = (
   closeUri: jest.fn(async () => undefined),
   getWorkspaceUri: jest.fn(async () => workspaceUri),
   openUri: jest.fn(async () => undefined),
+  setQuickPickValue: jest.fn(async () => undefined),
   showFileQuickPick: jest.fn(async () => undefined),
+})
+
+test('setQuickPickValue updates the editor quick pick input', async () => {
+  const api = createApi()
+
+  await expect(setQuickPickValue('ci.yaml', api)).resolves.toEqual({
+    updated: true,
+    value: 'ci.yaml',
+  })
+  expect(api.setQuickPickValue).toHaveBeenCalledWith('ci.yaml')
 })
 
 test('showFileQuickPick opens the editor file quick pick', async () => {
