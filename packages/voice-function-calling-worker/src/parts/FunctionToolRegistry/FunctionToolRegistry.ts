@@ -1,6 +1,7 @@
 import { getFakeWeather } from '../FakeWeather/FakeWeather.ts'
 import { panelFunctionTools } from '../PanelFunctionTools/PanelFunctionTools.ts'
 import { panelViewFunctionTools } from '../PanelViewFunctionTools/PanelViewFunctionTools.ts'
+import { settingsFunctionTools } from '../SettingsFunctionTools/SettingsFunctionTools.ts'
 import { terminalFunctionTools } from '../TerminalFunctionTools/TerminalFunctionTools.ts'
 import { workspaceFileFunctionTools } from '../WorkspaceFileFunctionTools/WorkspaceFileFunctionTools.ts'
 import { workspaceFunctionTools } from '../WorkspaceFunctionTools/WorkspaceFunctionTools.ts'
@@ -96,6 +97,7 @@ export const getRegisteredTools = (
     ...registeredTools.map((tool) => tool.definition),
     ...panelFunctionTools,
     ...panelViewFunctionTools,
+    ...settingsFunctionTools,
     ...workspaceFunctionTools,
     ...workspaceFileFunctionTools,
     ...(terminalEnabled ? terminalFunctionTools : []),

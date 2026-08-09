@@ -26,6 +26,7 @@ const openOutputView = jest.fn<typeof Api.openOutputView>(async () => undefined)
 const openProblemsView = jest.fn<typeof Api.openProblemsView>(
   async () => undefined,
 )
+const openSettings = jest.fn<typeof Api.openSettings>(async () => undefined)
 const executeCommand = jest.fn<typeof Api.executeCommand>(async () => undefined)
 const getWorkspaceUri = jest.fn(async () => 'file:///workspace')
 const getPreference = jest.fn<() => Promise<unknown>>(async () => false)
@@ -57,6 +58,7 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
     openDebugConsole,
     openOutputView,
     openProblemsView,
+    openSettings,
     openUri,
     readDirWithFileTypes,
     readFile,
@@ -79,6 +81,7 @@ beforeEach(() => {
   openDebugConsole.mockClear()
   openOutputView.mockClear()
   openProblemsView.mockClear()
+  openSettings.mockClear()
   getPreference.mockReset()
   getPreference.mockResolvedValue(false)
   nodeInvoke.mockReset()
@@ -113,6 +116,7 @@ test('creates a web worker RPC and queries registered tools', async () => {
       'PanelView.openDebugConsole': expect.any(Function),
       'PanelView.openOutputView': expect.any(Function),
       'PanelView.openProblemsView': expect.any(Function),
+      'Settings.openSettings': openSettings,
       'Terminal.executeBash': expect.any(Function),
       'Workspace.setWorkspaceUri': setWorkspaceUri,
       'WorkspaceFileSystem.getWorkspaceUri': getWorkspaceUri,
@@ -186,6 +190,19 @@ test('bridges panel view commands from the function calling worker', async () =>
   expect(openProblemsView).toHaveBeenCalledWith({ filter: 'typescript' })
   expect(openOutputView).toHaveBeenCalledWith({ channel: 'Window' })
   expect(openDebugConsole).toHaveBeenCalledWith({ input: 'process.version' })
+})
+
+test('bridges opening settings from the function calling worker', async () => {
+  invoke.mockResolvedValue([])
+  await VoiceFunctionCallingWorker.getRegisteredTools()
+
+  const options = createRpc.mock.calls[0]?.[0]
+  const commandMap = options?.commandMap as Readonly<
+    Record<string, (...args: readonly unknown[]) => Promise<void>>
+  >
+  await commandMap['Settings.openSettings']?.()
+
+  expect(openSettings).toHaveBeenCalledWith()
 })
 
 test('bridges quick pick input from the function calling worker', async () => {
