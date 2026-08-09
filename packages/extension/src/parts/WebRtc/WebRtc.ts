@@ -32,6 +32,8 @@ const developerVocabulary = [
   'TypeScript',
   'JavaScript',
   'README (pronounced "read me")',
+  'YAML (rhymes with "camel"; file extensions .yaml and .yml)',
+  'YML (pronounced "why em el")',
   'VS Code',
   'LVCE Editor',
   'quick pick',
