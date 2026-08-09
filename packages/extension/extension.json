@@ -101,7 +101,7 @@
       "displayName": "Gpt Voice",
       "id": "gpt-voice.views.default",
       "title": "Gpt Voice",
-      "icon": "media/trello.svg",
+      "icon": "media/voice-chat.svg",
       "kind": "virtualDom"
     }
   ],

@@ -15,6 +15,18 @@ test('declares the voice function calling web worker', () => {
   })
 })
 
+test('uses the voice chat view icon', () => {
+  expect(extensionManifest.views).toContainEqual(
+    expect.objectContaining({
+      icon: 'media/voice-chat.svg',
+      id: 'gpt-voice.views.default',
+    }),
+  )
+  expect(
+    readFileSync(new URL('../media/voice-chat.svg', import.meta.url), 'utf8'),
+  ).toContain('aria-label="Voice chat"')
+})
+
 test('declares the opt-in terminal tool and node process', () => {
   expect(extensionManifest.configuration).toEqual({
     'gptvoice.tools.terminal.enabled': {
