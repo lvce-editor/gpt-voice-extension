@@ -142,7 +142,8 @@ export const test: Test = async ({
   const voice = Locator('.GptVoice')
   const userTranscript = Locator('.GptVoiceTranscriptItemUser')
   const assistantTranscript = Locator('.GptVoiceTranscriptItemAi')
-  await expect(userTranscript).toHaveText(fixture.expect.userText)
+  await expect(userTranscript).toHaveCount(1)
+  await expect(userTranscript).toHaveText(fixture.source.text)
   for (const label of expectedToolCallLabels) {
     await expect(voice).toContainText(label)
   }
