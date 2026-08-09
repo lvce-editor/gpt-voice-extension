@@ -134,6 +134,7 @@ test('creates a web worker RPC and queries registered tools', async () => {
       'Editor.getDiagnostics': getDiagnostics,
       'Editor.showCompletions': showCompletions,
       'Layout.toggleSideBarPosition': expect.any(Function),
+      'MainArea.getSavedState': expect.any(Function),
       'Panel.close': expect.any(Function),
       'Panel.open': expect.any(Function),
       'PanelView.openDebugConsole': expect.any(Function),
@@ -224,6 +225,23 @@ test('bridges sidebar position commands from the function calling worker', async
   await commandMap['Layout.toggleSideBarPosition']?.()
 
   expect(executeCommand).toHaveBeenCalledWith('Layout.toggleSideBarPosition')
+})
+
+test('bridges main area state queries from the function calling worker', async () => {
+  const savedState = { layout: { activeGroupId: 1, groups: [] } }
+  executeCommand.mockResolvedValue(savedState)
+  invoke.mockResolvedValue([])
+  await VoiceFunctionCallingWorker.getRegisteredTools()
+
+  const options = createRpc.mock.calls[0]?.[0]
+  const commandMap = options?.commandMap as Readonly<
+    Record<string, (...args: readonly unknown[]) => Promise<unknown>>
+  >
+  await expect(commandMap['MainArea.getSavedState']?.()).resolves.toBe(
+    savedState,
+  )
+
+  expect(executeCommand).toHaveBeenCalledWith('Main.saveState')
 })
 
 test('bridges editor commands from the function calling worker', async () => {
