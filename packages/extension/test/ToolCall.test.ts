@@ -2,6 +2,7 @@ import { expect, test } from '@jest/globals'
 import {
   formatToolCallValue,
   getToolCallOutput,
+  isToolCallErrorOutput,
   parseToolCall,
 } from '../src/parts/ToolCall/ToolCall.ts'
 
@@ -115,6 +116,18 @@ test('getToolCallOutput - ignores unrelated messages and uses a fallback', () =>
     ),
   ).toBe('(no output)')
 })
+
+test.each([
+  ['{"error":"Not found","tool":"open_workspace_file"}', true],
+  ['{"opened":true}', false],
+  ['{"error":1}', false],
+  ['plain text', false],
+])(
+  'isToolCallErrorOutput - detects tool error output %#',
+  (value, expected) => {
+    expect(isToolCallErrorOutput(value)).toBe(expected)
+  },
+)
 
 test('formatToolCallValue - formats JSON and preserves text', () => {
   expect(formatToolCallValue('{"path":"src"}')).toBe('{\n  "path": "src"\n}')

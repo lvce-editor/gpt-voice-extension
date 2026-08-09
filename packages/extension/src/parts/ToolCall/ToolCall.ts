@@ -78,6 +78,20 @@ export const getToolCallOutput = (
   return '(no output)'
 }
 
+export const isToolCallErrorOutput = (value: string): boolean => {
+  try {
+    const parsed: unknown = JSON.parse(value)
+    return (
+      parsed !== null &&
+      typeof parsed === 'object' &&
+      'error' in parsed &&
+      typeof parsed.error === 'string'
+    )
+  } catch {
+    return false
+  }
+}
+
 export const formatToolCallValue = (value: string): string => {
   try {
     return JSON.stringify(JSON.parse(value), null, 2)

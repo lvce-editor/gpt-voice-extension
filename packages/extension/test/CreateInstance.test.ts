@@ -646,6 +646,32 @@ test('instance - shows failed tool calls', async () => {
   expect(consoleError).toHaveBeenCalledTimes(2)
 })
 
+test('instance - shows a failed tool call when the worker returns an error output', async () => {
+  const instance = await createInstance()
+  executeFunctionToolCall.mockResolvedValueOnce([
+    createToolOutput(
+      'missing-file-call',
+      JSON.stringify({ error: 'Workspace file was not found.' }),
+    ),
+  ])
+
+  instance.handleData(
+    JSON.stringify({
+      arguments: '{"path":"missing.ts"}',
+      call_id: 'missing-file-call',
+      name: 'open_workspace_file',
+      type: 'response.function_call_arguments.done',
+    }),
+  )
+  await flushAnimation()
+
+  expect(instance.render()).toContainEqual(text('Failed open_workspace_file'))
+  instance.toggleToolCall('missing-file-call')
+  expect(instance.render()).toContainEqual(
+    text('{\n  "error": "Workspace file was not found."\n}'),
+  )
+})
+
 test('instance - replays a fixture through tool handling and reports mismatches', async () => {
   const instance = await createInstance()
   const fixture = {
