@@ -26,6 +26,9 @@ const openOutputView = jest.fn<typeof Api.openOutputView>(async () => undefined)
 const openProblemsView = jest.fn<typeof Api.openProblemsView>(
   async () => undefined,
 )
+const openProcessExplorer = jest.fn<typeof Api.openProcessExplorer>(
+  async () => undefined,
+)
 const openSettings = jest.fn<typeof Api.openSettings>(async () => undefined)
 const executeCommand = jest.fn<typeof Api.executeCommand>(async () => undefined)
 const formatDocument = jest.fn<() => Promise<void>>(async () => undefined)
@@ -65,6 +68,7 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
     openDebugConsole,
     openOutputView,
     openProblemsView,
+    openProcessExplorer,
     openSettings,
     openUri,
     readDirWithFileTypes,
@@ -91,6 +95,7 @@ beforeEach(() => {
   openDebugConsole.mockClear()
   openOutputView.mockClear()
   openProblemsView.mockClear()
+  openProcessExplorer.mockClear()
   openSettings.mockClear()
   getPreference.mockReset()
   getPreference.mockResolvedValue(false)
@@ -130,6 +135,7 @@ test('creates a web worker RPC and queries registered tools', async () => {
       'PanelView.openDebugConsole': expect.any(Function),
       'PanelView.openOutputView': expect.any(Function),
       'PanelView.openProblemsView': expect.any(Function),
+      'ProcessExplorer.open': openProcessExplorer,
       'Settings.openSettings': openSettings,
       'Terminal.executeBash': expect.any(Function),
       'Workspace.setWorkspaceUri': setWorkspaceUri,
@@ -154,6 +160,19 @@ test('creates a web worker RPC and queries registered tools', async () => {
     'VoiceFunctionCalling.getRegisteredTools',
     false,
   )
+})
+
+test('bridges process explorer commands from the function calling worker', async () => {
+  invoke.mockResolvedValue([])
+  await VoiceFunctionCallingWorker.getRegisteredTools()
+
+  const options = createRpc.mock.calls[0]?.[0]
+  const commandMap = options?.commandMap as Readonly<
+    Record<string, (...args: readonly unknown[]) => Promise<void>>
+  >
+  await commandMap['ProcessExplorer.open']?.()
+
+  expect(openProcessExplorer).toHaveBeenCalledWith()
 })
 
 test('registers the terminal tool only when its setting is enabled', async () => {
