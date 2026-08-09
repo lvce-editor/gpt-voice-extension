@@ -44,6 +44,9 @@ const getDiagnostics = jest.fn<() => Promise<readonly Api.Diagnostic[]>>(
 const getEditorSelections = jest.fn<typeof Api.getEditorSelections>(
   async () => [],
 )
+const getRecentlyOpenedWorkspaceUris = jest.fn<
+  typeof Api.getRecentlyOpenedWorkspaceUris
+>(async () => [])
 const getWorkspaceUri = jest.fn(async () => 'file:///workspace')
 const getPreference = jest.fn<() => Promise<unknown>>(async () => false)
 const readDirWithFileTypes = jest.fn(async () => [
@@ -80,6 +83,7 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
     getDiagnostics,
     getEditorSelections,
     getPreference,
+    getRecentlyOpenedWorkspaceUris,
     getWorkspaceUri,
     openDebugConsole,
     openOutputView,
@@ -112,6 +116,7 @@ beforeEach(() => {
   formatDocument.mockClear()
   getDiagnostics.mockClear()
   getEditorSelections.mockClear()
+  getRecentlyOpenedWorkspaceUris.mockClear()
   invoke.mockReset()
   getWorkspaceUri.mockClear()
   openDebugConsole.mockClear()
@@ -170,6 +175,8 @@ test('creates a web worker RPC and queries registered tools', async () => {
       'Settings.openSettings': openSettings,
       'Settings.setSearchValue': setSettingsSearchValue,
       'Terminal.executeBash': expect.any(Function),
+      'Workspace.getRecentlyOpenedWorkspaceUris':
+        getRecentlyOpenedWorkspaceUris,
       'Workspace.setWorkspaceUri': setWorkspaceUri,
       'WorkspaceFileSystem.exists': exists,
       'WorkspaceFileSystem.getWorkspaceUri': getWorkspaceUri,

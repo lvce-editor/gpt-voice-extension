@@ -291,6 +291,31 @@ test('queries the current workspace folder URI in the worker', async () => {
   expect(result[0]).toContain('file:///workspace')
 })
 
+test('queries recently opened workspace folders in the worker', async () => {
+  const invoke = jest
+    .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
+    .mockResolvedValue([
+      'file:///home/user/about-view',
+      'remote-ssh://host/projects/other',
+    ])
+  const globalScope = globalThis as typeof globalThis & {
+    rpc: { readonly invoke: typeof invoke }
+  }
+  globalScope.rpc = { invoke }
+
+  const result = await executeFunctionToolCall({
+    arguments: '{}',
+    call_id: 'get-recent-call',
+    name: 'get_recently_opened_folders',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(invoke).toHaveBeenCalledWith(
+    'Workspace.getRecentlyOpenedWorkspaceUris',
+  )
+  expect(result[0]).toContain('about-view')
+})
+
 test('executes panel calls in the worker', async () => {
   const invoke = jest
     .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
