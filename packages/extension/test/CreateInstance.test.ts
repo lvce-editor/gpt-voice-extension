@@ -223,11 +223,21 @@ test('instance - exposes view helpers and transcript operations', async () => {
   )
   expect(instance.renderFocus?.({}, {})).toBe('.main')
   expect(instance.renderSelections?.()).toEqual([])
+  expect(instance.renderScrollPosition()).toEqual([])
   expect(instance.renderTitle()).toBe('')
   expect(instance.saveState?.()).toEqual({})
 
   instance.addTranscript('one', 'Hello', 'user')
+  expect(instance.renderScrollPosition()).toEqual([
+    '.GptVoiceTranscript',
+    9_999_999,
+  ])
+  expect(instance.renderScrollPosition()).toEqual([])
   instance.createOrUpdateTranscript({ delta: ' world', item_id: 'one' }, 'user')
+  expect(instance.renderScrollPosition()).toEqual([
+    '.GptVoiceTranscript',
+    9_999_999,
+  ])
   instance.createOrUpdateTranscript({ delta: 'Hi', item_id: 'two' }, 'ai')
   instance.updateTranscript('missing', 'ignored')
   instance.handleInputTranscript({ delta: '!', item_id: 'one' })
