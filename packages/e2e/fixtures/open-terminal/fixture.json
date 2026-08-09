@@ -1,0 +1,75 @@
+{
+  "expect": {
+    "assistantText": "The terminal is open.",
+    "toolCalls": [
+      {
+        "arguments": {
+          "action": "open",
+          "view": "terminal"
+        },
+        "name": "set_panel",
+        "output": {
+          "action": "open",
+          "success": true,
+          "view": "terminal"
+        }
+      }
+    ],
+    "userText": "Open the terminal."
+  },
+  "name": "open-terminal",
+  "schemaVersion": 1,
+  "source": {
+    "realtimeModel": "gpt-realtime-2.1-mini",
+    "text": "Open the terminal."
+  },
+  "trace": [
+    {
+      "atMs": 0,
+      "direction": "server",
+      "event": {
+        "delta": "Open the terminal.",
+        "item_id": "user_item_1",
+        "type": "conversation.item.input_audio_transcription.delta"
+      }
+    },
+    {
+      "atMs": 350,
+      "direction": "server",
+      "event": {
+        "arguments": "{\"action\":\"open\",\"view\":\"terminal\"}",
+        "call_id": "call_1",
+        "name": "set_panel",
+        "type": "response.function_call_arguments.done"
+      }
+    },
+    {
+      "atMs": 351,
+      "direction": "client",
+      "event": {
+        "item": {
+          "call_id": "call_1",
+          "output": "{\"action\":\"open\",\"success\":true,\"view\":\"terminal\"}",
+          "type": "function_call_output"
+        },
+        "type": "conversation.item.create"
+      }
+    },
+    {
+      "atMs": 352,
+      "direction": "client",
+      "event": {
+        "type": "response.create"
+      }
+    },
+    {
+      "atMs": 800,
+      "direction": "server",
+      "event": {
+        "delta": "The terminal is open.",
+        "item_id": "assistant_item_1",
+        "type": "response.output_audio_transcript.delta"
+      }
+    }
+  ]
+}

@@ -27,3 +27,54 @@ test('createE2eTestSource - creates a self-contained replay test', () => {
   expect(source).toContain('"Ran getweather"')
   expect(source).not.toContain("from '../fixtures")
 })
+
+test('createE2eTestSource - verifies an opened terminal', () => {
+  const source = createE2eTestSource({
+    expect: {
+      assistantText: 'The terminal is open.',
+      toolCalls: [
+        {
+          arguments: { action: 'open', view: 'terminal' },
+          name: 'set_panel',
+          output: { action: 'open', success: true, view: 'terminal' },
+        },
+      ],
+      userText: 'Open the terminal.',
+    },
+    name: 'open-terminal',
+    schemaVersion: 1,
+    source: { text: 'Open the terminal.' },
+    trace: [],
+  })
+
+  expect(source).toContain("Settings.update({ 'terminal.backend': 'mock' })")
+  expect(source).toContain("const terminal = Locator('.XtermTerminal')")
+})
+
+test('createE2eTestSource - creates and verifies an opened workspace file', () => {
+  const source = createE2eTestSource({
+    expect: {
+      assistantText: 'The file is open.',
+      toolCalls: [
+        {
+          arguments: { path: 'voice-fixture.txt' },
+          name: 'open_workspace_file',
+          output: { opened: true, path: 'voice-fixture.txt' },
+        },
+      ],
+      userText: 'Open voice-fixture.txt.',
+    },
+    name: 'open-workspace-file',
+    schemaVersion: 1,
+    source: { text: 'Open voice-fixture.txt.' },
+    trace: [],
+  })
+
+  expect(source).toContain('await FileSystem.getTmpDir()')
+  expect(source).toContain(
+    "const editorTabTitle = Locator('.MainTab .TabTitle')",
+  )
+  expect(source).toContain(
+    'Editor.shouldHaveText("Voice fixture workspace file")',
+  )
+})
