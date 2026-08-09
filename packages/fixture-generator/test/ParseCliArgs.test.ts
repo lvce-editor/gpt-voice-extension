@@ -7,13 +7,29 @@ test('parseCliArgs - supports separated and inline values', () => {
       '--name',
       'weather-paris',
       '--text=What is the weather?',
-      '--force',
+      '--regenerate-existing',
     ]),
   ).toEqual({
-    force: true,
     name: 'weather-paris',
+    regenerateExisting: true,
     text: 'What is the weather?',
   })
+})
+
+test('parseCliArgs - reuses existing fixtures by default', () => {
+  expect(
+    parseCliArgs(['--name=weather-paris', '--text=What is the weather?']),
+  ).toEqual({
+    name: 'weather-paris',
+    regenerateExisting: false,
+    text: 'What is the weather?',
+  })
+})
+
+test('parseCliArgs - supports the legacy force option', () => {
+  expect(
+    parseCliArgs(['--name=weather-paris', '--text=test', '--force']),
+  ).toMatchObject({ regenerateExisting: true })
 })
 
 test('parseCliArgs - validates required options', () => {
