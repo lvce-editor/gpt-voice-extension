@@ -3,9 +3,10 @@ import {
   executeMainAreaFunctionToolCall,
   getOpenEditorTabs,
   mainAreaFunctionTools,
+  type MainAreaApi,
 } from '../src/parts/MainAreaFunctionTools/MainAreaFunctionTools.ts'
 
-const createApi = () => ({
+const createApi = (): MainAreaApi => ({
   getSavedState: jest.fn(async () => ({
     layout: {
       activeGroupId: 2,
@@ -149,7 +150,9 @@ test('supports completed output items', async () => {
 
 test('returns query failures to the model', async () => {
   const api = createApi()
-  api.getSavedState.mockRejectedValue(new Error('Main area is unavailable'))
+  jest
+    .mocked(api.getSavedState)
+    .mockRejectedValue(new Error('Main area is unavailable'))
   const messages = await executeMainAreaFunctionToolCall(
     {
       arguments: '{}',

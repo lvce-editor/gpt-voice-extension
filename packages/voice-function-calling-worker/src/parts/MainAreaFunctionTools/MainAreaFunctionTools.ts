@@ -23,7 +23,7 @@ interface SavedMainAreaState {
   }
 }
 
-interface MainAreaApi {
+export interface MainAreaApi {
   readonly getSavedState: () => Promise<SavedMainAreaState>
   readonly getWorkspaceUri: () => Promise<string>
 }
@@ -82,7 +82,8 @@ const parseFunctionCall = (
     parsed.type === 'response.output_item.done' &&
     'item' in parsed
   ) {
-    item = parsed.item
+    const { item: outputItem } = parsed
+    item = outputItem
   } else {
     return undefined
   }
@@ -162,11 +163,11 @@ export const getOpenEditorTabs = async (
         dirty: tab.isDirty,
         editorType: tab.editorType,
         group: groupIndex + 1,
-        ...(path === undefined ? {} : { path }),
+        ...(path !== undefined && { path }),
         preview: tab.isPreview,
         selected: tab.id === group.activeTabId,
         title: tab.title,
-        ...(tab.uri === undefined ? {} : { uri: tab.uri }),
+        ...(tab.uri !== undefined && { uri: tab.uri }),
       }
     }),
   )
