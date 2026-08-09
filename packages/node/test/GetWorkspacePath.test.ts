@@ -1,23 +1,28 @@
 import { strict as assert } from 'node:assert'
 import path from 'node:path'
 import { test } from 'node:test'
+import { pathToFileURL } from 'node:url'
 import { getWorkspacePath } from '../src/parts/GetWorkspacePath/GetWorkspacePath.ts'
 
 const invalidWorkspaceErrorRegex = /invalid/
 const localWorkspaceErrorRegex = /local file:\/\//
+const escapedSpaceRegex = /%20/
 
 test('returns the path of a local workspace URI', () => {
+  const workspacePath = path.join(process.cwd(), 'workspace', 'example')
+
   assert.equal(
-    getWorkspacePath('file:///workspace/example'),
-    path.join(path.sep, 'workspace', 'example'),
+    getWorkspacePath(pathToFileURL(workspacePath).href),
+    workspacePath,
   )
 })
 
 test('decodes escaped path characters', () => {
-  assert.equal(
-    getWorkspacePath('file:///workspace/with%20space'),
-    path.join(path.sep, 'workspace', 'with space'),
-  )
+  const workspacePath = path.join(process.cwd(), 'workspace', 'with space')
+  const workspaceUri = pathToFileURL(workspacePath).href
+
+  assert.match(workspaceUri, escapedSpaceRegex)
+  assert.equal(getWorkspacePath(workspaceUri), workspacePath)
 })
 
 test('rejects an invalid workspace URI', () => {
