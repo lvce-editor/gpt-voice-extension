@@ -6,6 +6,7 @@ const getString = (value: string): string => {
 }
 
 export const changeApiKey = (): string => getString(UiStrings.ChangeApiKey)
+export const clearChat = (): string => getString(UiStrings.ClearChat)
 export const creatingToken = (): string => getString(UiStrings.CreatingToken)
 export const failedToClearOpenAiApiKey = (): string =>
   getString(UiStrings.FailedToClearOpenAiApiKey)
@@ -18,7 +19,6 @@ export const failedToSaveOpenAiApiKey = (): string =>
 export const gptVoice = (): string => getString(UiStrings.GptVoice)
 export const gptVoiceDisplayName = (): string =>
   getString(UiStrings.GptVoiceDisplayName)
-export const helloWorld = (): string => getString(UiStrings.HelloWorld)
 export const idle = (): string => getString(UiStrings.Idle)
 export const inProgress = (): string => getString(UiStrings.InProgress)
 export const invalidOpenAiApiKey = (): string =>

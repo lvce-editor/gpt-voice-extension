@@ -1,4 +1,5 @@
 export const ChangeApiKey = 'Change API key'
+export const ClearChat = 'Clear Chat'
 export const CreatingToken = 'Creating token'
 export const FailedToClearOpenAiApiKey = 'Failed to clear OpenAI API key.'
 export const FailedToCreateToken = 'Failed to create token.'
@@ -7,7 +8,6 @@ export const FailedToCreateTokenWithDetails =
 export const FailedToSaveOpenAiApiKey = 'Failed to save OpenAI API key.'
 export const GptVoice = 'Gpt Voice'
 export const GptVoiceDisplayName = 'GptVoice'
-export const HelloWorld = 'hello world'
 export const Idle = 'idle'
 export const InProgress = 'In Progress'
 export const InvalidOpenAiApiKey = 'OpenAI API key is invalid (401/403).'
