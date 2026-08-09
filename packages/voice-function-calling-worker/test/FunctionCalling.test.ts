@@ -137,28 +137,8 @@ test('executes workspace file function calls in the worker', async () => {
 
 test('executes open editor tab queries in the worker', async () => {
   const invoke = jest.fn(async (method: string): Promise<unknown> => {
-    if (method === 'MainArea.getSavedState') {
-      return {
-        layout: {
-          activeGroupId: 1,
-          groups: [
-            {
-              activeTabId: 2,
-              id: 1,
-              tabs: [
-                {
-                  editorType: 'text',
-                  id: 2,
-                  isDirty: false,
-                  isPreview: false,
-                  title: 'index.ts',
-                  uri: 'file:///workspace/src/index.ts',
-                },
-              ],
-            },
-          ],
-        },
-      }
+    if (method === 'MainArea.getOpenEditorUris') {
+      return ['file:///workspace/src/index.ts']
     }
     if (method === 'WorkspaceMainArea.getWorkspaceUri') {
       return 'file:///workspace'
@@ -177,20 +157,14 @@ test('executes open editor tab queries in the worker', async () => {
     type: 'response.function_call_arguments.done',
   })
 
-  expect(invoke).toHaveBeenCalledWith('MainArea.getSavedState')
+  expect(invoke).toHaveBeenCalledWith('MainArea.getOpenEditorUris')
   expect(invoke).toHaveBeenCalledWith('WorkspaceMainArea.getWorkspaceUri')
   const outputMessage = JSON.parse(result[0] || '{}')
   expect(JSON.parse(outputMessage.item.output)).toEqual({
     count: 1,
     tabs: [
       {
-        active: true,
-        dirty: false,
-        editorType: 'text',
-        group: 1,
         path: 'src/index.ts',
-        preview: false,
-        selected: true,
         title: 'index.ts',
         uri: 'file:///workspace/src/index.ts',
       },
@@ -220,6 +194,29 @@ test.each([
   expect(invoke).toHaveBeenCalledWith(method)
   const outputMessage = JSON.parse(result[0] || '{}')
   expect(JSON.parse(outputMessage.item.output)).toEqual({ focused: true })
+})
+
+test('executes close all editor calls in the worker', async () => {
+  const invoke = jest
+    .fn<(method: string) => Promise<unknown>>()
+    .mockResolvedValueOnce(['file:///workspace/src/index.ts', 'settings://'])
+    .mockResolvedValueOnce(undefined)
+  const globalScope = globalThis as typeof globalThis & {
+    rpc: { readonly invoke: typeof invoke }
+  }
+  globalScope.rpc = { invoke }
+
+  const result = await executeFunctionToolCall({
+    arguments: '{}',
+    call_id: 'close-call',
+    name: 'close_all_editors',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(invoke).toHaveBeenNthCalledWith(1, 'MainArea.getOpenEditorUris')
+  expect(invoke).toHaveBeenNthCalledWith(2, 'MainArea.closeAllEditors')
+  const outputMessage = JSON.parse(result[0] || '{}')
+  expect(JSON.parse(outputMessage.item.output)).toEqual({ closed: 2 })
 })
 
 test('executes workspace directory listing calls in the worker', async () => {

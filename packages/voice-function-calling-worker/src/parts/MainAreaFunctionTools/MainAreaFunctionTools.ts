@@ -1,64 +1,40 @@
 import type { FunctionToolDefinition } from '../FunctionToolRegistry/FunctionToolRegistry.ts'
 import * as Rpc from '../Rpc/Rpc.ts'
 
-interface SavedTab {
-  readonly editorType: string
-  readonly id: number
-  readonly isDirty: boolean
-  readonly isPreview: boolean
-  readonly title: string
-  readonly uri?: string
-}
-
-interface SavedEditorGroup {
-  readonly activeTabId: number
-  readonly id: number
-  readonly tabs: readonly SavedTab[]
-}
-
-interface SavedMainAreaState {
-  readonly layout: {
-    readonly activeGroupId: number
-    readonly groups: readonly SavedEditorGroup[]
-  }
-}
-
 export interface MainAreaApi {
+  readonly closeAllEditors: () => Promise<void>
   readonly focusNextTab: () => Promise<void>
   readonly focusPreviousTab: () => Promise<void>
-  readonly getSavedState: () => Promise<SavedMainAreaState>
-  readonly getWorkspaceUri: () => Promise<string>
+  readonly getOpenEditorUris: () => Promise<readonly string[]>
+  readonly getWorkspaceUri: () => Promise<string | null>
 }
 
 interface FunctionCallArguments {
   readonly argumentsValue: string
   readonly callId: string
-  readonly name: MainAreaToolName
+  readonly name: MainAreaFunctionToolName
 }
 
-type MainAreaToolName =
+type MainAreaFunctionToolName =
+  | 'close_all_editors'
   | 'focus_next_tab'
   | 'focus_previous_tab'
   | 'get_open_editor_tabs'
 
 interface OpenEditorTab {
-  readonly active: boolean
-  readonly dirty: boolean
-  readonly editorType: string
-  readonly group: number
   readonly path?: string
-  readonly preview: boolean
-  readonly selected: boolean
   readonly title: string
-  readonly uri?: string
+  readonly uri: string
 }
 
 const defaultApi: MainAreaApi = {
+  closeAllEditors: () => Rpc.invoke<void>('MainArea.closeAllEditors'),
   focusNextTab: () => Rpc.invoke<void>('MainArea.focusNextTab'),
   focusPreviousTab: () => Rpc.invoke<void>('MainArea.focusPreviousTab'),
-  getSavedState: () => Rpc.invoke<SavedMainAreaState>('MainArea.getSavedState'),
+  getOpenEditorUris: () =>
+    Rpc.invoke<readonly string[]>('MainArea.getOpenEditorUris'),
   getWorkspaceUri: () =>
-    Rpc.invoke<string>('WorkspaceMainArea.getWorkspaceUri'),
+    Rpc.invoke<string | null>('WorkspaceMainArea.getWorkspaceUri'),
 }
 
 export const mainAreaFunctionTools: readonly FunctionToolDefinition[] = [
@@ -86,8 +62,19 @@ export const mainAreaFunctionTools: readonly FunctionToolDefinition[] = [
   },
   {
     description:
-      'Get every open editor tab in the main area, in visual group and tab order. Returns titles, exact URIs, workspace-relative paths when available, active and selected state, and whether each tab is dirty or a preview. Use this before closing a tab when its identity is unclear.',
+      'Get every open editor tab in visual order. Returns titles, exact URIs, and workspace-relative paths when available. Use this before closing a tab when its identity is unclear.',
     name: 'get_open_editor_tabs',
+    parameters: {
+      additionalProperties: false,
+      properties: {},
+      type: 'object',
+    },
+    type: 'function',
+  },
+  {
+    description:
+      'Close every editor tab, including workspace files and non-file editors such as Settings. Use this whenever the user asks to close all editors.',
+    name: 'close_all_editors',
     parameters: {
       additionalProperties: false,
       properties: {},
@@ -97,13 +84,12 @@ export const mainAreaFunctionTools: readonly FunctionToolDefinition[] = [
   },
 ]
 
-const isMainAreaToolName = (value: unknown): value is MainAreaToolName => {
-  return (
-    value === 'focus_next_tab' ||
-    value === 'focus_previous_tab' ||
-    value === 'get_open_editor_tabs'
-  )
-}
+const mainAreaFunctionToolNames = new Set<MainAreaFunctionToolName>([
+  'close_all_editors',
+  'focus_next_tab',
+  'focus_previous_tab',
+  'get_open_editor_tabs',
+])
 
 const parseFunctionCall = (
   parsed: unknown,
@@ -134,7 +120,8 @@ const parseFunctionCall = (
     !('call_id' in item) ||
     typeof item.call_id !== 'string' ||
     !('name' in item) ||
-    !isMainAreaToolName(item.name) ||
+    typeof item.name !== 'string' ||
+    !mainAreaFunctionToolNames.has(item.name as MainAreaFunctionToolName) ||
     !('arguments' in item) ||
     typeof item.arguments !== 'string'
   ) {
@@ -143,11 +130,14 @@ const parseFunctionCall = (
   return {
     argumentsValue: item.arguments,
     callId: item.call_id,
-    name: item.name,
+    name: item.name as MainAreaFunctionToolName,
   }
 }
 
-const validateArguments = (name: MainAreaToolName, value: string): void => {
+const validateArguments = (
+  value: string,
+  toolName: MainAreaFunctionToolName,
+): void => {
   let parsed: unknown
   try {
     parsed = JSON.parse(value)
@@ -158,30 +148,36 @@ const validateArguments = (name: MainAreaToolName, value: string): void => {
     throw new TypeError('Function tool arguments must be a JSON object.')
   }
   if (Object.keys(parsed).length > 0) {
-    throw new TypeError(`The ${name} tool does not accept arguments.`)
+    throw new TypeError(`The ${toolName} tool does not accept arguments.`)
   }
 }
 
-const executeTool = async (
-  name: MainAreaToolName,
-  api: MainAreaApi,
-): Promise<unknown> => {
-  if (name === 'focus_next_tab') {
-    await api.focusNextTab()
-    return { focused: true }
+const decodeUriSegment = (value: string): string => {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
   }
-  if (name === 'focus_previous_tab') {
-    await api.focusPreviousTab()
-    return { focused: true }
+}
+
+const uriQueryOrFragmentRegex = /[?#]/
+
+const getEditorTitle = (uri: string): string => {
+  const uriWithoutQuery = uri.split(uriQueryOrFragmentRegex, 1)[0] || uri
+  const segments = uriWithoutQuery.split('/').filter(Boolean)
+  const lastSegment = segments.at(-1)
+  if (lastSegment && !lastSegment.endsWith(':')) {
+    return decodeUriSegment(lastSegment)
   }
-  return getOpenEditorTabs(api)
+  const schemeEnd = uri.indexOf(':')
+  return schemeEnd === -1 ? uri : uri.slice(0, schemeEnd)
 }
 
 const getWorkspaceRelativePath = (
-  workspaceUri: string,
+  workspaceUri: string | null,
   tabUri: string | undefined,
 ): string | undefined => {
-  if (!tabUri) {
+  if (!workspaceUri || !tabUri) {
     return undefined
   }
   const workspaceRoot = workspaceUri.endsWith('/')
@@ -204,28 +200,45 @@ const getWorkspaceRelativePath = (
 export const getOpenEditorTabs = async (
   api: MainAreaApi = defaultApi,
 ): Promise<Readonly<{ count: number; tabs: readonly OpenEditorTab[] }>> => {
-  const [savedState, workspaceUri] = await Promise.all([
-    api.getSavedState(),
+  const [openEditorUris, workspaceUri] = await Promise.all([
+    api.getOpenEditorUris(),
     api.getWorkspaceUri(),
   ])
-  const { activeGroupId, groups } = savedState.layout
-  const tabs = groups.flatMap((group, groupIndex) =>
-    group.tabs.map<OpenEditorTab>((tab) => {
-      const path = getWorkspaceRelativePath(workspaceUri, tab.uri)
-      return {
-        active: group.id === activeGroupId && tab.id === group.activeTabId,
-        dirty: tab.isDirty,
-        editorType: tab.editorType,
-        group: groupIndex + 1,
-        ...(path !== undefined && { path }),
-        preview: tab.isPreview,
-        selected: tab.id === group.activeTabId,
-        title: tab.title,
-        ...(tab.uri !== undefined && { uri: tab.uri }),
-      }
-    }),
-  )
+  const tabs = openEditorUris.map<OpenEditorTab>((uri) => {
+    const path = getWorkspaceRelativePath(workspaceUri, uri)
+    return {
+      ...(path !== undefined && { path }),
+      title: getEditorTitle(uri),
+      uri,
+    }
+  })
   return { count: tabs.length, tabs }
+}
+
+export const closeAllEditors = async (
+  api: MainAreaApi = defaultApi,
+): Promise<Readonly<{ closed: number }>> => {
+  const openEditorUris = await api.getOpenEditorUris()
+  await api.closeAllEditors()
+  return { closed: openEditorUris.length }
+}
+
+const executeTool = async (
+  name: MainAreaFunctionToolName,
+  api: MainAreaApi,
+): Promise<unknown> => {
+  if (name === 'close_all_editors') {
+    return closeAllEditors(api)
+  }
+  if (name === 'focus_next_tab') {
+    await api.focusNextTab()
+    return { focused: true }
+  }
+  if (name === 'focus_previous_tab') {
+    await api.focusPreviousTab()
+    return { focused: true }
+  }
+  return getOpenEditorTabs(api)
 }
 
 const createToolOutputMessage = (callId: string, output: unknown): string => {
@@ -243,6 +256,10 @@ const getErrorMessage = (error: unknown): string => {
   return error instanceof Error ? error.message : String(error)
 }
 
+const getErrorHint = (toolName: MainAreaFunctionToolName): string => {
+  return `Call ${toolName} with no arguments: {}.`
+}
+
 export const executeMainAreaFunctionToolCall = async (
   functionCallEvent: unknown,
   api: MainAreaApi = defaultApi,
@@ -253,12 +270,12 @@ export const executeMainAreaFunctionToolCall = async (
   }
   let output: unknown
   try {
-    validateArguments(functionCall.name, functionCall.argumentsValue)
+    validateArguments(functionCall.argumentsValue, functionCall.name)
     output = await executeTool(functionCall.name, api)
   } catch (error) {
     output = {
       error: getErrorMessage(error),
-      hint: `Call ${functionCall.name} with no arguments: {}.`,
+      hint: getErrorHint(functionCall.name),
       tool: functionCall.name,
     }
   }

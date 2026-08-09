@@ -95,22 +95,25 @@ export const test: Test = async ({
     await Main.openUri(file)
   }
 
-  await expect(
-    Locator('.MainTabSelected[title$="focus-next-3.txt"]'),
-  ).toBeVisible()
+  const initiallySelectedTab = Locator(
+    '.MainTabSelected[title$="focus-next-3.txt"]',
+  )
+  await expect(initiallySelectedTab).toBeVisible()
   await Command.executeExtensionCommand('GptVoice.setIsTest')
   await SideBar.open('gpt-voice.views.default')
 
   await Command.executeExtensionCommand('GptVoice.replayFixture', fixture)
 
-  await expect(
-    Locator('.MainTabSelected[title$="focus-next-1.txt"]'),
-  ).toBeVisible()
-  await expect(Locator('.GptVoiceTranscriptItemUser')).toHaveText(
+  const selectedTab = Locator('.MainTabSelected[title$="focus-next-1.txt"]')
+  const userTranscript = Locator('.GptVoiceTranscriptItemUser')
+  const voice = Locator('.GptVoice')
+  const assistantTranscript = Locator('.GptVoiceTranscriptItemAi')
+  await expect(selectedTab).toBeVisible()
+  await expect(userTranscript).toHaveText(
     fixture.expect.userText,
   )
-  await expect(Locator('.GptVoice')).toContainText('Ran focus_next_tab')
-  await expect(Locator('.GptVoiceTranscriptItemAi')).toHaveText(
+  await expect(voice).toContainText('Ran focus_next_tab')
+  await expect(assistantTranscript).toHaveText(
     fixture.expect.assistantText,
   )
 }

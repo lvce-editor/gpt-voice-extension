@@ -1,5 +1,6 @@
 import { expect, jest, test } from '@jest/globals'
 import {
+  closeAllEditors,
   executeMainAreaFunctionToolCall,
   getOpenEditorTabs,
   mainAreaFunctionTools,
@@ -7,51 +8,14 @@ import {
 } from '../src/parts/MainAreaFunctionTools/MainAreaFunctionTools.ts'
 
 const createApi = (): MainAreaApi => ({
+  closeAllEditors: jest.fn(async () => undefined),
   focusNextTab: jest.fn(async () => undefined),
   focusPreviousTab: jest.fn(async () => undefined),
-  getSavedState: jest.fn(async () => ({
-    layout: {
-      activeGroupId: 2,
-      groups: [
-        {
-          activeTabId: 11,
-          id: 1,
-          tabs: [
-            {
-              editorType: 'text',
-              id: 11,
-              isDirty: false,
-              isPreview: true,
-              title: 'index.ts',
-              uri: 'file:///workspace/src/index.ts',
-            },
-          ],
-        },
-        {
-          activeTabId: 21,
-          id: 2,
-          tabs: [
-            {
-              editorType: 'custom',
-              id: 21,
-              isDirty: false,
-              isPreview: false,
-              title: 'Settings',
-              uri: 'settings://',
-            },
-            {
-              editorType: 'text',
-              id: 22,
-              isDirty: true,
-              isPreview: false,
-              title: 'hello world.ts',
-              uri: 'file:///workspace/src/hello%20world.ts',
-            },
-          ],
-        },
-      ],
-    },
-  })),
+  getOpenEditorUris: jest.fn(async () => [
+    'file:///workspace/src/index.ts',
+    'settings://',
+    'file:///workspace/src/hello%20world.ts',
+  ]),
   getWorkspaceUri: jest.fn(async () => 'file:///workspace'),
 })
 
@@ -65,6 +29,7 @@ test('defines main area tools without arguments', () => {
     'focus_next_tab',
     'focus_previous_tab',
     'get_open_editor_tabs',
+    'close_all_editors',
   ])
   for (const tool of mainAreaFunctionTools) {
     expect(tool).toEqual(
@@ -106,38 +71,31 @@ test('returns tabs in visual group and tab order', async () => {
     count: 3,
     tabs: [
       {
-        active: false,
-        dirty: false,
-        editorType: 'text',
-        group: 1,
         path: 'src/index.ts',
-        preview: true,
-        selected: true,
         title: 'index.ts',
         uri: 'file:///workspace/src/index.ts',
       },
       {
-        active: true,
-        dirty: false,
-        editorType: 'custom',
-        group: 2,
-        preview: false,
-        selected: true,
-        title: 'Settings',
+        title: 'settings',
         uri: 'settings://',
       },
       {
-        active: false,
-        dirty: true,
-        editorType: 'text',
-        group: 2,
         path: 'src/hello world.ts',
-        preview: false,
-        selected: false,
         title: 'hello world.ts',
         uri: 'file:///workspace/src/hello%20world.ts',
       },
     ],
+  })
+})
+
+test('returns non-file editors when no workspace is open', async () => {
+  const api = createApi()
+  jest.mocked(api.getOpenEditorUris).mockResolvedValue(['settings://'])
+  jest.mocked(api.getWorkspaceUri).mockResolvedValue(null)
+
+  await expect(getOpenEditorTabs(api)).resolves.toEqual({
+    count: 1,
+    tabs: [{ title: 'settings', uri: 'settings://' }],
   })
 })
 
@@ -172,13 +130,13 @@ test('supports completed output items', async () => {
     api,
   )
 
-  expect(api.getSavedState).toHaveBeenCalledWith()
+  expect(api.getOpenEditorUris).toHaveBeenCalledWith()
 })
 
 test('returns query failures to the model', async () => {
   const api = createApi()
   jest
-    .mocked(api.getSavedState)
+    .mocked(api.getOpenEditorUris)
     .mockRejectedValue(new Error('Main area is unavailable'))
   const messages = await executeMainAreaFunctionToolCall(
     {
@@ -215,6 +173,31 @@ test('returns focus failures to the model', async () => {
     hint: 'Call focus_next_tab with no arguments: {}.',
     tool: 'focus_next_tab',
   })
+})
+
+test('closes all open editors and returns the closed count', async () => {
+  const api = createApi()
+
+  await expect(closeAllEditors(api)).resolves.toEqual({ closed: 3 })
+
+  expect(api.getOpenEditorUris).toHaveBeenCalledWith()
+  expect(api.closeAllEditors).toHaveBeenCalledWith()
+})
+
+test('executes close all editor calls', async () => {
+  const api = createApi()
+  const messages = await executeMainAreaFunctionToolCall(
+    {
+      arguments: '{}',
+      call_id: 'close-call',
+      name: 'close_all_editors',
+      type: 'response.function_call_arguments.done',
+    },
+    api,
+  )
+
+  expect(getToolOutput(messages || [])).toEqual({ closed: 3 })
+  expect(api.closeAllEditors).toHaveBeenCalledWith()
 })
 
 test.each([

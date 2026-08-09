@@ -2,30 +2,30 @@ import type { Test } from '@lvce-editor/test-with-playwright'
 
 const fixture = {
   expect: {
-    assistantText: 'The previous tab is focused.',
+    assistantText: 'All editors are closed.',
     toolCalls: [
       {
         arguments: {},
-        name: 'focus_previous_tab',
+        name: 'close_all_editors',
         output: {
-          focused: true,
+          closed: 2,
         },
       },
     ],
-    userText: 'Focus the previous tab.',
+    userText: 'Close all editors.',
   },
-  name: 'focus-previous-tab',
+  name: 'close-all-editors',
   schemaVersion: 1,
   source: {
     realtimeModel: 'gpt-realtime-2.1-mini',
-    text: 'Focus the previous tab.',
+    text: 'Close all editors.',
   },
   trace: [
     {
       atMs: 0,
       direction: 'server',
       event: {
-        delta: 'Focus the previous tab.',
+        delta: 'Close all editors.',
         item_id: 'user_item_1',
         type: 'conversation.item.input_audio_transcription.delta',
       },
@@ -36,7 +36,7 @@ const fixture = {
       event: {
         arguments: '{}',
         call_id: 'call_1',
-        name: 'focus_previous_tab',
+        name: 'close_all_editors',
         type: 'response.function_call_arguments.done',
       },
     },
@@ -46,7 +46,7 @@ const fixture = {
       event: {
         item: {
           call_id: 'call_1',
-          output: '{"focused":true}',
+          output: '{"closed":2}',
           type: 'function_call_output',
         },
         type: 'conversation.item.create',
@@ -63,7 +63,7 @@ const fixture = {
       atMs: 800,
       direction: 'server',
       event: {
-        delta: 'The previous tab is focused.',
+        delta: 'All editors are closed.',
         item_id: 'assistant_item_1',
         type: 'response.output_audio_transcript.delta',
       },
@@ -71,7 +71,7 @@ const fixture = {
   ],
 } as const
 
-export const name = 'gpt-voice.fixture-focus-previous-tab'
+export const name = 'gpt-voice.fixture-close-all-editors'
 
 export const test: Test = async ({
   Command,
@@ -83,39 +83,27 @@ export const test: Test = async ({
 }) => {
   await Main.closeAllEditors()
   const tmpDir = await FileSystem.getTmpDir()
-  const files = [
-    `${tmpDir}/focus-previous-1.txt`,
-    `${tmpDir}/focus-previous-2.txt`,
-    `${tmpDir}/focus-previous-3.txt`,
-  ]
-  await FileSystem.setFiles(
-    files.map((uri, index) => ({ content: `tab ${index + 1}`, uri })),
-  )
-  for (const file of files) {
-    await Main.openUri(file)
-  }
+  const firstFile = `${tmpDir}/first.txt`
+  const secondFile = `${tmpDir}/second.txt`
+  await FileSystem.setFiles([
+    { content: 'first', uri: firstFile },
+    { content: 'second', uri: secondFile },
+  ])
+  await Main.openUri(firstFile)
+  await Main.openUri(secondFile)
 
-  const initiallySelectedTab = Locator(
-    '.MainTabSelected[title$="focus-previous-3.txt"]',
-  )
-  await expect(initiallySelectedTab).toBeVisible()
+  const editorTabs = Locator('.MainTab')
+  await expect(editorTabs).toHaveCount(2)
+
   await Command.executeExtensionCommand('GptVoice.setIsTest')
   await SideBar.open('gpt-voice.views.default')
-
   await Command.executeExtensionCommand('GptVoice.replayFixture', fixture)
 
-  const selectedTab = Locator(
-    '.MainTabSelected[title$="focus-previous-2.txt"]',
-  )
-  const userTranscript = Locator('.GptVoiceTranscriptItemUser')
+  await expect(editorTabs).toHaveCount(0)
   const voice = Locator('.GptVoice')
+  const userTranscript = Locator('.GptVoiceTranscriptItemUser')
   const assistantTranscript = Locator('.GptVoiceTranscriptItemAi')
-  await expect(selectedTab).toBeVisible()
-  await expect(userTranscript).toHaveText(
-    fixture.expect.userText,
-  )
-  await expect(voice).toContainText('Ran focus_previous_tab')
-  await expect(assistantTranscript).toHaveText(
-    fixture.expect.assistantText,
-  )
+  await expect(voice).toContainText('Ran close_all_editors')
+  await expect(userTranscript).toHaveText(fixture.expect.userText)
+  await expect(assistantTranscript).toHaveText(fixture.expect.assistantText)
 }

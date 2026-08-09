@@ -64,8 +64,12 @@ const setQuickPickValue = async (value: string): Promise<void> => {
   await executeCommand('QuickPick.setValue', value)
 }
 
-const getMainAreaSavedState = async (): Promise<unknown> => {
-  return executeCommand('Main.saveState')
+const closeAllEditors = async (): Promise<void> => {
+  await executeCommand('Main.closeAllEditors')
+}
+
+const getOpenEditorUris = async (): Promise<unknown> => {
+  return executeCommand('GetActiveEditor.getOpenEditorUris')
 }
 
 const toggleSideBarPosition = async (): Promise<void> => {
@@ -79,9 +83,10 @@ const commandMap = {
   'Editor.setSelections': setEditorSelections,
   'Editor.showCompletions': showCompletions,
   'Layout.toggleSideBarPosition': toggleSideBarPosition,
+  'MainArea.closeAllEditors': closeAllEditors,
   'MainArea.focusNextTab': focusNextTab,
   'MainArea.focusPreviousTab': focusPreviousTab,
-  'MainArea.getSavedState': getMainAreaSavedState,
+  'MainArea.getOpenEditorUris': getOpenEditorUris,
   'Panel.close': closePanel,
   'Panel.open': openPanel,
   'PanelView.openDebugConsole': openDebugConsole,
