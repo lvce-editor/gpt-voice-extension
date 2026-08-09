@@ -51,6 +51,7 @@ test('returns registered function tool definitions', () => {
     expect.objectContaining({ name: 'show_completions' }),
     expect.objectContaining({ name: 'toggle_sidebar_position' }),
     expect.objectContaining({ name: 'get_open_editor_tabs' }),
+    expect.objectContaining({ name: 'close_all_editors' }),
     expect.objectContaining({ name: 'set_panel' }),
     expect.objectContaining({ name: 'open_problems_view' }),
     expect.objectContaining({ name: 'open_output_view' }),
