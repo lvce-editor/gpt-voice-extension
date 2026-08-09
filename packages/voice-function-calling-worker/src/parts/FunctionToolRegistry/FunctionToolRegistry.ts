@@ -1,5 +1,6 @@
 import { editorFunctionTools } from '../EditorFunctionTools/EditorFunctionTools.ts'
 import { getFakeWeather } from '../FakeWeather/FakeWeather.ts'
+import { layoutFunctionTools } from '../LayoutFunctionTools/LayoutFunctionTools.ts'
 import { panelFunctionTools } from '../PanelFunctionTools/PanelFunctionTools.ts'
 import { panelViewFunctionTools } from '../PanelViewFunctionTools/PanelViewFunctionTools.ts'
 import { processExplorerFunctionTools } from '../ProcessExplorerFunctionTools/ProcessExplorerFunctionTools.ts'
@@ -98,6 +99,7 @@ export const getRegisteredTools = (
   return [
     ...registeredTools.map((tool) => tool.definition),
     ...editorFunctionTools,
+    ...layoutFunctionTools,
     ...panelFunctionTools,
     ...panelViewFunctionTools,
     ...processExplorerFunctionTools,

@@ -207,6 +207,27 @@ test('executes panel calls in the worker', async () => {
   expect(result[0]).toContain('terminal')
 })
 
+test('executes sidebar position calls in the worker', async () => {
+  const invoke = jest
+    .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
+    .mockResolvedValue(undefined)
+  const globalScope = globalThis as typeof globalThis & {
+    rpc: { readonly invoke: typeof invoke }
+  }
+  globalScope.rpc = { invoke }
+
+  const result = await executeFunctionToolCall({
+    arguments: '{}',
+    call_id: 'layout-call',
+    name: 'toggle_sidebar_position',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(invoke).toHaveBeenCalledWith('Layout.toggleSideBarPosition')
+  const outputMessage = JSON.parse(result[0] || '{}')
+  expect(JSON.parse(outputMessage.item.output)).toEqual({ toggled: true })
+})
+
 test('executes process explorer calls in the worker', async () => {
   const invoke = jest
     .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
