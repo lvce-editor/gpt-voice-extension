@@ -51,6 +51,31 @@ test('createE2eTestSource - verifies an opened terminal', () => {
   expect(source).toContain("const terminal = Locator('.XtermTerminal')")
 })
 
+test('createE2eTestSource - verifies opened settings', () => {
+  const source = createE2eTestSource({
+    expect: {
+      assistantText: 'Settings are open.',
+      toolCalls: [
+        {
+          arguments: {},
+          name: 'open_settings',
+          output: { opened: true },
+        },
+      ],
+      userText: 'Open settings.',
+    },
+    name: 'open-settings',
+    schemaVersion: 1,
+    source: { text: 'Open settings.' },
+    trace: [],
+  })
+
+  expect(source).toContain("const settings = Locator('.Settings')")
+  expect(source).toContain(
+    "await expect(settingsSearchInput).toHaveAttribute('placeholder', 'Search Settings')",
+  )
+})
+
 test('createE2eTestSource - creates and verifies an opened workspace file', () => {
   const source = createE2eTestSource({
     expect: {
@@ -77,6 +102,32 @@ test('createE2eTestSource - creates and verifies an opened workspace file', () =
   expect(source).toContain(
     'Editor.shouldHaveText("Voice fixture workspace file")',
   )
+})
+
+test('createE2eTestSource - creates a workspace file that is read', () => {
+  const source = createE2eTestSource({
+    expect: {
+      assistantText: 'The project uses Node.js version 24.19.0.',
+      toolCalls: [
+        {
+          arguments: { path: '.nvmrc' },
+          name: 'read_workspace_file',
+          output: { content: '24.19.0\n', path: '.nvmrc' },
+        },
+      ],
+      userText: 'What Node version is this project on?',
+    },
+    name: 'node-version',
+    schemaVersion: 1,
+    source: { text: 'What Node version is this project on?' },
+    trace: [],
+  })
+
+  expect(source).toContain('await FileSystem.getTmpDir()')
+  expect(source).toContain(
+    'await FileSystem.writeFile(workspaceUri + "/.nvmrc", "24.19.0\\n")',
+  )
+  expect(source).toContain('await Workspace.setPath(workspaceUri)')
 })
 
 test('createE2eTestSource - verifies a quick pick input value', () => {

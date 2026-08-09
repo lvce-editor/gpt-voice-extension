@@ -1,0 +1,19 @@
+{
+  "id": "sample.voice-formatter",
+  "name": "Sample Voice Formatter",
+  "browser": "dist/main.js",
+  "isolated": true,
+  "activation": ["*"],
+  "formattingProviders": [
+    {
+      "id": "sampleVoiceFormatter",
+      "languageId": "xyz"
+    }
+  ],
+  "languages": [
+    {
+      "id": "xyz",
+      "extensions": [".xyz"]
+    }
+  ]
+}

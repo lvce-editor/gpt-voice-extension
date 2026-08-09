@@ -26,7 +26,12 @@ const openOutputView = jest.fn<typeof Api.openOutputView>(async () => undefined)
 const openProblemsView = jest.fn<typeof Api.openProblemsView>(
   async () => undefined,
 )
+const openSettings = jest.fn<typeof Api.openSettings>(async () => undefined)
 const executeCommand = jest.fn<typeof Api.executeCommand>(async () => undefined)
+const formatDocument = jest.fn<() => Promise<void>>(async () => undefined)
+const getDiagnostics = jest.fn<() => Promise<readonly Api.Diagnostic[]>>(
+  async () => [],
+)
 const getWorkspaceUri = jest.fn(async () => 'file:///workspace')
 const getPreference = jest.fn<() => Promise<unknown>>(async () => false)
 const readDirWithFileTypes = jest.fn(async () => [
@@ -38,6 +43,7 @@ const readFile = jest.fn<(uri: string) => Promise<string>>(
 const setWorkspaceUri = jest.fn<(uri: string) => Promise<void>>(
   async () => undefined,
 )
+const showCompletions = jest.fn<() => Promise<void>>(async () => undefined)
 const showFileQuickPick = jest.fn(async () => undefined)
 const writeFile = jest.fn<(uri: string, content: string) => Promise<void>>(
   async () => undefined,
@@ -52,15 +58,19 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
     createNodeRpc,
     createRpc,
     executeCommand,
+    formatDocument,
+    getDiagnostics,
     getPreference,
     getWorkspaceUri,
     openDebugConsole,
     openOutputView,
     openProblemsView,
+    openSettings,
     openUri,
     readDirWithFileTypes,
     readFile,
     setWorkspaceUri,
+    showCompletions,
     showFileQuickPick,
     writeFile,
   }
@@ -74,11 +84,14 @@ beforeEach(() => {
   createNodeRpc.mockClear()
   closeUri.mockClear()
   executeCommand.mockClear()
+  formatDocument.mockClear()
+  getDiagnostics.mockClear()
   invoke.mockReset()
   getWorkspaceUri.mockClear()
   openDebugConsole.mockClear()
   openOutputView.mockClear()
   openProblemsView.mockClear()
+  openSettings.mockClear()
   getPreference.mockReset()
   getPreference.mockResolvedValue(false)
   nodeInvoke.mockReset()
@@ -86,6 +99,7 @@ beforeEach(() => {
   readDirWithFileTypes.mockClear()
   readFile.mockClear()
   setWorkspaceUri.mockClear()
+  showCompletions.mockClear()
   showFileQuickPick.mockClear()
   writeFile.mockClear()
   VoiceFunctionCallingWorker.state.rpcPromise = undefined
@@ -108,11 +122,15 @@ test('creates a web worker RPC and queries registered tools', async () => {
 
   expect(createRpc).toHaveBeenCalledWith({
     commandMap: {
+      'Editor.formatDocument': formatDocument,
+      'Editor.getDiagnostics': getDiagnostics,
+      'Editor.showCompletions': showCompletions,
       'Panel.close': expect.any(Function),
       'Panel.open': expect.any(Function),
       'PanelView.openDebugConsole': expect.any(Function),
       'PanelView.openOutputView': expect.any(Function),
       'PanelView.openProblemsView': expect.any(Function),
+      'Settings.openSettings': openSettings,
       'Terminal.executeBash': expect.any(Function),
       'Workspace.setWorkspaceUri': setWorkspaceUri,
       'WorkspaceFileSystem.getWorkspaceUri': getWorkspaceUri,
@@ -171,6 +189,23 @@ test('bridges panel commands from the function calling worker', async () => {
   expect(executeCommand).toHaveBeenNthCalledWith(3, 'Layout.hidePanel')
 })
 
+test('bridges editor commands from the function calling worker', async () => {
+  invoke.mockResolvedValue([])
+  await VoiceFunctionCallingWorker.getRegisteredTools()
+
+  const options = createRpc.mock.calls[0]?.[0]
+  const commandMap = options?.commandMap as Readonly<
+    Record<string, (...args: readonly unknown[]) => Promise<unknown>>
+  >
+  await commandMap['Editor.formatDocument']?.()
+  await commandMap['Editor.getDiagnostics']?.()
+  await commandMap['Editor.showCompletions']?.()
+
+  expect(formatDocument).toHaveBeenCalledWith()
+  expect(getDiagnostics).toHaveBeenCalledWith()
+  expect(showCompletions).toHaveBeenCalledWith()
+})
+
 test('bridges panel view commands from the function calling worker', async () => {
   invoke.mockResolvedValue([])
   await VoiceFunctionCallingWorker.getRegisteredTools()
@@ -186,6 +221,19 @@ test('bridges panel view commands from the function calling worker', async () =>
   expect(openProblemsView).toHaveBeenCalledWith({ filter: 'typescript' })
   expect(openOutputView).toHaveBeenCalledWith({ channel: 'Window' })
   expect(openDebugConsole).toHaveBeenCalledWith({ input: 'process.version' })
+})
+
+test('bridges opening settings from the function calling worker', async () => {
+  invoke.mockResolvedValue([])
+  await VoiceFunctionCallingWorker.getRegisteredTools()
+
+  const options = createRpc.mock.calls[0]?.[0]
+  const commandMap = options?.commandMap as Readonly<
+    Record<string, (...args: readonly unknown[]) => Promise<void>>
+  >
+  await commandMap['Settings.openSettings']?.()
+
+  expect(openSettings).toHaveBeenCalledWith()
 })
 
 test('bridges quick pick input from the function calling worker', async () => {
