@@ -8,10 +8,13 @@ interface FunctionCallArguments {
 }
 
 interface WorkspaceApi {
+  readonly getWorkspaceUri: () => Promise<string>
   readonly setWorkspaceUri: (uri: string) => Promise<void>
 }
 
 const defaultApi: WorkspaceApi = {
+  getWorkspaceUri: () =>
+    Rpc.invoke<string>('WorkspaceFileSystem.getWorkspaceUri'),
   setWorkspaceUri: (uri) => Rpc.invoke<void>('Workspace.setWorkspaceUri', uri),
 }
 
@@ -36,7 +39,20 @@ const openWorkspaceFolderTool: FunctionToolDefinition = {
   type: 'function',
 }
 
+const getWorkspaceFolderUriTool: FunctionToolDefinition = {
+  description:
+    'Get the URI of the workspace folder that is already open in LVCE Editor. Use this instead of asking the user for the current workspace URI.',
+  name: 'get_workspace_folder_uri',
+  parameters: {
+    additionalProperties: false,
+    properties: {},
+    type: 'object',
+  },
+  type: 'function',
+}
+
 export const workspaceFunctionTools: readonly FunctionToolDefinition[] = [
+  getWorkspaceFolderUriTool,
   openWorkspaceFolderTool,
 ]
 
@@ -52,7 +68,9 @@ const parseFunctionCall = (
     'call_id' in parsed &&
     typeof parsed.call_id === 'string' &&
     'name' in parsed &&
-    parsed.name === 'open_workspace_folder' &&
+    typeof parsed.name === 'string' &&
+    (parsed.name === 'get_workspace_folder_uri' ||
+      parsed.name === 'open_workspace_folder') &&
     'arguments' in parsed &&
     typeof parsed.arguments === 'string'
   ) {
@@ -73,7 +91,9 @@ const parseFunctionCall = (
     'call_id' in parsed.item &&
     typeof parsed.item.call_id === 'string' &&
     'name' in parsed.item &&
-    parsed.item.name === 'open_workspace_folder' &&
+    typeof parsed.item.name === 'string' &&
+    (parsed.item.name === 'get_workspace_folder_uri' ||
+      parsed.item.name === 'open_workspace_folder') &&
     'arguments' in parsed.item &&
     typeof parsed.item.arguments === 'string'
   ) {
@@ -124,6 +144,23 @@ const getWorkspaceUriArgument = (value: string): string => {
   return trimmedUri
 }
 
+const validateEmptyArguments = (value: string): void => {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(value)
+  } catch {
+    throw new TypeError('Function tool arguments must be valid JSON.')
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new TypeError('Function tool arguments must be a JSON object.')
+  }
+  if (Object.keys(parsed).length > 0) {
+    throw new TypeError(
+      'The get_workspace_folder_uri tool does not accept arguments.',
+    )
+  }
+}
+
 const getErrorMessage = (error: unknown): string => {
   return error instanceof Error ? error.message : String(error)
 }
@@ -138,13 +175,25 @@ export const executeWorkspaceFunctionToolCall = async (
   }
   let output: unknown
   try {
-    const uri = getWorkspaceUriArgument(functionCall.argumentsValue)
-    await api.setWorkspaceUri(uri)
-    output = { opened: true, uri }
+    if (functionCall.name === 'get_workspace_folder_uri') {
+      validateEmptyArguments(functionCall.argumentsValue)
+      const uri = await api.getWorkspaceUri()
+      if (!uri) {
+        throw new Error('No workspace folder is open.')
+      }
+      output = { uri }
+    } else {
+      const uri = getWorkspaceUriArgument(functionCall.argumentsValue)
+      await api.setWorkspaceUri(uri)
+      output = { opened: true, uri }
+    }
   } catch (error) {
     output = {
       error: getErrorMessage(error),
-      hint: 'Pass a full workspace folder URI, such as {"uri":"file:///home/user/project"}.',
+      hint:
+        functionCall.name === 'get_workspace_folder_uri'
+          ? 'Call get_workspace_folder_uri with no arguments: {}.'
+          : 'Pass a full workspace folder URI, such as {"uri":"file:///home/user/project"}.',
       tool: functionCall.name,
     }
   }
