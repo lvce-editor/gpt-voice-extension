@@ -1,52 +1,28 @@
 import type { FunctionToolDefinition } from '../FunctionToolRegistry/FunctionToolRegistry.ts'
 import * as Rpc from '../Rpc/Rpc.ts'
 
-interface SavedTab {
-  readonly editorType: string
-  readonly id: number
-  readonly isDirty: boolean
-  readonly isPreview: boolean
-  readonly title: string
-  readonly uri?: string
-}
-
-interface SavedEditorGroup {
-  readonly activeTabId: number
-  readonly id: number
-  readonly tabs: readonly SavedTab[]
-}
-
-interface SavedMainAreaState {
-  readonly layout: {
-    readonly activeGroupId: number
-    readonly groups: readonly SavedEditorGroup[]
-  }
-}
-
 export interface MainAreaApi {
-  readonly getSavedState: () => Promise<SavedMainAreaState>
+  readonly closeAllEditors: () => Promise<void>
+  readonly getOpenEditorUris: () => Promise<readonly string[]>
   readonly getWorkspaceUri: () => Promise<string>
 }
 
 interface FunctionCallArguments {
   readonly argumentsValue: string
   readonly callId: string
+  readonly name: MainAreaFunctionToolName
 }
 
 interface OpenEditorTab {
-  readonly active: boolean
-  readonly dirty: boolean
-  readonly editorType: string
-  readonly group: number
   readonly path?: string
-  readonly preview: boolean
-  readonly selected: boolean
   readonly title: string
-  readonly uri?: string
+  readonly uri: string
 }
 
 const defaultApi: MainAreaApi = {
-  getSavedState: () => Rpc.invoke<SavedMainAreaState>('MainArea.getSavedState'),
+  closeAllEditors: () => Rpc.invoke<void>('MainArea.closeAllEditors'),
+  getOpenEditorUris: () =>
+    Rpc.invoke<readonly string[]>('MainArea.getOpenEditorUris'),
   getWorkspaceUri: () =>
     Rpc.invoke<string>('WorkspaceMainArea.getWorkspaceUri'),
 }
@@ -54,7 +30,7 @@ const defaultApi: MainAreaApi = {
 export const mainAreaFunctionTools: readonly FunctionToolDefinition[] = [
   {
     description:
-      'Get every open editor tab in the main area, in visual group and tab order. Returns titles, exact URIs, workspace-relative paths when available, active and selected state, and whether each tab is dirty or a preview. Use this before closing a tab when its identity is unclear.',
+      'Get every open editor tab in visual order. Returns titles, exact URIs, and workspace-relative paths when available. Use this before closing a tab when its identity is unclear.',
     name: 'get_open_editor_tabs',
     parameters: {
       additionalProperties: false,
@@ -63,7 +39,25 @@ export const mainAreaFunctionTools: readonly FunctionToolDefinition[] = [
     },
     type: 'function',
   },
+  {
+    description:
+      'Close every editor tab, including workspace files and non-file editors such as Settings. Use this whenever the user asks to close all editors.',
+    name: 'close_all_editors',
+    parameters: {
+      additionalProperties: false,
+      properties: {},
+      type: 'object',
+    },
+    type: 'function',
+  },
 ]
+
+type MainAreaFunctionToolName = 'close_all_editors' | 'get_open_editor_tabs'
+
+const mainAreaFunctionToolNames = new Set<MainAreaFunctionToolName>([
+  'close_all_editors',
+  'get_open_editor_tabs',
+])
 
 const parseFunctionCall = (
   parsed: unknown,
@@ -94,7 +88,8 @@ const parseFunctionCall = (
     !('call_id' in item) ||
     typeof item.call_id !== 'string' ||
     !('name' in item) ||
-    item.name !== 'get_open_editor_tabs' ||
+    typeof item.name !== 'string' ||
+    !mainAreaFunctionToolNames.has(item.name as MainAreaFunctionToolName) ||
     !('arguments' in item) ||
     typeof item.arguments !== 'string'
   ) {
@@ -103,10 +98,14 @@ const parseFunctionCall = (
   return {
     argumentsValue: item.arguments,
     callId: item.call_id,
+    name: item.name as MainAreaFunctionToolName,
   }
 }
 
-const validateArguments = (value: string): void => {
+const validateArguments = (
+  value: string,
+  toolName: MainAreaFunctionToolName,
+): void => {
   let parsed: unknown
   try {
     parsed = JSON.parse(value)
@@ -117,10 +116,29 @@ const validateArguments = (value: string): void => {
     throw new TypeError('Function tool arguments must be a JSON object.')
   }
   if (Object.keys(parsed).length > 0) {
-    throw new TypeError(
-      'The get_open_editor_tabs tool does not accept arguments.',
-    )
+    throw new TypeError(`The ${toolName} tool does not accept arguments.`)
   }
+}
+
+const decodeUriSegment = (value: string): string => {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
+}
+
+const uriQueryOrFragmentRegex = /[?#]/
+
+const getEditorTitle = (uri: string): string => {
+  const uriWithoutQuery = uri.split(uriQueryOrFragmentRegex, 1)[0] || uri
+  const segments = uriWithoutQuery.split('/').filter(Boolean)
+  const lastSegment = segments.at(-1)
+  if (lastSegment && !lastSegment.endsWith(':')) {
+    return decodeUriSegment(lastSegment)
+  }
+  const schemeEnd = uri.indexOf(':')
+  return schemeEnd === -1 ? uri : uri.slice(0, schemeEnd)
 }
 
 const getWorkspaceRelativePath = (
@@ -150,28 +168,27 @@ const getWorkspaceRelativePath = (
 export const getOpenEditorTabs = async (
   api: MainAreaApi = defaultApi,
 ): Promise<Readonly<{ count: number; tabs: readonly OpenEditorTab[] }>> => {
-  const [savedState, workspaceUri] = await Promise.all([
-    api.getSavedState(),
+  const [openEditorUris, workspaceUri] = await Promise.all([
+    api.getOpenEditorUris(),
     api.getWorkspaceUri(),
   ])
-  const { activeGroupId, groups } = savedState.layout
-  const tabs = groups.flatMap((group, groupIndex) =>
-    group.tabs.map<OpenEditorTab>((tab) => {
-      const path = getWorkspaceRelativePath(workspaceUri, tab.uri)
-      return {
-        active: group.id === activeGroupId && tab.id === group.activeTabId,
-        dirty: tab.isDirty,
-        editorType: tab.editorType,
-        group: groupIndex + 1,
-        ...(path !== undefined && { path }),
-        preview: tab.isPreview,
-        selected: tab.id === group.activeTabId,
-        title: tab.title,
-        ...(tab.uri !== undefined && { uri: tab.uri }),
-      }
-    }),
-  )
+  const tabs = openEditorUris.map<OpenEditorTab>((uri) => {
+    const path = getWorkspaceRelativePath(workspaceUri, uri)
+    return {
+      ...(path !== undefined && { path }),
+      title: getEditorTitle(uri),
+      uri,
+    }
+  })
   return { count: tabs.length, tabs }
+}
+
+export const closeAllEditors = async (
+  api: MainAreaApi = defaultApi,
+): Promise<Readonly<{ closed: number }>> => {
+  const openEditorUris = await api.getOpenEditorUris()
+  await api.closeAllEditors()
+  return { closed: openEditorUris.length }
 }
 
 const createToolOutputMessage = (callId: string, output: unknown): string => {
@@ -189,6 +206,10 @@ const getErrorMessage = (error: unknown): string => {
   return error instanceof Error ? error.message : String(error)
 }
 
+const getErrorHint = (toolName: MainAreaFunctionToolName): string => {
+  return `Call ${toolName} with no arguments: {}.`
+}
+
 export const executeMainAreaFunctionToolCall = async (
   functionCallEvent: unknown,
   api: MainAreaApi = defaultApi,
@@ -199,13 +220,16 @@ export const executeMainAreaFunctionToolCall = async (
   }
   let output: unknown
   try {
-    validateArguments(functionCall.argumentsValue)
-    output = await getOpenEditorTabs(api)
+    validateArguments(functionCall.argumentsValue, functionCall.name)
+    output =
+      functionCall.name === 'close_all_editors'
+        ? await closeAllEditors(api)
+        : await getOpenEditorTabs(api)
   } catch (error) {
     output = {
       error: getErrorMessage(error),
-      hint: 'Call get_open_editor_tabs with no arguments: {}.',
-      tool: 'get_open_editor_tabs',
+      hint: getErrorHint(functionCall.name),
+      tool: functionCall.name,
     }
   }
   return [

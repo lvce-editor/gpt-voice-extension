@@ -1,5 +1,6 @@
 import { expect, jest, test } from '@jest/globals'
 import {
+  closeAllEditors,
   executeMainAreaFunctionToolCall,
   getOpenEditorTabs,
   mainAreaFunctionTools,
@@ -7,49 +8,12 @@ import {
 } from '../src/parts/MainAreaFunctionTools/MainAreaFunctionTools.ts'
 
 const createApi = (): MainAreaApi => ({
-  getSavedState: jest.fn(async () => ({
-    layout: {
-      activeGroupId: 2,
-      groups: [
-        {
-          activeTabId: 11,
-          id: 1,
-          tabs: [
-            {
-              editorType: 'text',
-              id: 11,
-              isDirty: false,
-              isPreview: true,
-              title: 'index.ts',
-              uri: 'file:///workspace/src/index.ts',
-            },
-          ],
-        },
-        {
-          activeTabId: 21,
-          id: 2,
-          tabs: [
-            {
-              editorType: 'custom',
-              id: 21,
-              isDirty: false,
-              isPreview: false,
-              title: 'Settings',
-              uri: 'settings://',
-            },
-            {
-              editorType: 'text',
-              id: 22,
-              isDirty: true,
-              isPreview: false,
-              title: 'hello world.ts',
-              uri: 'file:///workspace/src/hello%20world.ts',
-            },
-          ],
-        },
-      ],
-    },
-  })),
+  closeAllEditors: jest.fn(async () => undefined),
+  getOpenEditorUris: jest.fn(async () => [
+    'file:///workspace/src/index.ts',
+    'settings://',
+    'file:///workspace/src/hello%20world.ts',
+  ]),
   getWorkspaceUri: jest.fn(async () => 'file:///workspace'),
 })
 
@@ -58,10 +22,19 @@ const getToolOutput = (messages: readonly string[]): unknown => {
   return JSON.parse(message.item.output)
 }
 
-test('defines the open editor tabs query tool', () => {
+test('defines main area tools', () => {
   expect(mainAreaFunctionTools).toEqual([
     expect.objectContaining({
       name: 'get_open_editor_tabs',
+      parameters: {
+        additionalProperties: false,
+        properties: {},
+        type: 'object',
+      },
+      type: 'function',
+    }),
+    expect.objectContaining({
+      name: 'close_all_editors',
       parameters: {
         additionalProperties: false,
         properties: {},
@@ -79,34 +52,16 @@ test('returns tabs in visual group and tab order', async () => {
     count: 3,
     tabs: [
       {
-        active: false,
-        dirty: false,
-        editorType: 'text',
-        group: 1,
         path: 'src/index.ts',
-        preview: true,
-        selected: true,
         title: 'index.ts',
         uri: 'file:///workspace/src/index.ts',
       },
       {
-        active: true,
-        dirty: false,
-        editorType: 'custom',
-        group: 2,
-        preview: false,
-        selected: true,
-        title: 'Settings',
+        title: 'settings',
         uri: 'settings://',
       },
       {
-        active: false,
-        dirty: true,
-        editorType: 'text',
-        group: 2,
         path: 'src/hello world.ts',
-        preview: false,
-        selected: false,
         title: 'hello world.ts',
         uri: 'file:///workspace/src/hello%20world.ts',
       },
@@ -145,13 +100,13 @@ test('supports completed output items', async () => {
     api,
   )
 
-  expect(api.getSavedState).toHaveBeenCalledWith()
+  expect(api.getOpenEditorUris).toHaveBeenCalledWith()
 })
 
 test('returns query failures to the model', async () => {
   const api = createApi()
   jest
-    .mocked(api.getSavedState)
+    .mocked(api.getOpenEditorUris)
     .mockRejectedValue(new Error('Main area is unavailable'))
   const messages = await executeMainAreaFunctionToolCall(
     {
@@ -168,6 +123,31 @@ test('returns query failures to the model', async () => {
     hint: 'Call get_open_editor_tabs with no arguments: {}.',
     tool: 'get_open_editor_tabs',
   })
+})
+
+test('closes all open editors and returns the closed count', async () => {
+  const api = createApi()
+
+  await expect(closeAllEditors(api)).resolves.toEqual({ closed: 3 })
+
+  expect(api.getOpenEditorUris).toHaveBeenCalledWith()
+  expect(api.closeAllEditors).toHaveBeenCalledWith()
+})
+
+test('executes close all editor calls', async () => {
+  const api = createApi()
+  const messages = await executeMainAreaFunctionToolCall(
+    {
+      arguments: '{}',
+      call_id: 'close-call',
+      name: 'close_all_editors',
+      type: 'response.function_call_arguments.done',
+    },
+    api,
+  )
+
+  expect(getToolOutput(messages || [])).toEqual({ closed: 3 })
+  expect(api.closeAllEditors).toHaveBeenCalledWith()
 })
 
 test.each([
