@@ -35,6 +35,18 @@ const createCapabilityTestSource = (
     )
   }
 
+  const opensSettings = fixture.expect.toolCalls.some(
+    (toolCall) => toolCall.name === 'open_settings',
+  )
+  if (opensSettings) {
+    assertions.push(
+      `const settings = Locator('.Settings')`,
+      `const settingsSearchInput = Locator('.SettingsSearchInput')`,
+      'await expect(settings).toBeVisible()',
+      `await expect(settingsSearchInput).toHaveAttribute('placeholder', 'Search Settings')`,
+    )
+  }
+
   const openFileToolCall = fixture.expect.toolCalls.find(
     (toolCall) => toolCall.name === 'open_workspace_file',
   )
@@ -62,6 +74,36 @@ const createCapabilityTestSource = (
       `const editorTabTitle = Locator('.MainTab .TabTitle')`,
       `await expect(editorTabTitle).toHaveText(${JSON.stringify(openFilePath)})`,
       `await Editor.shouldHaveText(${JSON.stringify(workspaceFixtureContent)})`,
+    )
+  }
+
+  const readFileToolCall = fixture.expect.toolCalls.find(
+    (toolCall) => toolCall.name === 'read_workspace_file',
+  )
+  const readFileArguments = readFileToolCall?.arguments
+  const readFileOutput = readFileToolCall?.output
+  const readFilePath =
+    readFileArguments &&
+    typeof readFileArguments === 'object' &&
+    'path' in readFileArguments &&
+    typeof readFileArguments.path === 'string'
+      ? readFileArguments.path
+      : undefined
+  const readFileContent =
+    readFileOutput &&
+    typeof readFileOutput === 'object' &&
+    'content' in readFileOutput &&
+    typeof readFileOutput.content === 'string'
+      ? readFileOutput.content
+      : undefined
+  if (readFilePath && readFileContent !== undefined) {
+    const readFileUriSuffix = JSON.stringify(`/${readFilePath}`)
+    apiNames.add('FileSystem')
+    apiNames.add('Workspace')
+    setup.push(
+      'const workspaceUri = await FileSystem.getTmpDir()',
+      `await FileSystem.writeFile(workspaceUri + ${readFileUriSuffix}, ${JSON.stringify(readFileContent)})`,
+      'await Workspace.setPath(workspaceUri)',
     )
   }
 

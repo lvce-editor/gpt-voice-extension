@@ -208,6 +208,27 @@ test('executes process explorer calls in the worker', async () => {
   expect(JSON.parse(outputMessage.item.output)).toEqual({ opened: true })
 })
 
+test('executes open settings calls in the worker', async () => {
+  const invoke = jest
+    .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
+    .mockResolvedValue(undefined)
+  const globalScope = globalThis as typeof globalThis & {
+    rpc: { readonly invoke: typeof invoke }
+  }
+  globalScope.rpc = { invoke }
+
+  const result = await executeFunctionToolCall({
+    arguments: '{}',
+    call_id: 'settings-call',
+    name: 'open_settings',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(invoke).toHaveBeenCalledWith('Settings.openSettings')
+  const outputMessage = JSON.parse(result[0] || '{}')
+  expect(JSON.parse(outputMessage.item.output)).toEqual({ opened: true })
+})
+
 test.each([
   ['open_workspace_file', 'WorkspaceMainArea.openUri', 'opened'],
   ['close_workspace_file', 'WorkspaceMainArea.closeUri', 'closed'],

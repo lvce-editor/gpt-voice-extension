@@ -49,6 +49,7 @@ test('returns registered function tool definitions', () => {
     expect.objectContaining({ name: 'open_output_view' }),
     expect.objectContaining({ name: 'open_debug_console' }),
     expect.objectContaining({ name: 'open_process_explorer' }),
+    expect.objectContaining({ name: 'open_settings' }),
     expect.objectContaining({ name: 'open_workspace_folder' }),
     expect.objectContaining({ name: 'list_workspace_directory' }),
     expect.objectContaining({ name: 'read_workspace_file' }),

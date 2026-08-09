@@ -2,6 +2,7 @@ import { executeRegisteredFunctionTool } from '../FunctionToolRegistry/FunctionT
 import { executePanelFunctionToolCall } from '../PanelFunctionTools/PanelFunctionTools.ts'
 import { executePanelViewFunctionToolCall } from '../PanelViewFunctionTools/PanelViewFunctionTools.ts'
 import { executeProcessExplorerFunctionToolCall } from '../ProcessExplorerFunctionTools/ProcessExplorerFunctionTools.ts'
+import { executeSettingsFunctionToolCall } from '../SettingsFunctionTools/SettingsFunctionTools.ts'
 import { executeTerminalFunctionToolCall } from '../TerminalFunctionTools/TerminalFunctionTools.ts'
 import { executeWorkspaceFileFunctionToolCall } from '../WorkspaceFileFunctionTools/WorkspaceFileFunctionTools.ts'
 import { executeWorkspaceFunctionToolCall } from '../WorkspaceFunctionTools/WorkspaceFunctionTools.ts'
@@ -97,6 +98,10 @@ export const executeFunctionToolCall = async (
     await executeProcessExplorerFunctionToolCall(parsed)
   if (processExplorerMessages) {
     return processExplorerMessages
+  }
+  const settingsMessages = await executeSettingsFunctionToolCall(parsed)
+  if (settingsMessages) {
+    return settingsMessages
   }
   const workspaceMessages = await executeWorkspaceFunctionToolCall(parsed)
   if (workspaceMessages) {
