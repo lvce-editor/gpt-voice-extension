@@ -66,6 +66,26 @@ test('executes stop talking function calls', async () => {
   ])
 })
 
+test('executes active editor function calls in the worker', async () => {
+  const invoke = jest
+    .fn<(method: string) => Promise<unknown>>()
+    .mockResolvedValue(undefined)
+  const globalScope = globalThis as typeof globalThis & {
+    rpc: { readonly invoke: typeof invoke }
+  }
+  globalScope.rpc = { invoke }
+
+  const result = await executeFunctionToolCall({
+    arguments: '{}',
+    call_id: 'format-call',
+    name: 'format_document',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(invoke).toHaveBeenCalledWith('Editor.formatDocument')
+  expect(result[0]).toContain('\\"formatted\\":true')
+})
+
 test('waits silently after background noise', async () => {
   const result = await executeFunctionToolCall({
     arguments: '{}',
