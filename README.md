@@ -2,6 +2,9 @@
 
 gpt-voice extension for Lvce Editor.
 
+This is an unofficial community extension. It uses OpenAI models but is not
+affiliated with, endorsed by, or sponsored by OpenAI.
+
 ## OpenAI API key setup
 
 The extension now fetches ephemeral tokens directly from OpenAI, so no local node token server is used.
