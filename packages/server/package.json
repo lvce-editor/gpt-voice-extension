@@ -10,6 +10,6 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@lvce-editor/server": "0.99.23"
+    "@lvce-editor/server": "0.99.24"
   }
 }
