@@ -34,8 +34,8 @@ fs.copyFileSync(
   join(root, 'dist', 'media', 'gpt-voice.css'),
 )
 fs.copyFileSync(
-  join(media, 'trello.svg'),
-  join(root, 'dist', 'media', 'trello.svg'),
+  join(media, 'voice-chat.svg'),
+  join(root, 'dist', 'media', 'voice-chat.svg'),
 )
 
 const buildBundle = async (input: string, output: string): Promise<void> => {
