@@ -47,6 +47,29 @@ const createCapabilityTestSource = (
     )
   }
 
+  const setSettingsSearchValueToolCall = fixture.expect.toolCalls.find(
+    (toolCall) => toolCall.name === 'set_settings_search_value',
+  )
+  const settingsSearchArguments = setSettingsSearchValueToolCall?.arguments
+  const settingsSearchValue =
+    settingsSearchArguments &&
+    typeof settingsSearchArguments === 'object' &&
+    'value' in settingsSearchArguments &&
+    typeof settingsSearchArguments.value === 'string'
+      ? settingsSearchArguments.value
+      : undefined
+  if (settingsSearchValue !== undefined) {
+    if (!opensSettings) {
+      assertions.push(
+        `const settingsSearchInput = Locator('.SettingsSearchInput')`,
+        'await expect(settingsSearchInput).toBeVisible()',
+      )
+    }
+    assertions.push(
+      `await expect(settingsSearchInput).toHaveValue(${JSON.stringify(settingsSearchValue)})`,
+    )
+  }
+
   const openFileToolCall = fixture.expect.toolCalls.find(
     (toolCall) =>
       toolCall.name === 'open_workspace_file' &&

@@ -6,13 +6,17 @@ import {
 
 interface TestApi {
   readonly openSettings: () => Promise<void>
+  readonly setSettingsSearchValue: (value: string) => Promise<void>
 }
 
 const createApi = (): TestApi => ({
   openSettings: jest.fn<() => Promise<void>>(async () => undefined),
+  setSettingsSearchValue: jest.fn<(value: string) => Promise<void>>(
+    async () => undefined,
+  ),
 })
 
-test('defines the open settings tool', () => {
+test('defines the settings tools', () => {
   expect(settingsFunctionTools).toEqual([
     {
       description:
@@ -21,6 +25,23 @@ test('defines the open settings tool', () => {
       parameters: {
         additionalProperties: false,
         properties: {},
+        type: 'object',
+      },
+      type: 'function',
+    },
+    {
+      description:
+        'Set the search input in the open LVCE Editor settings UI so the user does not need to type the query.',
+      name: 'set_settings_search_value',
+      parameters: {
+        additionalProperties: false,
+        properties: {
+          value: {
+            description: 'Exact settings search query to enter',
+            type: 'string',
+          },
+        },
+        required: ['value'],
         type: 'object',
       },
       type: 'function',
@@ -47,6 +68,33 @@ test('opens settings and returns response messages', async () => {
       item: {
         call_id: 'settings-call',
         output: JSON.stringify({ opened: true }),
+        type: 'function_call_output',
+      },
+      type: 'conversation.item.create',
+    }),
+    JSON.stringify({ type: 'response.create' }),
+  ])
+})
+
+test('sets the settings search value and returns response messages', async () => {
+  const api = createApi()
+
+  const messages = await executeSettingsFunctionToolCall(
+    {
+      arguments: '{"value":"font size"}',
+      call_id: 'settings-search-call',
+      name: 'set_settings_search_value',
+      type: 'response.function_call_arguments.done',
+    },
+    api,
+  )
+
+  expect(api.setSettingsSearchValue).toHaveBeenCalledWith('font size')
+  expect(messages).toEqual([
+    JSON.stringify({
+      item: {
+        call_id: 'settings-search-call',
+        output: JSON.stringify({ updated: true, value: 'font size' }),
         type: 'function_call_output',
       },
       type: 'conversation.item.create',
@@ -107,3 +155,19 @@ test.each([
     }),
   ).rejects.toThrow(message)
 })
+
+test.each(['{}', '{"value":1}', '{"value":"font","extra":true}'])(
+  'rejects invalid search value arguments: %s',
+  async (argumentsValue) => {
+    await expect(
+      executeSettingsFunctionToolCall({
+        arguments: argumentsValue,
+        call_id: 'settings-search-call',
+        name: 'set_settings_search_value',
+        type: 'response.function_call_arguments.done',
+      }),
+    ).rejects.toThrow(
+      'The set_settings_search_value tool requires only a string value.',
+    )
+  },
+)

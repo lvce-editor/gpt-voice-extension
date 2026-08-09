@@ -30,6 +30,9 @@ const openProcessExplorer = jest.fn<typeof Api.openProcessExplorer>(
   async () => undefined,
 )
 const openSettings = jest.fn<typeof Api.openSettings>(async () => undefined)
+const setSettingsSearchValue = jest.fn<typeof Api.setSettingsSearchValue>(
+  async () => undefined,
+)
 const executeCommand = jest.fn<typeof Api.executeCommand>(async () => undefined)
 const exists = jest.fn<typeof Api.exists>(async () => true)
 const formatDocument = jest.fn<() => Promise<void>>(async () => undefined)
@@ -83,6 +86,7 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
     readDirWithFileTypes,
     readFile,
     setEditorSelections,
+    setSettingsSearchValue,
     setWorkspaceUri,
     showCompletions,
     showFileQuickPick,
@@ -117,6 +121,7 @@ beforeEach(() => {
   readFile.mockClear()
   setWorkspaceUri.mockClear()
   setEditorSelections.mockClear()
+  setSettingsSearchValue.mockClear()
   showCompletions.mockClear()
   showFileQuickPick.mockClear()
   writeFile.mockClear()
@@ -154,6 +159,7 @@ test('creates a web worker RPC and queries registered tools', async () => {
       'PanelView.openProblemsView': expect.any(Function),
       'ProcessExplorer.open': openProcessExplorer,
       'Settings.openSettings': openSettings,
+      'Settings.setSearchValue': setSettingsSearchValue,
       'Terminal.executeBash': expect.any(Function),
       'Workspace.setWorkspaceUri': setWorkspaceUri,
       'WorkspaceFileSystem.exists': exists,
@@ -319,6 +325,19 @@ test('bridges opening settings from the function calling worker', async () => {
   await commandMap['Settings.openSettings']?.()
 
   expect(openSettings).toHaveBeenCalledWith()
+})
+
+test('bridges settings search input from the function calling worker', async () => {
+  invoke.mockResolvedValue([])
+  await VoiceFunctionCallingWorker.getRegisteredTools()
+
+  const options = createRpc.mock.calls[0]?.[0]
+  const commandMap = options?.commandMap as Readonly<
+    Record<string, (...args: readonly unknown[]) => Promise<void>>
+  >
+  await commandMap['Settings.setSearchValue']?.('font size')
+
+  expect(setSettingsSearchValue).toHaveBeenCalledWith('font size')
 })
 
 test('bridges quick pick input from the function calling worker', async () => {

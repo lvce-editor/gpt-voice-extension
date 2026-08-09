@@ -76,6 +76,33 @@ test('createE2eTestSource - verifies opened settings', () => {
   )
 })
 
+test('createE2eTestSource - verifies the settings search value', () => {
+  const source = createE2eTestSource({
+    expect: {
+      assistantText: 'Settings are filtered.',
+      toolCalls: [
+        {
+          arguments: { value: 'font size' },
+          name: 'set_settings_search_value',
+          output: { updated: true, value: 'font size' },
+        },
+      ],
+      userText: 'Search settings for font size.',
+    },
+    name: 'settings-search-value',
+    schemaVersion: 1,
+    source: { text: 'Search settings for font size.' },
+    trace: [],
+  })
+
+  expect(source).toContain(
+    "const settingsSearchInput = Locator('.SettingsSearchInput')",
+  )
+  expect(source).toContain(
+    'await expect(settingsSearchInput).toHaveValue("font size")',
+  )
+})
+
 test('createE2eTestSource - creates and verifies an opened workspace file', () => {
   const source = createE2eTestSource({
     expect: {
