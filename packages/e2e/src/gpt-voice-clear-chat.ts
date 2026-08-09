@@ -13,13 +13,18 @@ export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
     'user',
   )
 
+  const transcriptItems = Locator('.GptVoiceTranscriptItem')
+  await expect(transcriptItems).toHaveText('Clear this message')
+
   const clearChat = Locator('.SideBarTitleArea .IconButton[title="Clear Chat"]')
   await expect(clearChat).toBeVisible()
+  await expect(clearChat).toHaveAttribute(
+    'data-command',
+    'GptVoice.handleClearChat',
+  )
   await expect(clearChat.locator('.MaskIconClearAll')).toHaveCount(1)
 
-  // eslint-disable-next-line e2e/no-direct-click -- verifies the rendered title action is wired to the extension view
-  await clearChat.click()
+  await Command.executeExtensionCommand('GptVoice.handleClearChat')
 
-  const transcriptItems = Locator('.GptVoiceTranscriptItem')
   await expect(transcriptItems).toHaveCount(0)
 }

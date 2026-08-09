@@ -3,9 +3,7 @@ import {
   type VirtualDomNode,
   VirtualDomElements,
 } from '@lvce-editor/virtual-dom-worker'
-import type { IMessage } from '../CreateInstance/CreateInstance.ts'
 import * as ClassNames from '../ClassNames/ClassNames.ts'
-import * as DomEventListenerFunctions from '../DomEventListenerFunctions/DomEventListenerFunctions.ts'
 import * as GptVoiceStrings from '../GptVoiceStrings/GptVoiceStrings.ts'
 import { mergeClassNames } from '../MergeClassNames/MergeClassNames.ts'
 
@@ -24,10 +22,7 @@ const actionsNode: VirtualDomNode = {
   type: VirtualDomElements.Div,
 }
 
-export const renderActionsDom = (state: {
-  readonly messages: readonly IMessage[]
-}): readonly VirtualDomNode[] => {
-  const { messages } = state
+export const renderActionsDom = (): readonly VirtualDomNode[] => {
   const label = GptVoiceStrings.clearChat()
   return [
     actionsNode,
@@ -35,8 +30,7 @@ export const renderActionsDom = (state: {
       ariaLabel: label,
       childCount: 1,
       className: ClassNames.IconButton,
-      disabled: messages.length === 0,
-      onClick: DomEventListenerFunctions.HandleClearChat,
+      'data-command': 'GptVoice.handleClearChat',
       title: label,
       type: VirtualDomElements.Button,
     },

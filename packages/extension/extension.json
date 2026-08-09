@@ -25,6 +25,7 @@
     "onCommand:GptVoice.handleClickStart",
     "onCommand:GptVoice.captureFixture",
     "onCommand:GptVoice.handleData",
+    "onCommand:GptVoice.handleClearChat",
     "onCommand:GptVoice.handleClearOpenAiApiKey",
     "onCommand:GptVoice.handleOpenAiApiKeyInput",
     "onCommand:GptVoice.handleSaveOpenAiApiKey",
@@ -52,6 +53,10 @@
     {
       "id": "GptVoice.handleData",
       "label": "gpt-voice: Handle Data"
+    },
+    {
+      "id": "GptVoice.handleClearChat",
+      "label": "gpt-voice: Clear Chat"
     },
     {
       "id": "GptVoice.handleClearOpenAiApiKey",

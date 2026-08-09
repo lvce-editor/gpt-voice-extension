@@ -5,4 +5,3 @@ export const HandleClickStart = 4
 export const SetRealtimeModelMini = 5
 export const SetRealtimeModelStandard = 6
 export const ToggleToolCall = 7
-export const HandleClearChat = 8

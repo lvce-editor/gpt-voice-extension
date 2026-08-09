@@ -1,11 +1,10 @@
 import { expect, test } from '@jest/globals'
 import { AriaRoles, VirtualDomElements } from '@lvce-editor/virtual-dom-worker'
-import * as DomEventListenerFunctions from '../src/parts/DomEventListenerFunctions/DomEventListenerFunctions.ts'
 import { mergeClassNames } from '../src/parts/MergeClassNames/MergeClassNames.ts'
 import { renderActionsDom } from '../src/parts/RenderActionsDom/RenderActionsDom.ts'
 
-test('renderActionsDom - renders a disabled clear chat action for an empty chat', () => {
-  expect(renderActionsDom({ messages: [] })).toEqual([
+test('renderActionsDom - renders a command-backed clear chat action', () => {
+  expect(renderActionsDom()).toEqual([
     {
       ariaLabel: 'Voice chat actions',
       childCount: 1,
@@ -17,8 +16,7 @@ test('renderActionsDom - renders a disabled clear chat action for an empty chat'
       ariaLabel: 'Clear Chat',
       childCount: 1,
       className: 'IconButton',
-      disabled: true,
-      onClick: DomEventListenerFunctions.HandleClearChat,
+      'data-command': 'GptVoice.handleClearChat',
       title: 'Clear Chat',
       type: VirtualDomElements.Button,
     },
@@ -29,10 +27,4 @@ test('renderActionsDom - renders a disabled clear chat action for an empty chat'
       type: VirtualDomElements.Div,
     },
   ])
-})
-
-test('renderActionsDom - enables the clear chat action when messages exist', () => {
-  const messages = [{ id: 'one', text: 'Hello', type: 'user' as const }]
-
-  expect(renderActionsDom({ messages })[1]).toMatchObject({ disabled: false })
 })

@@ -62,6 +62,7 @@ export interface ActiveGptVoiceViewInstance extends VirtualDomViewInstance {
   readonly handleOpenAiApiKeyInput: (value: string) => void
   readonly handleOutputTranscript: (parsed: any) => void
   readonly handleSaveOpenAiApiKey: () => Promise<void>
+  readonly renderActionsDom: () => readonly VirtualDomNode[]
   readonly renderTitle: () => string
   readonly replayFixture: (fixture: unknown) => Promise<void>
   readonly setAnimation: (enabled: boolean, scale: number) => void
@@ -644,7 +645,7 @@ export const createInstance = async (
       return render(state)
     },
     renderActionsDom(): readonly VirtualDomNode[] {
-      return renderActionsDom(state)
+      return renderActionsDom()
     },
     renderFocus(
       oldContext: Readonly<Record<string, boolean>>,

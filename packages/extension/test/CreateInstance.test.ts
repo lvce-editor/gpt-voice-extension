@@ -215,8 +215,11 @@ test('instance - exposes view helpers and transcript operations', async () => {
   expect(instance.getContext()).toEqual({})
   expect(instance.getCss()).toContain('scale(1)')
   expect(instance.getMenuEntries('menu')).toEqual([])
-  expect(instance.renderActionsDom?.()).toContainEqual(
-    expect.objectContaining({ disabled: true, title: 'Clear Chat' }),
+  expect(instance.renderActionsDom()).toContainEqual(
+    expect.objectContaining({
+      'data-command': 'GptVoice.handleClearChat',
+      title: 'Clear Chat',
+    }),
   )
   expect(instance.renderFocus?.({}, {})).toBe('.main')
   expect(instance.renderSelections?.()).toEqual([])
@@ -232,17 +235,10 @@ test('instance - exposes view helpers and transcript operations', async () => {
 
   expect(instance.render()).toContainEqual(text('Hello world!'))
   expect(instance.render()).toContainEqual(text('Hi there'))
-  expect(instance.renderActionsDom?.()).toContainEqual(
-    expect.objectContaining({ disabled: false, title: 'Clear Chat' }),
-  )
-
   requestRerender.mockClear()
   instance.handleClearChat()
   expect(instance.render()).not.toContainEqual(text('Hello world!'))
   expect(instance.render()).not.toContainEqual(text('Hi there'))
-  expect(instance.renderActionsDom?.()).toContainEqual(
-    expect.objectContaining({ disabled: true, title: 'Clear Chat' }),
-  )
   expect(requestRerender).toHaveBeenCalledTimes(1)
 
   requestRerender.mockClear()

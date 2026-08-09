@@ -26,6 +26,10 @@ export const view: GptVoiceView = {
       await context.captureFixture(options)
       return context
     },
+    async 'GptVoice.handleClearChat'(context) {
+      context.handleClearChat()
+      return context
+    },
     async 'GptVoice.handleClearOpenAiApiKey'(context) {
       await context.handleClearOpenAiApiKey()
       return context
