@@ -4,7 +4,7 @@ import * as Rpc from '../Rpc/Rpc.ts'
 export interface MainAreaApi {
   readonly closeAllEditors: () => Promise<void>
   readonly getOpenEditorUris: () => Promise<readonly string[]>
-  readonly getWorkspaceUri: () => Promise<string>
+  readonly getWorkspaceUri: () => Promise<string | null>
 }
 
 interface FunctionCallArguments {
@@ -142,10 +142,10 @@ const getEditorTitle = (uri: string): string => {
 }
 
 const getWorkspaceRelativePath = (
-  workspaceUri: string,
+  workspaceUri: string | null,
   tabUri: string | undefined,
 ): string | undefined => {
-  if (!tabUri) {
+  if (!workspaceUri || !tabUri) {
     return undefined
   }
   const workspaceRoot = workspaceUri.endsWith('/')

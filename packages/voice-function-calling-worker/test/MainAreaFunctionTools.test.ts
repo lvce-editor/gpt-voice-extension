@@ -69,6 +69,17 @@ test('returns tabs in visual group and tab order', async () => {
   })
 })
 
+test('returns non-file editors when no workspace is open', async () => {
+  const api = createApi()
+  jest.mocked(api.getOpenEditorUris).mockResolvedValue(['settings://'])
+  jest.mocked(api.getWorkspaceUri).mockResolvedValue(null)
+
+  await expect(getOpenEditorTabs(api)).resolves.toEqual({
+    count: 1,
+    tabs: [{ title: 'settings', uri: 'settings://' }],
+  })
+})
+
 test('executes completed open editor tab queries', async () => {
   const messages = await executeMainAreaFunctionToolCall(
     {
