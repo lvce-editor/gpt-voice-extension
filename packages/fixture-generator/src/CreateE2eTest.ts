@@ -65,6 +65,36 @@ const createCapabilityTestSource = (
     )
   }
 
+  const readFileToolCall = fixture.expect.toolCalls.find(
+    (toolCall) => toolCall.name === 'read_workspace_file',
+  )
+  const readFileArguments = readFileToolCall?.arguments
+  const readFileOutput = readFileToolCall?.output
+  const readFilePath =
+    readFileArguments &&
+    typeof readFileArguments === 'object' &&
+    'path' in readFileArguments &&
+    typeof readFileArguments.path === 'string'
+      ? readFileArguments.path
+      : undefined
+  const readFileContent =
+    readFileOutput &&
+    typeof readFileOutput === 'object' &&
+    'content' in readFileOutput &&
+    typeof readFileOutput.content === 'string'
+      ? readFileOutput.content
+      : undefined
+  if (readFilePath && readFileContent !== undefined) {
+    const readFileUriSuffix = JSON.stringify(`/${readFilePath}`)
+    apiNames.add('FileSystem')
+    apiNames.add('Workspace')
+    setup.push(
+      'const workspaceUri = await FileSystem.getTmpDir()',
+      `await FileSystem.writeFile(workspaceUri + ${readFileUriSuffix}, ${JSON.stringify(readFileContent)})`,
+      'await Workspace.setPath(workspaceUri)',
+    )
+  }
+
   const setQuickPickValueToolCall = fixture.expect.toolCalls.find(
     (toolCall) => toolCall.name === 'set_quick_pick_value',
   )
