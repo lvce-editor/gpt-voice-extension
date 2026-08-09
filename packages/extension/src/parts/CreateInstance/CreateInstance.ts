@@ -3,6 +3,7 @@ import type {
   ViewSelection,
   VirtualDomViewInstance,
 } from '@lvce-editor/api'
+import type { VirtualDomNode } from '@lvce-editor/virtual-dom-worker'
 import * as ExtensionApi from '@lvce-editor/api'
 import {
   setRemoteDescription,
@@ -10,11 +11,6 @@ import {
   stopWebRtcAudioStream,
   readMicLevels,
 } from '@lvce-editor/api'
-import {
-  type VirtualDomNode,
-  text,
-  VirtualDomElements,
-} from '@lvce-editor/virtual-dom-worker'
 import type { MenuEntry } from '../MenuEntries/MenuEntries.ts'
 import { animateBubble } from '../AnimateBubble/AnimateBubble.ts'
 import * as ClassNames from '../ClassNames/ClassNames.ts'
@@ -32,6 +28,7 @@ import * as GptVoiceStrings from '../GptVoiceStrings/GptVoiceStrings.ts'
 import { createOpenAiApiKeyStorage } from '../OpenAiApiKeyStorage/OpenAiApiKeyStorage.ts'
 import { readLevel } from '../ReadLevel/ReadLevel.ts'
 import { render } from '../Render/Render.ts'
+import { renderActionsDom } from '../RenderActionsDom/RenderActionsDom.ts'
 import { isInTestMode } from '../TestMode/TestMode.ts'
 import { getToolCallOutput, parseToolCall } from '../ToolCall/ToolCall.ts'
 import * as VoiceFunctionCallingWorker from '../VoiceFunctionCallingWorker/VoiceFunctionCallingWorker.ts'
@@ -42,12 +39,6 @@ import {
   RealtimeModelPreset,
   getSdp,
 } from '../WebRtc/WebRtc.ts'
-
-const actionsDomNode: VirtualDomNode = {
-  childCount: 1,
-  className: ClassNames.Main,
-  type: VirtualDomElements.Div,
-}
 
 const focusSelector = `.${ClassNames.Main}`
 
@@ -63,6 +54,7 @@ export interface ActiveGptVoiceViewInstance extends VirtualDomViewInstance {
   readonly getContext: () => Readonly<Record<string, boolean>>
   readonly getCss: () => string
   readonly getMenuEntries: (menuId: string) => readonly MenuEntry[]
+  readonly handleClearChat: () => void
   readonly handleClearOpenAiApiKey: () => Promise<void>
   readonly handleClickStart: () => Promise<void>
   readonly handleData: (data: string) => void
@@ -409,6 +401,17 @@ export const createInstance = async (
     getMenuEntries() {
       return []
     },
+    handleClearChat(): void {
+      const { messages } = state
+      if (messages.length === 0) {
+        return
+      }
+      state = {
+        ...state,
+        messages: [],
+      }
+      context?.requestRerender()
+    },
     async handleClearOpenAiApiKey(): Promise<void> {
       const { inProgress, isCreatingToken, isSavingApiKey } = state
       if (inProgress || isCreatingToken || isSavingApiKey) {
@@ -641,7 +644,7 @@ export const createInstance = async (
       return render(state)
     },
     renderActionsDom(): readonly VirtualDomNode[] {
-      return [actionsDomNode, text(GptVoiceStrings.helloWorld())]
+      return renderActionsDom(state)
     },
     renderFocus(
       oldContext: Readonly<Record<string, boolean>>,

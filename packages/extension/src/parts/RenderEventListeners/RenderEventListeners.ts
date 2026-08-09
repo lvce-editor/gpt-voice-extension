@@ -37,5 +37,9 @@ export const renderEventListeners = (): readonly DomEventListener[] => {
       name: DomEventListenerFunctions.ToggleToolCall,
       params: ['toggleToolCall', 'event.target.name'],
     },
+    {
+      name: DomEventListenerFunctions.HandleClearChat,
+      params: ['handleClearChat'],
+    },
   ]
 }

@@ -3,6 +3,7 @@ import * as GptVoiceStrings from '../src/parts/GptVoiceStrings/GptVoiceStrings.t
 
 test('render labels', () => {
   expect(GptVoiceStrings.changeApiKey()).toBe('Change API key')
+  expect(GptVoiceStrings.clearChat()).toBe('Clear Chat')
   expect(GptVoiceStrings.creatingToken()).toBe('Creating token')
   expect(GptVoiceStrings.idle()).toBe('idle')
   expect(GptVoiceStrings.inProgress()).toBe('In Progress')
