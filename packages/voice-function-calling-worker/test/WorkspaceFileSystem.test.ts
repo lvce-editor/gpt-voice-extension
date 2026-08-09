@@ -166,6 +166,48 @@ test('searchWorkspaceFiles - finds a file in a hidden nested directory', async (
   )
 })
 
+test('searchWorkspaceFiles - excludes gitignored build output', async () => {
+  const api = createApi()
+  jest.mocked(api.readDirWithFileTypes).mockImplementation(async (uri) => {
+    switch (uri) {
+      case 'file:///workspace':
+        return [
+          { name: '.gitignore', type: 7 },
+          { name: 'dist', type: 3 },
+          { name: 'packages', type: 3 },
+        ]
+      case 'file:///workspace/packages':
+        return [{ name: 'extension', type: 3 }]
+      case 'file:///workspace/packages/extension':
+        return [
+          { name: '.gitignore', type: 7 },
+          { name: 'extension.json', type: 7 },
+        ]
+      default:
+        throw new Error(`Unexpected directory: ${uri}`)
+    }
+  })
+  jest.mocked(api.readFile).mockImplementation(async (uri) => {
+    switch (uri) {
+      case 'file:///workspace/.gitignore':
+        return 'dist\n*.json'
+      case 'file:///workspace/packages/extension/.gitignore':
+        return '!extension.json'
+      default:
+        throw new Error(`Unexpected file: ${uri}`)
+    }
+  })
+
+  await expect(searchWorkspaceFiles('extension json', api)).resolves.toEqual({
+    matches: ['packages/extension/extension.json'],
+    query: 'extension json',
+    truncated: false,
+  })
+  expect(api.readDirWithFileTypes).not.toHaveBeenCalledWith(
+    'file:///workspace/dist',
+  )
+})
+
 test.each(['', '...'])(
   'searchWorkspaceFiles - rejects invalid query %s',
   async (query) => {
