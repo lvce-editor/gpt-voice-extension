@@ -4,9 +4,10 @@
   "description": "End-to-end tests for the gpt-voice extension",
   "main": "index.js",
   "scripts": {
+    "build:e2e-extensions": "node ../build/src/build-e2e-extensions.ts",
     "build:extension": "node ../build/src/build-extension.ts",
-    "e2e": "npm run build:extension && test-with-playwright --only-extension=../extension --test-path=.",
-    "e2e:headless": "npm run build:extension && test-with-playwright --only-extension=../extension --test-path=. --headless"
+    "e2e": "npm run build:extension && npm run build:e2e-extensions && test-with-playwright --only-extension=../extension --test-path=.",
+    "e2e:headless": "npm run build:extension && npm run build:e2e-extensions && test-with-playwright --only-extension=../extension --test-path=. --headless"
   },
   "type": "module",
   "author": "Lvce Editor",

@@ -2,6 +2,8 @@ import {
   closeUri,
   createRpc,
   executeCommand,
+  formatDocument,
+  getDiagnostics,
   getWorkspaceUri,
   openDebugConsole,
   openOutputView,
@@ -11,6 +13,7 @@ import {
   readDirWithFileTypes,
   readFile,
   setWorkspaceUri,
+  showCompletions,
   showFileQuickPick,
   writeFile,
 } from '@lvce-editor/api'
@@ -56,6 +59,9 @@ const setQuickPickValue = async (value: string): Promise<void> => {
 }
 
 const commandMap = {
+  'Editor.formatDocument': formatDocument,
+  'Editor.getDiagnostics': getDiagnostics,
+  'Editor.showCompletions': showCompletions,
   'Panel.close': closePanel,
   'Panel.open': openPanel,
   'PanelView.openDebugConsole': openDebugConsole,
