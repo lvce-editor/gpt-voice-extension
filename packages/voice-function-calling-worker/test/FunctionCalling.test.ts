@@ -247,6 +247,26 @@ test('executes open workspace folder calls in the worker', async () => {
   expect(result[0]).toContain('file:///home/user/project')
 })
 
+test('queries the current workspace folder URI in the worker', async () => {
+  const invoke = jest
+    .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
+    .mockResolvedValue('file:///workspace')
+  const globalScope = globalThis as typeof globalThis & {
+    rpc: { readonly invoke: typeof invoke }
+  }
+  globalScope.rpc = { invoke }
+
+  const result = await executeFunctionToolCall({
+    arguments: '{}',
+    call_id: 'get-workspace-call',
+    name: 'get_workspace_folder_uri',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(invoke).toHaveBeenCalledWith('WorkspaceFileSystem.getWorkspaceUri')
+  expect(result[0]).toContain('file:///workspace')
+})
+
 test('executes panel calls in the worker', async () => {
   const invoke = jest
     .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
