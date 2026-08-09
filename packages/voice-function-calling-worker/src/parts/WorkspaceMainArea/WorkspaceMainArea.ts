@@ -1,5 +1,9 @@
 import * as Rpc from '../Rpc/Rpc.ts'
-import { resolveWorkspaceFileUri } from '../WorkspaceFileSystem/WorkspaceFileSystem.ts'
+import {
+  ensureWorkspaceFileExists,
+  resolveWorkspaceFileUri,
+  type WorkspaceFileSystemApi,
+} from '../WorkspaceFileSystem/WorkspaceFileSystem.ts'
 
 export interface WorkspaceMainAreaApi {
   readonly closeUri: (uri: string) => Promise<void>
@@ -51,9 +55,11 @@ export const closeWorkspaceFile = async (
 export const openWorkspaceFile = async (
   relativePath: string,
   api: WorkspaceMainAreaApi = defaultApi,
+  fileSystemApi?: WorkspaceFileSystemApi,
 ): Promise<Readonly<{ opened: boolean; path: string }>> => {
   const workspaceUri = await api.getWorkspaceUri()
   const uri = resolveWorkspaceFileUri(workspaceUri, relativePath)
+  await ensureWorkspaceFileExists(workspaceUri, relativePath, fileSystemApi)
   await api.openUri(uri)
   return {
     opened: true,

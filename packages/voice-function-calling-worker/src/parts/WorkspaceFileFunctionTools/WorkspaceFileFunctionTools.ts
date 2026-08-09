@@ -2,6 +2,7 @@ import type { FunctionToolDefinition } from '../FunctionToolRegistry/FunctionToo
 import {
   listWorkspaceDirectory,
   readWorkspaceFile,
+  searchWorkspaceFiles,
   type WorkspaceFileSystemApi,
   writeWorkspaceFile,
 } from '../WorkspaceFileSystem/WorkspaceFileSystem.ts'
@@ -138,13 +139,13 @@ const getToolErrorHint = (toolName: string): string => {
   if (toolName === 'list_workspace_directory') {
     return 'To list the workspace root, call list_workspace_directory with no arguments: {}. To list a subdirectory, pass only a relative path such as {"path":"src"}. Never pass an absolute path or URI.'
   }
-  if (
-    [
-      'read_workspace_file',
-      'open_workspace_file',
-      'close_workspace_file',
-    ].includes(toolName)
-  ) {
+  if (toolName === 'search_workspace_files') {
+    return 'Pass part or all of a filename, such as {"query":"devcontainer.json"}. Use a returned relative path with open_workspace_file.'
+  }
+  if (toolName === 'open_workspace_file') {
+    return 'Pass an exact file path relative to the workspace, such as {"path":"src/index.ts"}. If the path is unknown or was not found, call search_workspace_files with the filename, then retry with a returned path.'
+  }
+  if (['read_workspace_file', 'close_workspace_file'].includes(toolName)) {
     return 'Pass a file path relative to the workspace, such as {"path":"src/index.ts"}. Never pass an absolute path or URI.'
   }
   return 'Pass a file path relative to the workspace and complete file content. Never pass an absolute path or URI.'
@@ -182,6 +183,25 @@ const listWorkspaceDirectoryTool: FunctionToolDefinition = {
         type: 'string',
       },
     },
+    type: 'object',
+  },
+  type: 'function',
+}
+
+const searchWorkspaceFilesTool: FunctionToolDefinition = {
+  description:
+    'Search for files by name anywhere in the opened workspace, including hidden folders such as .devcontainer. Use this before open_workspace_file when the exact relative path is unknown. The result contains relative paths that can be passed directly to open_workspace_file.',
+  name: 'search_workspace_files',
+  parameters: {
+    additionalProperties: false,
+    properties: {
+      query: {
+        description:
+          'Part or all of the filename to find, for example "devcontainer.json" or "devcontainer json".',
+        type: 'string',
+      },
+    },
+    required: ['query'],
     type: 'object',
   },
   type: 'function',
@@ -280,6 +300,7 @@ const setQuickPickValueTool: FunctionToolDefinition = {
 
 export const workspaceFileFunctionTools: readonly FunctionToolDefinition[] = [
   listWorkspaceDirectoryTool,
+  searchWorkspaceFilesTool,
   readWorkspaceFileTool,
   writeWorkspaceFileTool,
   openWorkspaceFileTool,
@@ -324,11 +345,18 @@ export const executeWorkspaceFileFunctionToolCall = async (
         output = await openWorkspaceFile(
           getRequiredString(argumentsValue, 'path'),
           mainAreaApi,
+          fileSystemApi,
         )
         break
       case 'read_workspace_file':
         output = await readWorkspaceFile(
           getRequiredString(argumentsValue, 'path'),
+          fileSystemApi,
+        )
+        break
+      case 'search_workspace_files':
+        output = await searchWorkspaceFiles(
+          getRequiredString(argumentsValue, 'query'),
           fileSystemApi,
         )
         break

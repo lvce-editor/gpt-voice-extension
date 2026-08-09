@@ -31,6 +31,7 @@ const openProcessExplorer = jest.fn<typeof Api.openProcessExplorer>(
 )
 const openSettings = jest.fn<typeof Api.openSettings>(async () => undefined)
 const executeCommand = jest.fn<typeof Api.executeCommand>(async () => undefined)
+const exists = jest.fn<typeof Api.exists>(async () => true)
 const formatDocument = jest.fn<() => Promise<void>>(async () => undefined)
 const getDiagnostics = jest.fn<() => Promise<readonly Api.Diagnostic[]>>(
   async () => [],
@@ -61,6 +62,7 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
     createNodeRpc,
     createRpc,
     executeCommand,
+    exists,
     formatDocument,
     getDiagnostics,
     getPreference,
@@ -88,6 +90,7 @@ beforeEach(() => {
   createNodeRpc.mockClear()
   closeUri.mockClear()
   executeCommand.mockClear()
+  exists.mockClear()
   formatDocument.mockClear()
   getDiagnostics.mockClear()
   invoke.mockReset()
@@ -139,6 +142,7 @@ test('creates a web worker RPC and queries registered tools', async () => {
       'Settings.openSettings': openSettings,
       'Terminal.executeBash': expect.any(Function),
       'Workspace.setWorkspaceUri': setWorkspaceUri,
+      'WorkspaceFileSystem.exists': exists,
       'WorkspaceFileSystem.getWorkspaceUri': getWorkspaceUri,
       'WorkspaceFileSystem.readDirWithFileTypes': readDirWithFileTypes,
       'WorkspaceFileSystem.readFile': readFile,

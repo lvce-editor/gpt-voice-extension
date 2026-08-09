@@ -1,9 +1,11 @@
 import { expect, jest, test } from '@jest/globals'
 import {
+  ensureWorkspaceFileExists,
   listWorkspaceDirectory,
   readWorkspaceFile,
   resolveWorkspaceDirectoryUri,
   resolveWorkspaceFileUri,
+  searchWorkspaceFiles,
   type WorkspaceFileSystemApi,
   writeWorkspaceFile,
 } from '../src/parts/WorkspaceFileSystem/WorkspaceFileSystem.ts'
@@ -11,6 +13,7 @@ import {
 const createApi = (
   workspaceUri = 'file:///workspace',
 ): WorkspaceFileSystemApi => ({
+  exists: jest.fn(async () => true),
   getWorkspaceUri: jest.fn(async () => workspaceUri),
   readDirWithFileTypes: jest.fn(async () => [
     { name: 'src', type: 3 },
@@ -130,6 +133,83 @@ test('listWorkspaceDirectory - lists sorted workspace entries', async () => {
     path: '.',
   })
   expect(api.readDirWithFileTypes).toHaveBeenCalledWith('file:///workspace')
+})
+
+test('searchWorkspaceFiles - finds a file in a hidden nested directory', async () => {
+  const api = createApi()
+  jest.mocked(api.readDirWithFileTypes).mockImplementation(async (uri) => {
+    switch (uri) {
+      case 'file:///workspace':
+        return [
+          { name: 'src', type: 3 },
+          { name: '.devcontainer', type: 3 },
+          { name: 'node_modules', type: 3 },
+        ]
+      case 'file:///workspace/.devcontainer':
+        return [{ name: 'devcontainer.json', type: 7 }]
+      case 'file:///workspace/src':
+        return [{ name: 'index.ts', type: 7 }]
+      default:
+        throw new Error(`Unexpected directory: ${uri}`)
+    }
+  })
+
+  await expect(searchWorkspaceFiles('devcontainer json', api)).resolves.toEqual(
+    {
+      matches: ['.devcontainer/devcontainer.json'],
+      query: 'devcontainer json',
+      truncated: false,
+    },
+  )
+  expect(api.readDirWithFileTypes).not.toHaveBeenCalledWith(
+    'file:///workspace/node_modules',
+  )
+})
+
+test.each(['', '...'])(
+  'searchWorkspaceFiles - rejects invalid query %s',
+  async (query) => {
+    const api = createApi()
+
+    await expect(searchWorkspaceFiles(query, api)).rejects.toThrow(
+      query ? 'must contain a letter or number' : 'query is required',
+    )
+    expect(api.getWorkspaceUri).not.toHaveBeenCalled()
+  },
+)
+
+test('searchWorkspaceFiles - ignores unreadable nested directories', async () => {
+  const api = createApi()
+  jest.mocked(api.readDirWithFileTypes).mockImplementation(async (uri) => {
+    if (uri === 'file:///workspace') {
+      return [{ name: 'restricted', type: 3 }]
+    }
+    throw new Error('Permission denied')
+  })
+
+  await expect(searchWorkspaceFiles('file', api)).resolves.toEqual({
+    matches: [],
+    query: 'file',
+    truncated: false,
+  })
+})
+
+test('ensureWorkspaceFileExists - verifies the resolved file URI', async () => {
+  const api = createApi()
+
+  await expect(
+    ensureWorkspaceFileExists('file:///workspace', 'src/index.ts', api),
+  ).resolves.toBeUndefined()
+  expect(api.exists).toHaveBeenCalledWith('file:///workspace/src/index.ts')
+})
+
+test('ensureWorkspaceFileExists - rejects a missing file', async () => {
+  const api = createApi()
+  jest.mocked(api.exists).mockResolvedValue(false)
+
+  await expect(
+    ensureWorkspaceFileExists('file:///workspace', 'missing.ts', api),
+  ).rejects.toThrow('Workspace file "missing.ts" was not found.')
 })
 
 test.each([

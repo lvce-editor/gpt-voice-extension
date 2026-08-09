@@ -55,6 +55,7 @@ test('returns registered function tool definitions', () => {
     expect.objectContaining({ name: 'open_settings' }),
     expect.objectContaining({ name: 'open_workspace_folder' }),
     expect.objectContaining({ name: 'list_workspace_directory' }),
+    expect.objectContaining({ name: 'search_workspace_files' }),
     expect.objectContaining({ name: 'read_workspace_file' }),
     expect.objectContaining({ name: 'write_workspace_file' }),
     expect.objectContaining({ name: 'open_workspace_file' }),

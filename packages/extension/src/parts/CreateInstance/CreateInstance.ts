@@ -30,7 +30,11 @@ import { readLevel } from '../ReadLevel/ReadLevel.ts'
 import { render } from '../Render/Render.ts'
 import { renderActionsDom } from '../RenderActionsDom/RenderActionsDom.ts'
 import { isInTestMode } from '../TestMode/TestMode.ts'
-import { getToolCallOutput, parseToolCall } from '../ToolCall/ToolCall.ts'
+import {
+  getToolCallOutput,
+  isToolCallErrorOutput,
+  parseToolCall,
+} from '../ToolCall/ToolCall.ts'
 import * as VoiceFunctionCallingWorker from '../VoiceFunctionCallingWorker/VoiceFunctionCallingWorker.ts'
 import {
   createSessionConfig,
@@ -240,14 +244,15 @@ export const createInstance = async (
       throw error
     }
     const { messages: currentMessages } = state
+    const output = getToolCallOutput(responseMessages, toolCall.callId)
     state = {
       ...state,
       messages: currentMessages.map((message) =>
         message.type === 'tool' && message.id === toolCall.callId
           ? {
               ...message,
-              output: getToolCallOutput(responseMessages, toolCall.callId),
-              status: 'completed',
+              output,
+              status: isToolCallErrorOutput(output) ? 'failed' : 'completed',
             }
           : message,
       ),

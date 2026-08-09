@@ -48,7 +48,12 @@ const createCapabilityTestSource = (
   }
 
   const openFileToolCall = fixture.expect.toolCalls.find(
-    (toolCall) => toolCall.name === 'open_workspace_file',
+    (toolCall) =>
+      toolCall.name === 'open_workspace_file' &&
+      toolCall.output &&
+      typeof toolCall.output === 'object' &&
+      'opened' in toolCall.output &&
+      toolCall.output.opened === true,
   )
   const openFileArguments = openFileToolCall?.arguments
   const openFilePath =
@@ -60,6 +65,11 @@ const createCapabilityTestSource = (
       : undefined
   if (openFilePath) {
     const openFileUriSuffix = JSON.stringify(`/${openFilePath}`)
+    const openFilePathSegments = openFilePath.split('/').filter(Boolean)
+    const openFileName = openFilePathSegments.at(-1) || openFilePath
+    const openFileDirectoryPaths = openFilePathSegments
+      .slice(0, -1)
+      .map((_, index) => openFilePathSegments.slice(0, index + 1).join('/'))
     apiNames.add('Editor')
     apiNames.add('FileSystem')
     apiNames.add('Main')
@@ -67,12 +77,16 @@ const createCapabilityTestSource = (
     setup.push(
       'await Main.closeAllEditors()',
       'const workspaceUri = await FileSystem.getTmpDir()',
+      ...openFileDirectoryPaths.map((directoryPath) => {
+        const directoryUriSuffix = JSON.stringify('/' + directoryPath)
+        return `await FileSystem.mkdir(workspaceUri + ${directoryUriSuffix})`
+      }),
       `await FileSystem.writeFile(workspaceUri + ${openFileUriSuffix}, ${JSON.stringify(workspaceFixtureContent)})`,
       'await Workspace.setPath(workspaceUri)',
     )
     assertions.push(
       `const editorTabTitle = Locator('.MainTab .TabTitle')`,
-      `await expect(editorTabTitle).toHaveText(${JSON.stringify(openFilePath)})`,
+      `await expect(editorTabTitle).toHaveText(${JSON.stringify(openFileName)})`,
       `await Editor.shouldHaveText(${JSON.stringify(workspaceFixtureContent)})`,
     )
   }
@@ -135,9 +149,13 @@ const createCapabilityTestSource = (
 
 export const createE2eTestSource = (fixture: NormalizedRecording): string => {
   const fixtureValue = JSON.stringify(fixture, null, 2)
-  const toolCallLabels = fixture.expect.toolCalls.map(
-    (toolCall) => `Ran ${toolCall.name}`,
-  )
+  const toolCallLabels = fixture.expect.toolCalls.map((toolCall) => {
+    const failed =
+      toolCall.output &&
+      typeof toolCall.output === 'object' &&
+      'error' in toolCall.output
+    return `${failed ? 'Failed' : 'Ran'} ${toolCall.name}`
+  })
   const capabilityTestSource = createCapabilityTestSource(fixture)
   const apiNames = [
     'Command',
