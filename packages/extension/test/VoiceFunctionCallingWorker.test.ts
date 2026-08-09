@@ -151,7 +151,8 @@ test('creates a web worker RPC and queries registered tools', async () => {
       'Editor.setSelections': setEditorSelections,
       'Editor.showCompletions': showCompletions,
       'Layout.toggleSideBarPosition': expect.any(Function),
-      'MainArea.getSavedState': expect.any(Function),
+      'MainArea.closeAllEditors': expect.any(Function),
+      'MainArea.getOpenEditorUris': expect.any(Function),
       'Panel.close': expect.any(Function),
       'Panel.open': expect.any(Function),
       'PanelView.openDebugConsole': expect.any(Function),
@@ -245,9 +246,9 @@ test('bridges sidebar position commands from the function calling worker', async
   expect(executeCommand).toHaveBeenCalledWith('Layout.toggleSideBarPosition')
 })
 
-test('bridges main area state queries from the function calling worker', async () => {
-  const savedState = { layout: { activeGroupId: 1, groups: [] } }
-  executeCommand.mockResolvedValue(savedState)
+test('bridges open editor queries from the function calling worker', async () => {
+  const uris = ['file:///workspace/package.json', 'settings://']
+  executeCommand.mockResolvedValue(uris)
   invoke.mockResolvedValue([])
   await VoiceFunctionCallingWorker.getRegisteredTools()
 
@@ -255,11 +256,24 @@ test('bridges main area state queries from the function calling worker', async (
   const commandMap = options?.commandMap as Readonly<
     Record<string, (...args: readonly unknown[]) => Promise<unknown>>
   >
-  await expect(commandMap['MainArea.getSavedState']?.()).resolves.toBe(
-    savedState,
-  )
+  await expect(commandMap['MainArea.getOpenEditorUris']?.()).resolves.toBe(uris)
 
-  expect(executeCommand).toHaveBeenCalledWith('Main.saveState')
+  expect(executeCommand).toHaveBeenCalledWith(
+    'GetActiveEditor.getOpenEditorUris',
+  )
+})
+
+test('bridges close all editors commands from the function calling worker', async () => {
+  invoke.mockResolvedValue([])
+  await VoiceFunctionCallingWorker.getRegisteredTools()
+
+  const options = createRpc.mock.calls[0]?.[0]
+  const commandMap = options?.commandMap as Readonly<
+    Record<string, (...args: readonly unknown[]) => Promise<unknown>>
+  >
+  await commandMap['MainArea.closeAllEditors']?.()
+
+  expect(executeCommand).toHaveBeenCalledWith('Main.closeAllEditors')
 })
 
 test('bridges editor commands from the function calling worker', async () => {
