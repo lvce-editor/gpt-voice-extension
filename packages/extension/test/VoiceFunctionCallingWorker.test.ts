@@ -36,6 +36,9 @@ const formatDocument = jest.fn<() => Promise<void>>(async () => undefined)
 const getDiagnostics = jest.fn<() => Promise<readonly Api.Diagnostic[]>>(
   async () => [],
 )
+const getEditorSelections = jest.fn<typeof Api.getEditorSelections>(
+  async () => [],
+)
 const getWorkspaceUri = jest.fn(async () => 'file:///workspace')
 const getPreference = jest.fn<() => Promise<unknown>>(async () => false)
 const readDirWithFileTypes = jest.fn(async () => [
@@ -45,6 +48,9 @@ const readFile = jest.fn<(uri: string) => Promise<string>>(
   async () => 'workspace content',
 )
 const setWorkspaceUri = jest.fn<(uri: string) => Promise<void>>(
+  async () => undefined,
+)
+const setEditorSelections = jest.fn<typeof Api.setEditorSelections>(
   async () => undefined,
 )
 const showCompletions = jest.fn<() => Promise<void>>(async () => undefined)
@@ -65,6 +71,7 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
     exists,
     formatDocument,
     getDiagnostics,
+    getEditorSelections,
     getPreference,
     getWorkspaceUri,
     openDebugConsole,
@@ -75,6 +82,7 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
     openUri,
     readDirWithFileTypes,
     readFile,
+    setEditorSelections,
     setWorkspaceUri,
     showCompletions,
     showFileQuickPick,
@@ -93,6 +101,7 @@ beforeEach(() => {
   exists.mockClear()
   formatDocument.mockClear()
   getDiagnostics.mockClear()
+  getEditorSelections.mockClear()
   invoke.mockReset()
   getWorkspaceUri.mockClear()
   openDebugConsole.mockClear()
@@ -107,6 +116,7 @@ beforeEach(() => {
   readDirWithFileTypes.mockClear()
   readFile.mockClear()
   setWorkspaceUri.mockClear()
+  setEditorSelections.mockClear()
   showCompletions.mockClear()
   showFileQuickPick.mockClear()
   writeFile.mockClear()
@@ -132,6 +142,8 @@ test('creates a web worker RPC and queries registered tools', async () => {
     commandMap: {
       'Editor.formatDocument': formatDocument,
       'Editor.getDiagnostics': getDiagnostics,
+      'Editor.getSelections': getEditorSelections,
+      'Editor.setSelections': setEditorSelections,
       'Editor.showCompletions': showCompletions,
       'Layout.toggleSideBarPosition': expect.any(Function),
       'MainArea.getSavedState': expect.any(Function),
@@ -254,10 +266,28 @@ test('bridges editor commands from the function calling worker', async () => {
   >
   await commandMap['Editor.formatDocument']?.()
   await commandMap['Editor.getDiagnostics']?.()
+  await commandMap['Editor.getSelections']?.()
+  await commandMap['Editor.setSelections']?.([
+    {
+      endColumnIndex: 8,
+      endRowIndex: 4,
+      startColumnIndex: 2,
+      startRowIndex: 3,
+    },
+  ])
   await commandMap['Editor.showCompletions']?.()
 
   expect(formatDocument).toHaveBeenCalledWith()
   expect(getDiagnostics).toHaveBeenCalledWith()
+  expect(getEditorSelections).toHaveBeenCalledWith()
+  expect(setEditorSelections).toHaveBeenCalledWith([
+    {
+      endColumnIndex: 8,
+      endRowIndex: 4,
+      startColumnIndex: 2,
+      startRowIndex: 3,
+    },
+  ])
   expect(showCompletions).toHaveBeenCalledWith()
 })
 

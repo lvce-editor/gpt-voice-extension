@@ -9,15 +9,39 @@ const getToolOutput = (messages: readonly string[]): unknown => {
   return JSON.parse(message.item.output)
 }
 
+interface EditorSelection {
+  readonly endColumnIndex: number
+  readonly endRowIndex: number
+  readonly startColumnIndex: number
+  readonly startRowIndex: number
+}
+
 const createApi: () => {
   readonly formatDocument: ReturnType<typeof jest.fn<() => Promise<void>>>
   readonly getDiagnostics: ReturnType<
     typeof jest.fn<() => Promise<readonly unknown[]>>
   >
+  readonly getEditorSelections: ReturnType<
+    typeof jest.fn<
+      () => Promise<
+        readonly {
+          readonly endColumnIndex: number
+          readonly endRowIndex: number
+          readonly startColumnIndex: number
+          readonly startRowIndex: number
+        }[]
+      >
+    >
+  >
+  readonly setEditorSelections: ReturnType<
+    typeof jest.fn<(selections: readonly EditorSelection[]) => Promise<void>>
+  >
   readonly showCompletions: ReturnType<typeof jest.fn<() => Promise<void>>>
 } = () => ({
   formatDocument: jest.fn<() => Promise<void>>(async () => undefined),
   getDiagnostics: jest.fn<() => Promise<readonly unknown[]>>(async () => []),
+  getEditorSelections: jest.fn(async () => []),
+  setEditorSelections: jest.fn(async () => undefined),
   showCompletions: jest.fn<() => Promise<void>>(async () => undefined),
 })
 
@@ -35,6 +59,8 @@ test('exposes editor tool definitions', () => {
   expect(editorFunctionTools.map(({ name }) => name)).toEqual([
     'format_document',
     'get_editor_diagnostics',
+    'get_editor_selections',
+    'set_editor_selections',
     'show_completions',
   ])
 })
@@ -60,6 +86,69 @@ test('returns active editor diagnostics', async () => {
   )
 
   expect(getToolOutput(messages || [])).toEqual({ count: 1, diagnostics })
+})
+
+test('returns active editor selections with 1-based positions', async () => {
+  const api = createApi()
+  api.getEditorSelections.mockResolvedValue([
+    {
+      endColumnIndex: 8,
+      endRowIndex: 4,
+      startColumnIndex: 2,
+      startRowIndex: 3,
+    },
+  ])
+  const messages = await executeEditorFunctionToolCall(
+    createFunctionCall('get_editor_selections'),
+    api,
+  )
+
+  expect(getToolOutput(messages || [])).toEqual({
+    count: 1,
+    selections: [{ endColumn: 9, endLine: 5, startColumn: 3, startLine: 4 }],
+  })
+})
+
+test('sets active editor selections from 1-based positions', async () => {
+  const api = createApi()
+  const selections = [
+    { endColumn: 9, endLine: 5, startColumn: 3, startLine: 4 },
+  ]
+  const messages = await executeEditorFunctionToolCall(
+    createFunctionCall('set_editor_selections', JSON.stringify({ selections })),
+    api,
+  )
+
+  expect(api.setEditorSelections).toHaveBeenCalledWith([
+    {
+      endColumnIndex: 8,
+      endRowIndex: 4,
+      startColumnIndex: 2,
+      startRowIndex: 3,
+    },
+  ])
+  expect(getToolOutput(messages || [])).toEqual({
+    count: 1,
+    selected: true,
+    selections,
+  })
+})
+
+test.each([
+  '{}',
+  '{"selections":[]}',
+  '{"selections":[{"startLine":0,"startColumn":1,"endLine":1,"endColumn":1}]}',
+])('rejects invalid editor selections: %s', async (argumentsValue) => {
+  const api = createApi()
+  const messages = await executeEditorFunctionToolCall(
+    createFunctionCall('set_editor_selections', argumentsValue),
+    api,
+  )
+
+  expect(api.setEditorSelections).not.toHaveBeenCalled()
+  expect(getToolOutput(messages || [])).toEqual(
+    expect.objectContaining({ tool: 'set_editor_selections' }),
+  )
 })
 
 test('shows smart completions', async () => {
