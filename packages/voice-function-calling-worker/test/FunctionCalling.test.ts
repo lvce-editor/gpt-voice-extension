@@ -135,6 +135,69 @@ test('executes workspace file function calls in the worker', async () => {
   expect(result[0]).toContain('const value = 1')
 })
 
+test('executes open editor tab queries in the worker', async () => {
+  const invoke = jest.fn(async (method: string): Promise<unknown> => {
+    if (method === 'MainArea.getSavedState') {
+      return {
+        layout: {
+          activeGroupId: 1,
+          groups: [
+            {
+              activeTabId: 2,
+              id: 1,
+              tabs: [
+                {
+                  editorType: 'text',
+                  id: 2,
+                  isDirty: false,
+                  isPreview: false,
+                  title: 'index.ts',
+                  uri: 'file:///workspace/src/index.ts',
+                },
+              ],
+            },
+          ],
+        },
+      }
+    }
+    if (method === 'WorkspaceMainArea.getWorkspaceUri') {
+      return 'file:///workspace'
+    }
+    return undefined
+  })
+  const globalScope = globalThis as typeof globalThis & {
+    rpc: { readonly invoke: typeof invoke }
+  }
+  globalScope.rpc = { invoke }
+
+  const result = await executeFunctionToolCall({
+    arguments: '{}',
+    call_id: 'tabs-call',
+    name: 'get_open_editor_tabs',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(invoke).toHaveBeenCalledWith('MainArea.getSavedState')
+  expect(invoke).toHaveBeenCalledWith('WorkspaceMainArea.getWorkspaceUri')
+  const outputMessage = JSON.parse(result[0] || '{}')
+  expect(JSON.parse(outputMessage.item.output)).toEqual({
+    count: 1,
+    tabs: [
+      {
+        active: true,
+        dirty: false,
+        editorType: 'text',
+        group: 1,
+        path: 'src/index.ts',
+        preview: false,
+        selected: true,
+        title: 'index.ts',
+        uri: 'file:///workspace/src/index.ts',
+      },
+    ],
+  })
+})
+
 test('executes workspace directory listing calls in the worker', async () => {
   const invoke = jest
     .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()

@@ -60,6 +60,10 @@ const setQuickPickValue = async (value: string): Promise<void> => {
   await executeCommand('QuickPick.setValue', value)
 }
 
+const getMainAreaSavedState = async (): Promise<unknown> => {
+  return executeCommand('Main.saveState')
+}
+
 const toggleSideBarPosition = async (): Promise<void> => {
   await executeCommand('Layout.toggleSideBarPosition')
 }
@@ -69,6 +73,7 @@ const commandMap = {
   'Editor.getDiagnostics': getDiagnostics,
   'Editor.showCompletions': showCompletions,
   'Layout.toggleSideBarPosition': toggleSideBarPosition,
+  'MainArea.getSavedState': getMainAreaSavedState,
   'Panel.close': closePanel,
   'Panel.open': openPanel,
   'PanelView.openDebugConsole': openDebugConsole,
