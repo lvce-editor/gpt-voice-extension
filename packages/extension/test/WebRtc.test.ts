@@ -50,6 +50,14 @@ test('createSessionConfig - selects transcription model for each realtime model'
   expect(standard.session.model).toBe(RealtimeModelPreset.Standard)
 })
 
+test('createSessionConfig - provides developer vocabulary to transcription', () => {
+  const config = createSessionConfig(RealtimeModelPreset.Mini)
+
+  expect(config.session.audio.input.transcription.prompt).toBe(
+    'English speech about software development. Use the Latin alphabet and English spelling. Common terms and spellings: API, CLI, CI (pronounced "see eye"; continuous integration), Git, GitHub, npm, Node.js, TypeScript, JavaScript, VS Code, LVCE Editor, quick pick.',
+  )
+})
+
 test('getEphemeralKey - posts session and returns token', async () => {
   const sessionConfig = createSessionConfig(RealtimeModelPreset.Standard)
   const fetch = jest.spyOn(globalThis, 'fetch').mockResolvedValue({

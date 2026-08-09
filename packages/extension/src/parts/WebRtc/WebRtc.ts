@@ -21,6 +21,23 @@ type NoiseReductionConfig = {
   readonly type: NoiseReductionMode
 }
 
+const developerVocabulary = [
+  'API',
+  'CLI',
+  'CI (pronounced "see eye"; continuous integration)',
+  'Git',
+  'GitHub',
+  'npm',
+  'Node.js',
+  'TypeScript',
+  'JavaScript',
+  'VS Code',
+  'LVCE Editor',
+  'quick pick',
+]
+
+const transcriptionPrompt = `English speech about software development. Use the Latin alphabet and English spelling. Common terms and spellings: ${developerVocabulary.join(', ')}.`
+
 const getTranscriptionModel = (
   sessionModel: RealtimeModelPreset,
 ): TranscriptionModel => {
@@ -42,6 +59,7 @@ type SessionConfig = {
         readonly transcription: {
           readonly language: 'en'
           readonly model: TranscriptionModel
+          readonly prompt: string
         }
         readonly turn_detection: TurnDetectionConfig
         readonly noise_reduction: NoiseReductionConfig
@@ -69,6 +87,7 @@ export const createSessionConfig = (
           transcription: {
             language: 'en',
             model: getTranscriptionModel(sessionModel),
+            prompt: transcriptionPrompt,
           },
           turn_detection: {
             create_response: true,
