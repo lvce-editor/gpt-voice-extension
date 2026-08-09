@@ -79,6 +79,32 @@ test('createE2eTestSource - creates and verifies an opened workspace file', () =
   )
 })
 
+test('createE2eTestSource - creates a workspace file that is read', () => {
+  const source = createE2eTestSource({
+    expect: {
+      assistantText: 'The project uses Node.js version 24.19.0.',
+      toolCalls: [
+        {
+          arguments: { path: '.nvmrc' },
+          name: 'read_workspace_file',
+          output: { content: '24.19.0\n', path: '.nvmrc' },
+        },
+      ],
+      userText: 'What Node version is this project on?',
+    },
+    name: 'node-version',
+    schemaVersion: 1,
+    source: { text: 'What Node version is this project on?' },
+    trace: [],
+  })
+
+  expect(source).toContain('await FileSystem.getTmpDir()')
+  expect(source).toContain(
+    'await FileSystem.writeFile(workspaceUri + "/.nvmrc", "24.19.0\\n")',
+  )
+  expect(source).toContain('await Workspace.setPath(workspaceUri)')
+})
+
 test('createE2eTestSource - verifies a quick pick input value', () => {
   const source = createE2eTestSource({
     expect: {
