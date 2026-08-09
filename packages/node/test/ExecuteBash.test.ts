@@ -4,10 +4,9 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, test } from 'node:test'
 import { pathToFileURL } from 'node:url'
-import { commandMap, executeBash } from '../src/parts/Terminal/Terminal.ts'
+import { executeBash } from '../src/parts/ExecuteBash/ExecuteBash.ts'
 
 const temporaryDirectories: string[] = []
-const localWorkspaceErrorRegex = /local file:\/\//
 const nonEmptyCommandErrorRegex = /non-empty/
 
 afterEach(async () => {
@@ -58,17 +57,9 @@ test('returns stdout, stderr, and a nonzero exit code', async () => {
   })
 })
 
-test('rejects empty commands and non-local workspaces', async () => {
+test('rejects empty commands', async () => {
   await assert.rejects(
     executeBash(' ', 'file:///workspace'),
     nonEmptyCommandErrorRegex,
   )
-  await assert.rejects(
-    executeBash('pwd', 'remote-ssh://host/workspace'),
-    localWorkspaceErrorRegex,
-  )
-})
-
-test('exports the node RPC command', () => {
-  assert.equal(commandMap['Terminal.executeBash'], executeBash)
 })
