@@ -8,6 +8,34 @@ interface CapabilityTestSource {
   readonly setup: readonly string[]
 }
 
+const createSettingsSearchAssertions = (
+  fixture: NormalizedRecording,
+  opensSettings: boolean,
+): readonly string[] => {
+  const toolCall = fixture.expect.toolCalls.find(
+    (item) => item.name === 'set_settings_search_value',
+  )
+  const argumentsValue = toolCall?.arguments
+  if (
+    !argumentsValue ||
+    typeof argumentsValue !== 'object' ||
+    !('value' in argumentsValue) ||
+    typeof argumentsValue.value !== 'string'
+  ) {
+    return []
+  }
+  const declarations = opensSettings
+    ? []
+    : [
+        `const settingsSearchInput = Locator('.SettingsSearchInput')`,
+        'await expect(settingsSearchInput).toBeVisible()',
+      ]
+  return [
+    ...declarations,
+    `await expect(settingsSearchInput).toHaveValue(${JSON.stringify(argumentsValue.value)})`,
+  ]
+}
+
 const createCapabilityTestSource = (
   fixture: NormalizedRecording,
 ): CapabilityTestSource => {
@@ -47,28 +75,7 @@ const createCapabilityTestSource = (
     )
   }
 
-  const setSettingsSearchValueToolCall = fixture.expect.toolCalls.find(
-    (toolCall) => toolCall.name === 'set_settings_search_value',
-  )
-  const settingsSearchArguments = setSettingsSearchValueToolCall?.arguments
-  const settingsSearchValue =
-    settingsSearchArguments &&
-    typeof settingsSearchArguments === 'object' &&
-    'value' in settingsSearchArguments &&
-    typeof settingsSearchArguments.value === 'string'
-      ? settingsSearchArguments.value
-      : undefined
-  if (settingsSearchValue !== undefined) {
-    if (!opensSettings) {
-      assertions.push(
-        `const settingsSearchInput = Locator('.SettingsSearchInput')`,
-        'await expect(settingsSearchInput).toBeVisible()',
-      )
-    }
-    assertions.push(
-      `await expect(settingsSearchInput).toHaveValue(${JSON.stringify(settingsSearchValue)})`,
-    )
-  }
+  assertions.push(...createSettingsSearchAssertions(fixture, opensSettings))
 
   const openFileToolCall = fixture.expect.toolCalls.find(
     (toolCall) =>
