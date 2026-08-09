@@ -135,12 +135,10 @@ export const test: Test = async ({
     )
   }
   const voice = Locator('.GptVoice')
+  const userTranscript = Locator('.GptVoiceTranscriptItemUser')
+  const assistantTranscript = Locator('.GptVoiceTranscriptItemAi')
   await expect(voice).toContainText('Ran get_recently_opened_folders')
   await expect(voice).toContainText('Ran open_workspace_folder')
-  await expect(Locator('.GptVoiceTranscriptItemUser')).toHaveText(
-    fixture.expect.userText,
-  )
-  await expect(Locator('.GptVoiceTranscriptItemAi')).toHaveText(
-    fixture.expect.assistantText,
-  )
+  await expect(userTranscript).toHaveText(fixture.expect.userText)
+  await expect(assistantTranscript).toHaveText(fixture.expect.assistantText)
 }

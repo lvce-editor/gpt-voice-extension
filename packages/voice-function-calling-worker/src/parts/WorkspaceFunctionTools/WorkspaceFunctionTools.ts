@@ -72,6 +72,12 @@ export const workspaceFunctionTools: readonly FunctionToolDefinition[] = [
   openWorkspaceFolderTool,
 ]
 
+const workspaceToolNames: readonly string[] = [
+  'get_recently_opened_folders',
+  'get_workspace_folder_uri',
+  'open_workspace_folder',
+]
+
 const parseFunctionCall = (
   parsed: unknown,
 ): FunctionCallArguments | undefined => {
@@ -85,9 +91,7 @@ const parseFunctionCall = (
     typeof parsed.call_id === 'string' &&
     'name' in parsed &&
     typeof parsed.name === 'string' &&
-    (parsed.name === 'get_recently_opened_folders' ||
-      parsed.name === 'get_workspace_folder_uri' ||
-      parsed.name === 'open_workspace_folder') &&
+    workspaceToolNames.includes(parsed.name) &&
     'arguments' in parsed &&
     typeof parsed.arguments === 'string'
   ) {
@@ -109,9 +113,7 @@ const parseFunctionCall = (
     typeof parsed.item.call_id === 'string' &&
     'name' in parsed.item &&
     typeof parsed.item.name === 'string' &&
-    (parsed.item.name === 'get_recently_opened_folders' ||
-      parsed.item.name === 'get_workspace_folder_uri' ||
-      parsed.item.name === 'open_workspace_folder') &&
+    workspaceToolNames.includes(parsed.item.name) &&
     'arguments' in parsed.item &&
     typeof parsed.item.arguments === 'string'
   ) {
@@ -178,7 +180,15 @@ const validateEmptyArguments = (value: string, toolName: string): void => {
 }
 
 const getFolderName = (uri: string): string => {
-  const path = uri.split(/[?#]/, 1)[0].replace(/\/+$/, '')
+  const suffixIndices = [uri.indexOf('?'), uri.indexOf('#')].filter(
+    (index) => index !== -1,
+  )
+  const pathEnd =
+    suffixIndices.length === 0 ? uri.length : Math.min(...suffixIndices)
+  let path = uri.slice(0, pathEnd)
+  while (path.endsWith('/')) {
+    path = path.slice(0, -1)
+  }
   const slashIndex = path.lastIndexOf('/')
   const encodedName = slashIndex === -1 ? path : path.slice(slashIndex + 1)
   try {
@@ -190,6 +200,16 @@ const getFolderName = (uri: string): string => {
 
 const getErrorMessage = (error: unknown): string => {
   return error instanceof Error ? error.message : String(error)
+}
+
+const getErrorHint = (toolName: string): string => {
+  if (toolName === 'get_recently_opened_folders') {
+    return 'Call get_recently_opened_folders with no arguments: {}.'
+  }
+  if (toolName === 'get_workspace_folder_uri') {
+    return 'Call get_workspace_folder_uri with no arguments: {}.'
+  }
+  return 'Pass a full workspace folder URI, such as {"uri":"file:///home/user/project"}.'
 }
 
 export const executeWorkspaceFunctionToolCall = async (
@@ -225,12 +245,7 @@ export const executeWorkspaceFunctionToolCall = async (
   } catch (error) {
     output = {
       error: getErrorMessage(error),
-      hint:
-        functionCall.name === 'get_recently_opened_folders'
-          ? 'Call get_recently_opened_folders with no arguments: {}.'
-          : functionCall.name === 'get_workspace_folder_uri'
-            ? 'Call get_workspace_folder_uri with no arguments: {}.'
-            : 'Pass a full workspace folder URI, such as {"uri":"file:///home/user/project"}.',
+      hint: getErrorHint(functionCall.name),
       tool: functionCall.name,
     }
   }
