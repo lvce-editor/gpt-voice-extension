@@ -35,6 +35,18 @@ const createCapabilityTestSource = (
     )
   }
 
+  const opensSettings = fixture.expect.toolCalls.some(
+    (toolCall) => toolCall.name === 'open_settings',
+  )
+  if (opensSettings) {
+    assertions.push(
+      `const settings = Locator('.Settings')`,
+      `const settingsSearchInput = Locator('.SettingsSearchInput')`,
+      'await expect(settings).toBeVisible()',
+      `await expect(settingsSearchInput).toHaveAttribute('placeholder', 'Search Settings')`,
+    )
+  }
+
   const openFileToolCall = fixture.expect.toolCalls.find(
     (toolCall) =>
       toolCall.name === 'open_workspace_file' &&
