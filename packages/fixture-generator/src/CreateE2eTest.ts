@@ -8,6 +8,34 @@ interface CapabilityTestSource {
   readonly setup: readonly string[]
 }
 
+const createSettingsSearchAssertions = (
+  fixture: NormalizedRecording,
+  opensSettings: boolean,
+): readonly string[] => {
+  const toolCall = fixture.expect.toolCalls.find(
+    (item) => item.name === 'set_settings_search_value',
+  )
+  const argumentsValue = toolCall?.arguments
+  if (
+    !argumentsValue ||
+    typeof argumentsValue !== 'object' ||
+    !('value' in argumentsValue) ||
+    typeof argumentsValue.value !== 'string'
+  ) {
+    return []
+  }
+  const declarations = opensSettings
+    ? []
+    : [
+        `const settingsSearchInput = Locator('.SettingsSearchInput')`,
+        'await expect(settingsSearchInput).toBeVisible()',
+      ]
+  return [
+    ...declarations,
+    `await expect(settingsSearchInput).toHaveValue(${JSON.stringify(argumentsValue.value)})`,
+  ]
+}
+
 const createCapabilityTestSource = (
   fixture: NormalizedRecording,
 ): CapabilityTestSource => {
@@ -46,6 +74,8 @@ const createCapabilityTestSource = (
       `await expect(settingsSearchInput).toHaveAttribute('placeholder', 'Search Settings')`,
     )
   }
+
+  assertions.push(...createSettingsSearchAssertions(fixture, opensSettings))
 
   const openFileToolCall = fixture.expect.toolCalls.find(
     (toolCall) =>
