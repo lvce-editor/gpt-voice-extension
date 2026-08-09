@@ -1,0 +1,73 @@
+{
+  "expect": {
+    "assistantText": "The workspace file is open.",
+    "toolCalls": [
+      {
+        "arguments": {
+          "path": "voice-fixture.txt"
+        },
+        "name": "open_workspace_file",
+        "output": {
+          "opened": true,
+          "path": "voice-fixture.txt"
+        }
+      }
+    ],
+    "userText": "Open voice-fixture.txt from the workspace."
+  },
+  "name": "open-workspace-file",
+  "schemaVersion": 1,
+  "source": {
+    "realtimeModel": "gpt-realtime-2.1-mini",
+    "text": "Open voice-fixture.txt from the workspace."
+  },
+  "trace": [
+    {
+      "atMs": 0,
+      "direction": "server",
+      "event": {
+        "delta": "Open voice-fixture.txt from the workspace.",
+        "item_id": "user_item_1",
+        "type": "conversation.item.input_audio_transcription.delta"
+      }
+    },
+    {
+      "atMs": 350,
+      "direction": "server",
+      "event": {
+        "arguments": "{\"path\":\"voice-fixture.txt\"}",
+        "call_id": "call_1",
+        "name": "open_workspace_file",
+        "type": "response.function_call_arguments.done"
+      }
+    },
+    {
+      "atMs": 351,
+      "direction": "client",
+      "event": {
+        "item": {
+          "call_id": "call_1",
+          "output": "{\"opened\":true,\"path\":\"voice-fixture.txt\"}",
+          "type": "function_call_output"
+        },
+        "type": "conversation.item.create"
+      }
+    },
+    {
+      "atMs": 352,
+      "direction": "client",
+      "event": {
+        "type": "response.create"
+      }
+    },
+    {
+      "atMs": 800,
+      "direction": "server",
+      "event": {
+        "delta": "The workspace file is open.",
+        "item_id": "assistant_item_1",
+        "type": "response.output_audio_transcript.delta"
+      }
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 export interface GeneratorOptions {
-  readonly force: boolean
   readonly name: string
+  readonly regenerateExisting: boolean
   readonly text: string
 }
 
@@ -31,8 +31,9 @@ export const parseCliArgs = (args: readonly string[]): GeneratorOptions => {
     throw new Error('Fixture text must not be empty')
   }
   return {
-    force: args.includes('--force'),
     name,
+    regenerateExisting:
+      args.includes('--regenerate-existing') || args.includes('--force'),
     text,
   }
 }

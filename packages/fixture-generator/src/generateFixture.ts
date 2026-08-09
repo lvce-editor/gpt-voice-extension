@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { closeControlServer, startControlServer } from './ControlServer.ts'
 import { createE2eTestSource } from './CreateE2eTest.ts'
 import { createInputWav, generateSpeechPcm } from './CreateInputAudio.ts'
+import { loadCachedFixture } from './LoadCachedFixture.ts'
 import { normalizeRecording } from './NormalizeTrace.ts'
 import { parseCliArgs } from './ParseCliArgs.ts'
 
@@ -26,13 +27,20 @@ const run = async (command: string, args: readonly string[]): Promise<void> => {
   }
 }
 
+const writeE2eTest = async (
+  e2eTestPath: string,
+  fixture: Parameters<typeof createE2eTestSource>[0],
+): Promise<void> => {
+  await writeFile(e2eTestPath, createE2eTestSource(fixture))
+  await run(process.execPath, [
+    'node_modules/prettier/bin/prettier.cjs',
+    '--write',
+    e2eTestPath,
+  ])
+}
+
 const main = async (): Promise<void> => {
   const options = parseCliArgs(process.argv.slice(2))
-  const apiKey = process.env['OPENAI_API_KEY']
-  if (!apiKey) {
-    throw new Error('OPENAI_API_KEY is required to generate a voice fixture')
-  }
-
   const fixtureDir = path.join(
     root,
     'packages',
@@ -48,22 +56,19 @@ const main = async (): Promise<void> => {
     'src',
     `gpt-voice-fixture-${options.name}.ts`,
   )
-  if (!options.force) {
-    try {
-      await readFile(path.join(fixtureDir, 'fixture.json'))
-      throw new Error(
-        `Fixture ${options.name} already exists; pass --force to replace it`,
-      )
-    } catch (error) {
-      if (
-        !error ||
-        typeof error !== 'object' ||
-        !('code' in error) ||
-        error.code !== 'ENOENT'
-      ) {
-        throw error
-      }
-    }
+  const fixturePath = path.join(fixtureDir, 'fixture.json')
+  const cachedFixture = await loadCachedFixture(
+    fixturePath,
+    options.regenerateExisting,
+  )
+  if (cachedFixture) {
+    await writeE2eTest(e2eTestPath, cachedFixture)
+    return
+  }
+
+  const apiKey = process.env['OPENAI_API_KEY']
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is required to generate a voice fixture')
   }
 
   await rm(temporaryDir, { force: true, recursive: true })
@@ -107,21 +112,13 @@ const main = async (): Promise<void> => {
 
   const rawRecording = JSON.parse(await readFile(rawRecordingPath, 'utf8'))
   const fixture = normalizeRecording(rawRecording)
-  if (options.force) {
+  if (options.regenerateExisting) {
     await rm(fixtureDir, { force: true, recursive: true })
   }
   await mkdir(fixtureDir, { recursive: true })
   await copyFile(inputAudioPath, path.join(fixtureDir, 'input.wav'))
-  await writeFile(
-    path.join(fixtureDir, 'fixture.json'),
-    `${JSON.stringify(fixture, null, 2)}\n`,
-  )
-  await writeFile(e2eTestPath, createE2eTestSource(fixture))
-  await run(process.execPath, [
-    'node_modules/prettier/bin/prettier.cjs',
-    '--write',
-    e2eTestPath,
-  ])
+  await writeFile(fixturePath, `${JSON.stringify(fixture, null, 2)}\n`)
+  await writeE2eTest(e2eTestPath, fixture)
 }
 
 await main()

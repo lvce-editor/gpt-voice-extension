@@ -2,6 +2,9 @@
 
 gpt-voice extension for Lvce Editor.
 
+This is an unofficial community extension. It uses OpenAI models but is not
+affiliated with, endorsed by, or sponsored by OpenAI.
+
 ## OpenAI API key setup
 
 The extension now fetches ephemeral tokens directly from OpenAI, so no local node token server is used.
@@ -39,9 +42,12 @@ The generator uses OpenAI text-to-speech to create a WAV file, launches the
 Electron app with that file as its fake microphone, records both sides of the
 Realtime data channel, and normalizes volatile IDs. It writes `input.wav` and
 `fixture.json` under `packages/e2e/fixtures/<name>/`, plus a self-contained
-replay test under `packages/e2e/src/`. Pass `--force` to replace one existing
-fixture. Raw capture data stays under `.tmp/voice-fixtures/` when generation
-fails, which makes API changes easier to diagnose.
+replay test under `packages/e2e/src/`. Existing `fixture.json` files are reused
+by default, which rebuilds the replay test without an API key or paid OpenAI
+requests. Pass `--regenerate-existing` to record an existing fixture again;
+`--force` remains available as an alias. Raw capture data stays under
+`.tmp/voice-fixtures/` when generation fails, which makes API changes easier to
+diagnose.
 
 Output audio is intentionally not part of replay. The stable test contract is
 the transcript, tool-call UI, and exact client JSON generated in response to
