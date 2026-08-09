@@ -41,8 +41,6 @@ const developerVocabulary = [
 
 const developerVocabularyText = developerVocabulary.join(', ')
 
-const transcriptionPrompt = `English speech about software development. Use the Latin alphabet and English spelling. Common terms and spellings: ${developerVocabularyText}.`
-
 const getTranscriptionModel = (
   sessionModel: RealtimeModelPreset,
 ): TranscriptionModel => {
@@ -67,7 +65,6 @@ type SessionConfig = {
         readonly transcription: {
           readonly language: 'en'
           readonly model: TranscriptionModel
-          readonly prompt: string
         }
         readonly turn_detection: TurnDetectionConfig
         readonly noise_reduction: NoiseReductionConfig
@@ -95,7 +92,6 @@ export const createSessionConfig = (
           transcription: {
             language: 'en',
             model: getTranscriptionModel(sessionModel),
-            prompt: transcriptionPrompt,
           },
           turn_detection: {
             create_response: true,
