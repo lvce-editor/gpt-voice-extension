@@ -10,9 +10,7 @@ export default defineConfig([
   {
     rules: {
       '@cspell/spellchecker': 'off',
-      'sonarjs/no-trivial-assertions': 'off',
       '@typescript-eslint/no-floating-promises': 'off',
-      'sonarjs/x-powered-by': 'off',
     },
   },
 ])
