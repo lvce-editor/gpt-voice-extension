@@ -332,14 +332,14 @@ export const executeWorkspaceFileFunctionToolCall = async (
           fileSystemApi,
         )
         break
-      case 'show_file_quick_pick':
-        output = await showFileQuickPick(mainAreaApi)
-        break
       case 'set_quick_pick_value':
         output = await setQuickPickValue(
           getRequiredString(argumentsValue, 'value'),
           mainAreaApi,
         )
+        break
+      case 'show_file_quick_pick':
+        output = await showFileQuickPick(mainAreaApi)
         break
       case 'write_workspace_file':
         output = await writeWorkspaceFile(

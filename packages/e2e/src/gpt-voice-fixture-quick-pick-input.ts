@@ -126,8 +126,10 @@ export const test: Test = async ({
   Workspace,
 }) => {
   const workspaceUri = await FileSystem.getTmpDir()
-  await FileSystem.writeFile(workspaceUri + '/ci.yaml', 'name: CI')
-  await FileSystem.writeFile(workspaceUri + '/README.md', '# Workspace')
+  await FileSystem.setFiles([
+    { content: 'name: CI', uri: workspaceUri + '/ci.yaml' },
+    { content: '# Workspace', uri: workspaceUri + '/README.md' },
+  ])
   await Workspace.setPath(workspaceUri)
 
   await Command.executeExtensionCommand('GptVoice.setIsTest')
