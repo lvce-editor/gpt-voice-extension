@@ -7,6 +7,8 @@ import {
 } from '../src/parts/MainAreaFunctionTools/MainAreaFunctionTools.ts'
 
 const createApi = (): MainAreaApi => ({
+  focusNextTab: jest.fn(async () => undefined),
+  focusPreviousTab: jest.fn(async () => undefined),
   getSavedState: jest.fn(async () => ({
     layout: {
       activeGroupId: 2,
@@ -58,18 +60,43 @@ const getToolOutput = (messages: readonly string[]): unknown => {
   return JSON.parse(message.item.output)
 }
 
-test('defines the open editor tabs query tool', () => {
-  expect(mainAreaFunctionTools).toEqual([
-    expect.objectContaining({
-      name: 'get_open_editor_tabs',
-      parameters: {
-        additionalProperties: false,
-        properties: {},
-        type: 'object',
-      },
-      type: 'function',
-    }),
+test('defines main area tools without arguments', () => {
+  expect(mainAreaFunctionTools.map(({ name }) => name)).toEqual([
+    'focus_next_tab',
+    'focus_previous_tab',
+    'get_open_editor_tabs',
   ])
+  for (const tool of mainAreaFunctionTools) {
+    expect(tool).toEqual(
+      expect.objectContaining({
+        parameters: {
+          additionalProperties: false,
+          properties: {},
+          type: 'object',
+        },
+        type: 'function',
+      }),
+    )
+  }
+})
+
+test.each([
+  ['focus_next_tab', 'focusNextTab'],
+  ['focus_previous_tab', 'focusPreviousTab'],
+] as const)('executes %s', async (name, apiMethod) => {
+  const api = createApi()
+  const messages = await executeMainAreaFunctionToolCall(
+    {
+      arguments: '{}',
+      call_id: 'focus-call',
+      name,
+      type: 'response.function_call_arguments.done',
+    },
+    api,
+  )
+
+  expect(api[apiMethod]).toHaveBeenCalledWith()
+  expect(getToolOutput(messages || [])).toEqual({ focused: true })
 })
 
 test('returns tabs in visual group and tab order', async () => {
@@ -167,6 +194,26 @@ test('returns query failures to the model', async () => {
     error: 'Main area is unavailable',
     hint: 'Call get_open_editor_tabs with no arguments: {}.',
     tool: 'get_open_editor_tabs',
+  })
+})
+
+test('returns focus failures to the model', async () => {
+  const api = createApi()
+  jest.mocked(api.focusNextTab).mockRejectedValue(new Error('No editor tabs'))
+  const messages = await executeMainAreaFunctionToolCall(
+    {
+      arguments: '{}',
+      call_id: 'focus-call',
+      name: 'focus_next_tab',
+      type: 'response.function_call_arguments.done',
+    },
+    api,
+  )
+
+  expect(getToolOutput(messages || [])).toEqual({
+    error: 'No editor tabs',
+    hint: 'Call focus_next_tab with no arguments: {}.',
+    tool: 'focus_next_tab',
   })
 })
 

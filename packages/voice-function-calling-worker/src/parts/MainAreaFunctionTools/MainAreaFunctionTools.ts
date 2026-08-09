@@ -24,6 +24,8 @@ interface SavedMainAreaState {
 }
 
 export interface MainAreaApi {
+  readonly focusNextTab: () => Promise<void>
+  readonly focusPreviousTab: () => Promise<void>
   readonly getSavedState: () => Promise<SavedMainAreaState>
   readonly getWorkspaceUri: () => Promise<string>
 }
@@ -31,7 +33,13 @@ export interface MainAreaApi {
 interface FunctionCallArguments {
   readonly argumentsValue: string
   readonly callId: string
+  readonly name: MainAreaToolName
 }
+
+type MainAreaToolName =
+  | 'focus_next_tab'
+  | 'focus_previous_tab'
+  | 'get_open_editor_tabs'
 
 interface OpenEditorTab {
   readonly active: boolean
@@ -46,12 +54,36 @@ interface OpenEditorTab {
 }
 
 const defaultApi: MainAreaApi = {
+  focusNextTab: () => Rpc.invoke<void>('MainArea.focusNextTab'),
+  focusPreviousTab: () => Rpc.invoke<void>('MainArea.focusPreviousTab'),
   getSavedState: () => Rpc.invoke<SavedMainAreaState>('MainArea.getSavedState'),
   getWorkspaceUri: () =>
     Rpc.invoke<string>('WorkspaceMainArea.getWorkspaceUri'),
 }
 
 export const mainAreaFunctionTools: readonly FunctionToolDefinition[] = [
+  {
+    description:
+      'Focus the next editor tab in the active editor group, cycling from the last tab to the first tab.',
+    name: 'focus_next_tab',
+    parameters: {
+      additionalProperties: false,
+      properties: {},
+      type: 'object',
+    },
+    type: 'function',
+  },
+  {
+    description:
+      'Focus the previous editor tab in the active editor group, cycling from the first tab to the last tab.',
+    name: 'focus_previous_tab',
+    parameters: {
+      additionalProperties: false,
+      properties: {},
+      type: 'object',
+    },
+    type: 'function',
+  },
   {
     description:
       'Get every open editor tab in the main area, in visual group and tab order. Returns titles, exact URIs, workspace-relative paths when available, active and selected state, and whether each tab is dirty or a preview. Use this before closing a tab when its identity is unclear.',
@@ -64,6 +96,14 @@ export const mainAreaFunctionTools: readonly FunctionToolDefinition[] = [
     type: 'function',
   },
 ]
+
+const isMainAreaToolName = (value: unknown): value is MainAreaToolName => {
+  return (
+    value === 'focus_next_tab' ||
+    value === 'focus_previous_tab' ||
+    value === 'get_open_editor_tabs'
+  )
+}
 
 const parseFunctionCall = (
   parsed: unknown,
@@ -94,7 +134,7 @@ const parseFunctionCall = (
     !('call_id' in item) ||
     typeof item.call_id !== 'string' ||
     !('name' in item) ||
-    item.name !== 'get_open_editor_tabs' ||
+    !isMainAreaToolName(item.name) ||
     !('arguments' in item) ||
     typeof item.arguments !== 'string'
   ) {
@@ -103,10 +143,11 @@ const parseFunctionCall = (
   return {
     argumentsValue: item.arguments,
     callId: item.call_id,
+    name: item.name,
   }
 }
 
-const validateArguments = (value: string): void => {
+const validateArguments = (name: MainAreaToolName, value: string): void => {
   let parsed: unknown
   try {
     parsed = JSON.parse(value)
@@ -117,10 +158,23 @@ const validateArguments = (value: string): void => {
     throw new TypeError('Function tool arguments must be a JSON object.')
   }
   if (Object.keys(parsed).length > 0) {
-    throw new TypeError(
-      'The get_open_editor_tabs tool does not accept arguments.',
-    )
+    throw new TypeError(`The ${name} tool does not accept arguments.`)
   }
+}
+
+const executeTool = async (
+  name: MainAreaToolName,
+  api: MainAreaApi,
+): Promise<unknown> => {
+  if (name === 'focus_next_tab') {
+    await api.focusNextTab()
+    return { focused: true }
+  }
+  if (name === 'focus_previous_tab') {
+    await api.focusPreviousTab()
+    return { focused: true }
+  }
+  return getOpenEditorTabs(api)
 }
 
 const getWorkspaceRelativePath = (
@@ -199,13 +253,13 @@ export const executeMainAreaFunctionToolCall = async (
   }
   let output: unknown
   try {
-    validateArguments(functionCall.argumentsValue)
-    output = await getOpenEditorTabs(api)
+    validateArguments(functionCall.name, functionCall.argumentsValue)
+    output = await executeTool(functionCall.name, api)
   } catch (error) {
     output = {
       error: getErrorMessage(error),
-      hint: 'Call get_open_editor_tabs with no arguments: {}.',
-      tool: 'get_open_editor_tabs',
+      hint: `Call ${functionCall.name} with no arguments: {}.`,
+      tool: functionCall.name,
     }
   }
   return [

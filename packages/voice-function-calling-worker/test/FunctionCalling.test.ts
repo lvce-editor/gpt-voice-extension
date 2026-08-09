@@ -198,6 +198,30 @@ test('executes open editor tab queries in the worker', async () => {
   })
 })
 
+test.each([
+  ['focus_next_tab', 'MainArea.focusNextTab'],
+  ['focus_previous_tab', 'MainArea.focusPreviousTab'],
+])('executes %s calls in the worker', async (name, method) => {
+  const invoke = jest
+    .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
+    .mockResolvedValue(undefined)
+  const globalScope = globalThis as typeof globalThis & {
+    rpc: { readonly invoke: typeof invoke }
+  }
+  globalScope.rpc = { invoke }
+
+  const result = await executeFunctionToolCall({
+    arguments: '{}',
+    call_id: 'focus-call',
+    name,
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(invoke).toHaveBeenCalledWith(method)
+  const outputMessage = JSON.parse(result[0] || '{}')
+  expect(JSON.parse(outputMessage.item.output)).toEqual({ focused: true })
+})
+
 test('executes workspace directory listing calls in the worker', async () => {
   const invoke = jest
     .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()

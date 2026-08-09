@@ -1,0 +1,70 @@
+{
+  "expect": {
+    "assistantText": "The previous tab is focused.",
+    "toolCalls": [
+      {
+        "arguments": {},
+        "name": "focus_previous_tab",
+        "output": {
+          "focused": true
+        }
+      }
+    ],
+    "userText": "Focus the previous tab."
+  },
+  "name": "focus-previous-tab",
+  "schemaVersion": 1,
+  "source": {
+    "realtimeModel": "gpt-realtime-2.1-mini",
+    "text": "Focus the previous tab."
+  },
+  "trace": [
+    {
+      "atMs": 0,
+      "direction": "server",
+      "event": {
+        "delta": "Focus the previous tab.",
+        "item_id": "user_item_1",
+        "type": "conversation.item.input_audio_transcription.delta"
+      }
+    },
+    {
+      "atMs": 350,
+      "direction": "server",
+      "event": {
+        "arguments": "{}",
+        "call_id": "call_1",
+        "name": "focus_previous_tab",
+        "type": "response.function_call_arguments.done"
+      }
+    },
+    {
+      "atMs": 351,
+      "direction": "client",
+      "event": {
+        "item": {
+          "call_id": "call_1",
+          "output": "{\"focused\":true}",
+          "type": "function_call_output"
+        },
+        "type": "conversation.item.create"
+      }
+    },
+    {
+      "atMs": 352,
+      "direction": "client",
+      "event": {
+        "type": "response.create"
+      }
+    },
+    {
+      "atMs": 800,
+      "direction": "server",
+      "event": {
+        "delta": "The previous tab is focused.",
+        "item_id": "assistant_item_1",
+        "type": "response.output_audio_transcript.delta"
+      }
+    }
+  ]
+}
