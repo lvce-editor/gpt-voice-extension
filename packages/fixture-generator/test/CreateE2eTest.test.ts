@@ -79,6 +79,49 @@ test('createE2eTestSource - creates and verifies an opened workspace file', () =
   )
 })
 
+test('createE2eTestSource - creates parent folders for a nested workspace file', () => {
+  const source = createE2eTestSource({
+    expect: {
+      assistantText: 'The file is open.',
+      toolCalls: [
+        {
+          arguments: { path: 'devcontainer.json' },
+          name: 'open_workspace_file',
+          output: { error: 'File not found' },
+        },
+        {
+          arguments: { query: 'devcontainer.json' },
+          name: 'search_workspace_files',
+          output: { matches: ['.devcontainer/devcontainer.json'] },
+        },
+        {
+          arguments: { path: '.devcontainer/devcontainer.json' },
+          name: 'open_workspace_file',
+          output: {
+            opened: true,
+            path: '.devcontainer/devcontainer.json',
+          },
+        },
+      ],
+      userText: 'Open devcontainer.json.',
+    },
+    name: 'open-nested-workspace-file',
+    schemaVersion: 1,
+    source: { text: 'Open devcontainer.json.' },
+    trace: [],
+  })
+
+  expect(source).toContain(
+    'await FileSystem.mkdir(workspaceUri + "/.devcontainer")',
+  )
+  expect(source).toContain(
+    'await FileSystem.writeFile(workspaceUri + "/.devcontainer/devcontainer.json"',
+  )
+  expect(source).toContain('toHaveText("devcontainer.json")')
+  expect(source).toContain('"Failed open_workspace_file"')
+  expect(source).toContain('"Ran search_workspace_files"')
+})
+
 test('createE2eTestSource - creates a workspace file that is read', () => {
   const source = createE2eTestSource({
     expect: {

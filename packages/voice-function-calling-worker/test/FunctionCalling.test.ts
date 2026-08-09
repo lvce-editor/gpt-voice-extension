@@ -191,10 +191,15 @@ test.each([
   ['open_workspace_file', 'WorkspaceMainArea.openUri', 'opened'],
   ['close_workspace_file', 'WorkspaceMainArea.closeUri', 'closed'],
 ])('executes %s calls in the worker', async (name, method, resultProperty) => {
-  const invoke = jest
-    .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
-    .mockResolvedValueOnce('file:///workspace')
-    .mockResolvedValueOnce(undefined)
+  const invoke =
+    jest.fn<
+      (method: string, ...params: readonly unknown[]) => Promise<unknown>
+    >()
+  invoke.mockResolvedValueOnce('file:///workspace')
+  if (name === 'open_workspace_file') {
+    invoke.mockResolvedValueOnce(true)
+  }
+  invoke.mockResolvedValueOnce(undefined)
   const globalScope = globalThis as typeof globalThis & {
     rpc: { readonly invoke: typeof invoke }
   }
@@ -207,13 +212,45 @@ test.each([
     type: 'response.function_call_arguments.done',
   })
 
-  expect(invoke).toHaveBeenNthCalledWith(1, 'WorkspaceMainArea.getWorkspaceUri')
-  expect(invoke).toHaveBeenNthCalledWith(
-    2,
-    method,
-    'file:///workspace/src/index.ts',
-  )
+  const expectedCalls =
+    name === 'open_workspace_file'
+      ? [
+          ['WorkspaceMainArea.getWorkspaceUri'],
+          ['WorkspaceFileSystem.exists', 'file:///workspace/src/index.ts'],
+          [method, 'file:///workspace/src/index.ts'],
+        ]
+      : [
+          ['WorkspaceMainArea.getWorkspaceUri'],
+          [method, 'file:///workspace/src/index.ts'],
+        ]
+  expect(invoke.mock.calls).toEqual(expectedCalls)
   expect(result[0]).toContain(`\\"${resultProperty}\\":true`)
+})
+
+test('executes workspace file search calls in the worker', async () => {
+  const invoke = jest
+    .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
+    .mockResolvedValueOnce('file:///workspace')
+    .mockResolvedValueOnce([{ name: '.devcontainer', type: 3 }])
+    .mockResolvedValueOnce([{ name: 'devcontainer.json', type: 7 }])
+  const globalScope = globalThis as typeof globalThis & {
+    rpc: { readonly invoke: typeof invoke }
+  }
+  globalScope.rpc = { invoke }
+
+  const result = await executeFunctionToolCall({
+    arguments: '{"query":"devcontainer json"}',
+    call_id: 'search-call',
+    name: 'search_workspace_files',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(invoke).toHaveBeenNthCalledWith(
+    3,
+    'WorkspaceFileSystem.readDirWithFileTypes',
+    'file:///workspace/.devcontainer',
+  )
+  expect(result[0]).toContain('.devcontainer/devcontainer.json')
 })
 
 test('executes show file quick pick calls in the worker', async () => {

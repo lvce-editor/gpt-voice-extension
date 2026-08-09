@@ -27,6 +27,7 @@ const openProblemsView = jest.fn<typeof Api.openProblemsView>(
   async () => undefined,
 )
 const executeCommand = jest.fn<typeof Api.executeCommand>(async () => undefined)
+const exists = jest.fn<typeof Api.exists>(async () => true)
 const getWorkspaceUri = jest.fn(async () => 'file:///workspace')
 const getPreference = jest.fn<() => Promise<unknown>>(async () => false)
 const readDirWithFileTypes = jest.fn(async () => [
@@ -52,6 +53,7 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
     createNodeRpc,
     createRpc,
     executeCommand,
+    exists,
     getPreference,
     getWorkspaceUri,
     openDebugConsole,
@@ -74,6 +76,7 @@ beforeEach(() => {
   createNodeRpc.mockClear()
   closeUri.mockClear()
   executeCommand.mockClear()
+  exists.mockClear()
   invoke.mockReset()
   getWorkspaceUri.mockClear()
   openDebugConsole.mockClear()
@@ -115,6 +118,7 @@ test('creates a web worker RPC and queries registered tools', async () => {
       'PanelView.openProblemsView': expect.any(Function),
       'Terminal.executeBash': expect.any(Function),
       'Workspace.setWorkspaceUri': setWorkspaceUri,
+      'WorkspaceFileSystem.exists': exists,
       'WorkspaceFileSystem.getWorkspaceUri': getWorkspaceUri,
       'WorkspaceFileSystem.readDirWithFileTypes': readDirWithFileTypes,
       'WorkspaceFileSystem.readFile': readFile,

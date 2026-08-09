@@ -9,6 +9,7 @@ import {
 const createFileSystemApi = (
   workspaceUri = 'file:///workspace',
 ): WorkspaceFileSystemApi => ({
+  exists: jest.fn(async () => true),
   getWorkspaceUri: jest.fn(async () => workspaceUri),
   readDirWithFileTypes: jest.fn(async () => [
     { name: 'src', type: 3 },
@@ -34,6 +35,7 @@ const getToolOutput = (messages: readonly string[]): unknown => {
 test('exposes workspace file tool definitions', () => {
   expect(workspaceFileFunctionTools.map((tool) => tool.name)).toEqual([
     'list_workspace_directory',
+    'search_workspace_files',
     'read_workspace_file',
     'write_workspace_file',
     'open_workspace_file',
@@ -42,15 +44,16 @@ test('exposes workspace file tool definitions', () => {
     'set_quick_pick_value',
   ])
   expect(workspaceFileFunctionTools[0]?.parameters.required).toBeUndefined()
-  expect(workspaceFileFunctionTools[1]?.parameters.required).toEqual(['path'])
-  expect(workspaceFileFunctionTools[2]?.parameters.required).toEqual([
+  expect(workspaceFileFunctionTools[1]?.parameters.required).toEqual(['query'])
+  expect(workspaceFileFunctionTools[2]?.parameters.required).toEqual(['path'])
+  expect(workspaceFileFunctionTools[3]?.parameters.required).toEqual([
     'path',
     'content',
   ])
-  expect(workspaceFileFunctionTools[3]?.parameters.required).toEqual(['path'])
   expect(workspaceFileFunctionTools[4]?.parameters.required).toEqual(['path'])
-  expect(workspaceFileFunctionTools[5]?.parameters.required).toBeUndefined()
-  expect(workspaceFileFunctionTools[6]?.parameters.required).toEqual(['value'])
+  expect(workspaceFileFunctionTools[5]?.parameters.required).toEqual(['path'])
+  expect(workspaceFileFunctionTools[6]?.parameters.required).toBeUndefined()
+  expect(workspaceFileFunctionTools[7]?.parameters.required).toEqual(['value'])
 })
 
 test('sets the open quick pick value', async () => {
@@ -138,6 +141,29 @@ test.each([
   )
 })
 
+test('returns a tool error without opening a missing workspace file', async () => {
+  const fileSystemApi = createFileSystemApi()
+  jest.mocked(fileSystemApi.exists).mockResolvedValue(false)
+  const mainAreaApi = createMainAreaApi()
+  const messages = await executeWorkspaceFileFunctionToolCall(
+    {
+      arguments: JSON.stringify({ path: 'devcontainer.json' }),
+      call_id: 'open-call',
+      name: 'open_workspace_file',
+      type: 'response.function_call_arguments.done',
+    },
+    fileSystemApi,
+    mainAreaApi,
+  )
+
+  expect(mainAreaApi.openUri).not.toHaveBeenCalled()
+  expect(getToolOutput(messages || [])).toEqual({
+    error: 'Workspace file "devcontainer.json" was not found.',
+    hint: 'Pass an exact file path relative to the workspace, such as {"path":"src/index.ts"}. If the path is unknown or was not found, call search_workspace_files with the filename, then retry with a returned path.',
+    tool: 'open_workspace_file',
+  })
+})
+
 test.each(['open_workspace_file', 'close_workspace_file'])(
   'returns relative path guidance for invalid %s calls',
   async (name) => {
@@ -157,7 +183,10 @@ test.each(['open_workspace_file', 'close_workspace_file'])(
     expect(mainAreaApi.closeUri).not.toHaveBeenCalled()
     expect(getToolOutput(messages || [])).toEqual({
       error: 'Workspace file path cannot leave the opened workspace.',
-      hint: 'Pass a file path relative to the workspace, such as {"path":"src/index.ts"}. Never pass an absolute path or URI.',
+      hint:
+        name === 'open_workspace_file'
+          ? 'Pass an exact file path relative to the workspace, such as {"path":"src/index.ts"}. If the path is unknown or was not found, call search_workspace_files with the filename, then retry with a returned path.'
+          : 'Pass a file path relative to the workspace, such as {"path":"src/index.ts"}. Never pass an absolute path or URI.',
       tool: name,
     })
   },
@@ -205,6 +234,33 @@ test('lists a workspace subdirectory', async () => {
   expect(fileSystemApi.readDirWithFileTypes).toHaveBeenCalledWith(
     'file:///workspace/src',
   )
+})
+
+test('searches for workspace files in nested directories', async () => {
+  const fileSystemApi = createFileSystemApi()
+  jest
+    .mocked(fileSystemApi.readDirWithFileTypes)
+    .mockImplementation(async (uri) => {
+      if (uri === 'file:///workspace') {
+        return [{ name: '.devcontainer', type: 3 }]
+      }
+      return [{ name: 'devcontainer.json', type: 7 }]
+    })
+  const messages = await executeWorkspaceFileFunctionToolCall(
+    {
+      arguments: JSON.stringify({ query: 'devcontainer json' }),
+      call_id: 'search-call',
+      name: 'search_workspace_files',
+      type: 'response.function_call_arguments.done',
+    },
+    fileSystemApi,
+  )
+
+  expect(getToolOutput(messages || [])).toEqual({
+    matches: ['.devcontainer/devcontainer.json'],
+    query: 'devcontainer json',
+    truncated: false,
+  })
 })
 
 test('reads a workspace file', async () => {
