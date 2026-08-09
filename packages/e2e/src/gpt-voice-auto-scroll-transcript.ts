@@ -14,5 +14,5 @@ export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
   )
 
   const transcript = Locator('.GptVoiceTranscript')
-  await expect(transcript).not.toHaveJSProperty('scrollTop', 0)
+  await expect(transcript).toHaveJSProperty('scrollTop', 8765)
 }
