@@ -104,18 +104,12 @@ export const test: Test = async ({
 
   await Command.executeExtensionCommand('GptVoice.replayFixture', fixture)
 
-  const selectedTab = Locator(
-    '.MainTabSelected[title$="focus-previous-2.txt"]',
-  )
+  const selectedTab = Locator('.MainTabSelected[title$="focus-previous-2.txt"]')
   const userTranscript = Locator('.GptVoiceTranscriptItemUser')
   const voice = Locator('.GptVoice')
   const assistantTranscript = Locator('.GptVoiceTranscriptItemAi')
   await expect(selectedTab).toBeVisible()
-  await expect(userTranscript).toHaveText(
-    fixture.expect.userText,
-  )
+  await expect(userTranscript).toHaveText(fixture.expect.userText)
   await expect(voice).toContainText('Ran focus_previous_tab')
-  await expect(assistantTranscript).toHaveText(
-    fixture.expect.assistantText,
-  )
+  await expect(assistantTranscript).toHaveText(fixture.expect.assistantText)
 }

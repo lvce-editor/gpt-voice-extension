@@ -109,11 +109,7 @@ export const test: Test = async ({
   const voice = Locator('.GptVoice')
   const assistantTranscript = Locator('.GptVoiceTranscriptItemAi')
   await expect(selectedTab).toBeVisible()
-  await expect(userTranscript).toHaveText(
-    fixture.expect.userText,
-  )
+  await expect(userTranscript).toHaveText(fixture.expect.userText)
   await expect(voice).toContainText('Ran focus_next_tab')
-  await expect(assistantTranscript).toHaveText(
-    fixture.expect.assistantText,
-  )
+  await expect(assistantTranscript).toHaveText(fixture.expect.assistantText)
 }
