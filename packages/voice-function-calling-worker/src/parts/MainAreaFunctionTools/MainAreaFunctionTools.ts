@@ -3,6 +3,8 @@ import * as Rpc from '../Rpc/Rpc.ts'
 
 export interface MainAreaApi {
   readonly closeAllEditors: () => Promise<void>
+  readonly focusNextTab: () => Promise<void>
+  readonly focusPreviousTab: () => Promise<void>
   readonly getOpenEditorUris: () => Promise<readonly string[]>
   readonly getWorkspaceUri: () => Promise<string | null>
 }
@@ -13,6 +15,12 @@ interface FunctionCallArguments {
   readonly name: MainAreaFunctionToolName
 }
 
+type MainAreaFunctionToolName =
+  | 'close_all_editors'
+  | 'focus_next_tab'
+  | 'focus_previous_tab'
+  | 'get_open_editor_tabs'
+
 interface OpenEditorTab {
   readonly path?: string
   readonly title: string
@@ -21,13 +29,37 @@ interface OpenEditorTab {
 
 const defaultApi: MainAreaApi = {
   closeAllEditors: () => Rpc.invoke<void>('MainArea.closeAllEditors'),
+  focusNextTab: () => Rpc.invoke<void>('MainArea.focusNextTab'),
+  focusPreviousTab: () => Rpc.invoke<void>('MainArea.focusPreviousTab'),
   getOpenEditorUris: () =>
     Rpc.invoke<readonly string[]>('MainArea.getOpenEditorUris'),
   getWorkspaceUri: () =>
-    Rpc.invoke<string>('WorkspaceMainArea.getWorkspaceUri'),
+    Rpc.invoke<string | null>('WorkspaceMainArea.getWorkspaceUri'),
 }
 
 export const mainAreaFunctionTools: readonly FunctionToolDefinition[] = [
+  {
+    description:
+      'Focus the next editor tab in the active editor group, cycling from the last tab to the first tab.',
+    name: 'focus_next_tab',
+    parameters: {
+      additionalProperties: false,
+      properties: {},
+      type: 'object',
+    },
+    type: 'function',
+  },
+  {
+    description:
+      'Focus the previous editor tab in the active editor group, cycling from the first tab to the last tab.',
+    name: 'focus_previous_tab',
+    parameters: {
+      additionalProperties: false,
+      properties: {},
+      type: 'object',
+    },
+    type: 'function',
+  },
   {
     description:
       'Get every open editor tab in visual order. Returns titles, exact URIs, and workspace-relative paths when available. Use this before closing a tab when its identity is unclear.',
@@ -52,10 +84,10 @@ export const mainAreaFunctionTools: readonly FunctionToolDefinition[] = [
   },
 ]
 
-type MainAreaFunctionToolName = 'close_all_editors' | 'get_open_editor_tabs'
-
 const mainAreaFunctionToolNames = new Set<MainAreaFunctionToolName>([
   'close_all_editors',
+  'focus_next_tab',
+  'focus_previous_tab',
   'get_open_editor_tabs',
 ])
 
@@ -191,6 +223,24 @@ export const closeAllEditors = async (
   return { closed: openEditorUris.length }
 }
 
+const executeTool = async (
+  name: MainAreaFunctionToolName,
+  api: MainAreaApi,
+): Promise<unknown> => {
+  if (name === 'close_all_editors') {
+    return closeAllEditors(api)
+  }
+  if (name === 'focus_next_tab') {
+    await api.focusNextTab()
+    return { focused: true }
+  }
+  if (name === 'focus_previous_tab') {
+    await api.focusPreviousTab()
+    return { focused: true }
+  }
+  return getOpenEditorTabs(api)
+}
+
 const createToolOutputMessage = (callId: string, output: unknown): string => {
   return JSON.stringify({
     item: {
@@ -221,10 +271,7 @@ export const executeMainAreaFunctionToolCall = async (
   let output: unknown
   try {
     validateArguments(functionCall.argumentsValue, functionCall.name)
-    output =
-      functionCall.name === 'close_all_editors'
-        ? await closeAllEditors(api)
-        : await getOpenEditorTabs(api)
+    output = await executeTool(functionCall.name, api)
   } catch (error) {
     output = {
       error: getErrorMessage(error),

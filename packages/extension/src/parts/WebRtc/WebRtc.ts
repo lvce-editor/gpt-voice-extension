@@ -53,7 +53,7 @@ const getTranscriptionModel = (
 export const defaultSessionModel: RealtimeModelPreset = RealtimeModelPreset.Mini
 
 const editorToolInstructions =
-  'Use format_document when the user asks to format the active document. Use get_editor_diagnostics whenever the user asks about lint alerts, errors, warnings, or problems in the active editor, and before claiming its code has no diagnostics. Use show_completions when the user asks for smart completion suggestions at the current cursor. Use get_open_editor_tabs when the user asks which editor tabs are open, or before closing a tab when its identity is ambiguous. Use close_all_editors whenever the user asks to close every editor or all editor tabs. '
+  'Use format_document when the user asks to format the active document. Use get_editor_diagnostics whenever the user asks about lint alerts, errors, warnings, or problems in the active editor, and before claiming its code has no diagnostics. Use show_completions when the user asks for smart completion suggestions at the current cursor. Use focus_next_tab or focus_previous_tab when the user asks to switch to the next or previous editor tab. Use get_open_editor_tabs when the user asks which editor tabs are open, or before closing a tab when its identity is ambiguous. Use close_all_editors whenever the user asks to close every editor or all editor tabs. '
 
 type SessionConfig = {
   readonly session: {

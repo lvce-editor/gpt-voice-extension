@@ -35,6 +35,8 @@ const setSettingsSearchValue = jest.fn<typeof Api.setSettingsSearchValue>(
 )
 const executeCommand = jest.fn<typeof Api.executeCommand>(async () => undefined)
 const exists = jest.fn<typeof Api.exists>(async () => true)
+const focusNextTab = jest.fn<() => Promise<void>>(async () => undefined)
+const focusPreviousTab = jest.fn<() => Promise<void>>(async () => undefined)
 const formatDocument = jest.fn<() => Promise<void>>(async () => undefined)
 const getDiagnostics = jest.fn<() => Promise<readonly Api.Diagnostic[]>>(
   async () => [],
@@ -72,6 +74,8 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
     createRpc,
     executeCommand,
     exists,
+    focusNextTab,
+    focusPreviousTab,
     formatDocument,
     getDiagnostics,
     getEditorSelections,
@@ -103,6 +107,8 @@ beforeEach(() => {
   closeUri.mockClear()
   executeCommand.mockClear()
   exists.mockClear()
+  focusNextTab.mockClear()
+  focusPreviousTab.mockClear()
   formatDocument.mockClear()
   getDiagnostics.mockClear()
   getEditorSelections.mockClear()
@@ -152,6 +158,8 @@ test('creates a web worker RPC and queries registered tools', async () => {
       'Editor.showCompletions': showCompletions,
       'Layout.toggleSideBarPosition': expect.any(Function),
       'MainArea.closeAllEditors': expect.any(Function),
+      'MainArea.focusNextTab': focusNextTab,
+      'MainArea.focusPreviousTab': focusPreviousTab,
       'MainArea.getOpenEditorUris': expect.any(Function),
       'Panel.close': expect.any(Function),
       'Panel.open': expect.any(Function),
@@ -274,6 +282,21 @@ test('bridges close all editors commands from the function calling worker', asyn
   await commandMap['MainArea.closeAllEditors']?.()
 
   expect(executeCommand).toHaveBeenCalledWith('Main.closeAllEditors')
+})
+
+test('bridges editor tab focus commands from the function calling worker', async () => {
+  invoke.mockResolvedValue([])
+  await VoiceFunctionCallingWorker.getRegisteredTools()
+
+  const options = createRpc.mock.calls[0]?.[0]
+  const commandMap = options?.commandMap as Readonly<
+    Record<string, (...args: readonly unknown[]) => Promise<void>>
+  >
+  await commandMap['MainArea.focusNextTab']?.()
+  await commandMap['MainArea.focusPreviousTab']?.()
+
+  expect(focusNextTab).toHaveBeenCalledWith()
+  expect(focusPreviousTab).toHaveBeenCalledWith()
 })
 
 test('bridges editor commands from the function calling worker', async () => {
