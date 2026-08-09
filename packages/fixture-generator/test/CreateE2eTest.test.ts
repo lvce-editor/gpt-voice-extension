@@ -51,6 +51,31 @@ test('createE2eTestSource - verifies an opened terminal', () => {
   expect(source).toContain("const terminal = Locator('.XtermTerminal')")
 })
 
+test('createE2eTestSource - verifies opened settings', () => {
+  const source = createE2eTestSource({
+    expect: {
+      assistantText: 'Settings are open.',
+      toolCalls: [
+        {
+          arguments: {},
+          name: 'open_settings',
+          output: { opened: true },
+        },
+      ],
+      userText: 'Open settings.',
+    },
+    name: 'open-settings',
+    schemaVersion: 1,
+    source: { text: 'Open settings.' },
+    trace: [],
+  })
+
+  expect(source).toContain("const settings = Locator('.Settings')")
+  expect(source).toContain(
+    "await expect(settingsSearchInput).toHaveAttribute('placeholder', 'Search Settings')",
+  )
+})
+
 test('createE2eTestSource - creates and verifies an opened workspace file', () => {
   const source = createE2eTestSource({
     expect: {
