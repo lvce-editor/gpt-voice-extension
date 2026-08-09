@@ -83,5 +83,6 @@ export const view: GptVoiceView = {
   id: 'gpt-voice.views.default',
 
   kind: 'virtualDom',
+  preferredLocation: 'preview',
   title: GptVoiceStrings.gptVoice(),
 }

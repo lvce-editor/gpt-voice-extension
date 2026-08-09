@@ -39,6 +39,10 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
 const Main = await import('../src/parts/Main/Main.ts')
 const { view } = await import('../src/parts/View/View.ts')
 
+test('voice view prefers the preview area', () => {
+  expect(view.preferredLocation).toBe('preview')
+})
+
 test('gpt-voice.show command opens floating extension window url', async () => {
   await Main.activate()
 
