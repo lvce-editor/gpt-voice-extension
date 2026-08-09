@@ -12,6 +12,11 @@ const getToolOutput = (messages: readonly string[]): unknown => {
 test('exposes the open workspace folder tool definition', () => {
   expect(workspaceFunctionTools).toEqual([
     expect.objectContaining({
+      name: 'get_workspace_folder_uri',
+      parameters: expect.objectContaining({ properties: {} }),
+      type: 'function',
+    }),
+    expect.objectContaining({
       name: 'open_workspace_folder',
       parameters: expect.objectContaining({ required: ['uri'] }),
       type: 'function',
@@ -50,6 +55,7 @@ test.each(openWorkspaceCases)(
       async () => undefined,
     )
     const messages = await executeWorkspaceFunctionToolCall(event, {
+      getWorkspaceUri: jest.fn(async () => 'file:///workspace'),
       setWorkspaceUri,
     })
 
@@ -80,7 +86,10 @@ test.each([
       name: 'open_workspace_folder',
       type: 'response.function_call_arguments.done',
     },
-    { setWorkspaceUri },
+    {
+      getWorkspaceUri: jest.fn(async () => 'file:///workspace'),
+      setWorkspaceUri,
+    },
   )
 
   expect(setWorkspaceUri).not.toHaveBeenCalled()
@@ -100,6 +109,7 @@ test('returns workspace API failures to the model', async () => {
       type: 'response.function_call_arguments.done',
     },
     {
+      getWorkspaceUri: jest.fn(async () => 'file:///workspace'),
       setWorkspaceUri: jest.fn(async () => {
         throw new Error('Workspace unavailable')
       }),
@@ -134,3 +144,78 @@ test.each(nonWorkspaceFunctionCalls)(
     ).resolves.toBeUndefined()
   },
 )
+
+test('returns the current workspace folder URI', async () => {
+  const getWorkspaceUri = jest.fn(async () => 'file:///home/user/project')
+  const messages = await executeWorkspaceFunctionToolCall(
+    {
+      arguments: '{}',
+      call_id: 'get-workspace-call',
+      name: 'get_workspace_folder_uri',
+      type: 'response.function_call_arguments.done',
+    },
+    {
+      getWorkspaceUri,
+      setWorkspaceUri: jest.fn(async () => undefined),
+    },
+  )
+
+  expect(getWorkspaceUri).toHaveBeenCalledWith()
+  expect(getToolOutput(messages || [])).toEqual({
+    uri: 'file:///home/user/project',
+  })
+})
+
+test.each([
+  [
+    '{"unexpected":true}',
+    'The get_workspace_folder_uri tool does not accept arguments.',
+  ],
+  ['[]', 'Function tool arguments must be a JSON object.'],
+  ['{', 'Function tool arguments must be valid JSON.'],
+])(
+  'returns workspace URI query errors to the model for %s',
+  async (argumentsValue, error) => {
+    const getWorkspaceUri = jest.fn(async () => 'file:///workspace')
+    const messages = await executeWorkspaceFunctionToolCall(
+      {
+        arguments: argumentsValue,
+        call_id: 'get-workspace-call',
+        name: 'get_workspace_folder_uri',
+        type: 'response.function_call_arguments.done',
+      },
+      {
+        getWorkspaceUri,
+        setWorkspaceUri: jest.fn(async () => undefined),
+      },
+    )
+
+    expect(getWorkspaceUri).not.toHaveBeenCalled()
+    expect(getToolOutput(messages || [])).toEqual({
+      error,
+      hint: 'Call get_workspace_folder_uri with no arguments: {}.',
+      tool: 'get_workspace_folder_uri',
+    })
+  },
+)
+
+test('reports when no workspace folder is open', async () => {
+  const messages = await executeWorkspaceFunctionToolCall(
+    {
+      arguments: '{}',
+      call_id: 'get-workspace-call',
+      name: 'get_workspace_folder_uri',
+      type: 'response.function_call_arguments.done',
+    },
+    {
+      getWorkspaceUri: jest.fn(async () => ''),
+      setWorkspaceUri: jest.fn(async () => undefined),
+    },
+  )
+
+  expect(getToolOutput(messages || [])).toEqual({
+    error: 'No workspace folder is open.',
+    hint: 'Call get_workspace_folder_uri with no arguments: {}.',
+    tool: 'get_workspace_folder_uri',
+  })
+})
