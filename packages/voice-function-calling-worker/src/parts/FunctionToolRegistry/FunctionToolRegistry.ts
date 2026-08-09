@@ -1,3 +1,4 @@
+import { editorFunctionTools } from '../EditorFunctionTools/EditorFunctionTools.ts'
 import { getFakeWeather } from '../FakeWeather/FakeWeather.ts'
 import { panelFunctionTools } from '../PanelFunctionTools/PanelFunctionTools.ts'
 import { panelViewFunctionTools } from '../PanelViewFunctionTools/PanelViewFunctionTools.ts'
@@ -95,6 +96,7 @@ export const getRegisteredTools = (
 ): readonly FunctionToolDefinition[] => {
   return [
     ...registeredTools.map((tool) => tool.definition),
+    ...editorFunctionTools,
     ...panelFunctionTools,
     ...panelViewFunctionTools,
     ...settingsFunctionTools,

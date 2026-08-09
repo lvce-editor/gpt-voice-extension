@@ -1,3 +1,4 @@
+import { executeEditorFunctionToolCall } from '../EditorFunctionTools/EditorFunctionTools.ts'
 import { executeRegisteredFunctionTool } from '../FunctionToolRegistry/FunctionToolRegistry.ts'
 import { executePanelFunctionToolCall } from '../PanelFunctionTools/PanelFunctionTools.ts'
 import { executePanelViewFunctionToolCall } from '../PanelViewFunctionTools/PanelViewFunctionTools.ts'
@@ -85,6 +86,10 @@ const parseFunctionCall = (
 export const executeFunctionToolCall = async (
   parsed: unknown,
 ): Promise<readonly string[]> => {
+  const editorMessages = await executeEditorFunctionToolCall(parsed)
+  if (editorMessages) {
+    return editorMessages
+  }
   const panelMessages = await executePanelFunctionToolCall(parsed)
   if (panelMessages) {
     return panelMessages
