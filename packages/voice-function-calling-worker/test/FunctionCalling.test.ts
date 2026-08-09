@@ -374,6 +374,30 @@ test('executes open settings calls in the worker', async () => {
   expect(JSON.parse(outputMessage.item.output)).toEqual({ opened: true })
 })
 
+test('executes settings search value calls in the worker', async () => {
+  const invoke = jest
+    .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
+    .mockResolvedValue(undefined)
+  const globalScope = globalThis as typeof globalThis & {
+    rpc: { readonly invoke: typeof invoke }
+  }
+  globalScope.rpc = { invoke }
+
+  const result = await executeFunctionToolCall({
+    arguments: '{"value":"font size"}',
+    call_id: 'settings-search-call',
+    name: 'set_settings_search_value',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(invoke).toHaveBeenCalledWith('Settings.setSearchValue', 'font size')
+  const outputMessage = JSON.parse(result[0] || '{}')
+  expect(JSON.parse(outputMessage.item.output)).toEqual({
+    updated: true,
+    value: 'font size',
+  })
+})
+
 test.each([
   ['open_workspace_file', 'WorkspaceMainArea.openUri', 'opened'],
   ['close_workspace_file', 'WorkspaceMainArea.closeUri', 'closed'],
