@@ -225,7 +225,7 @@ const matchesSearchTerms = (
 
 interface SearchIgnoreMatcher {
   readonly basePath: string
-  readonly matcher: Ignore
+  readonly matcher: Readonly<Ignore>
 }
 
 interface SearchDirectory {
@@ -302,9 +302,7 @@ const isSearchPathIgnored = (
   let ignored = false
   for (const { basePath, matcher } of ignoreMatchers) {
     const pathFromBase =
-      basePath === '.'
-        ? relativePath
-        : relativePath.slice(basePath.length + 1)
+      basePath === '.' ? relativePath : relativePath.slice(basePath.length + 1)
     const result = matcher.test(isDirectory ? `${pathFromBase}/` : pathFromBase)
     if (result.ignored) {
       ignored = true
