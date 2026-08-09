@@ -1,1 +1,1 @@
-export { commandMap } from './parts/Terminal/Terminal.ts'
+export { commandMap } from './parts/CommandMap/CommandMap.ts'

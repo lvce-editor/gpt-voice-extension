@@ -1,12 +1,19 @@
 import { execFile } from 'node:child_process'
-import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
+import { getWorkspacePath } from '../GetWorkspacePath/GetWorkspacePath.ts'
 
 export interface TerminalCommandResult {
   readonly exitCode: number | null
   readonly stderr: string
   readonly stdout: string
   readonly timedOut: boolean
+}
+
+interface BashExecutionError extends Error {
+  readonly code?: number | string
+  readonly killed?: boolean
+  readonly stderr?: string
+  readonly stdout?: string
 }
 
 const commandTimeout = 120_000
@@ -16,28 +23,6 @@ const bashPath =
   process.platform === 'win32'
     ? 'C:\\Program Files\\Git\\bin\\bash.exe'
     : '/bin/bash'
-
-interface BashExecutionError extends Error {
-  readonly code?: number | string
-  readonly killed?: boolean
-  readonly stderr?: string
-  readonly stdout?: string
-}
-
-const getWorkspacePath = (workspaceUri: string): string => {
-  let url: URL
-  try {
-    url = new URL(workspaceUri)
-  } catch {
-    throw new TypeError('The opened workspace URI is invalid.')
-  }
-  if (url.protocol !== 'file:') {
-    throw new TypeError(
-      'Bash commands can only run in a local file:// workspace.',
-    )
-  }
-  return fileURLToPath(url)
-}
 
 export const executeBash = async (
   command: string,
@@ -76,8 +61,4 @@ export const executeBash = async (
     }
     throw new Error(executionError.message, { cause: executionError })
   }
-}
-
-export const commandMap = {
-  'Terminal.executeBash': executeBash,
 }
