@@ -1,3 +1,4 @@
+import ignore, { type Ignore } from 'ignore'
 import * as Rpc from '../Rpc/Rpc.ts'
 
 interface FileSystemDirent {
@@ -222,49 +223,120 @@ const matchesSearchTerms = (
   return terms.every((term) => normalizedPath.includes(term))
 }
 
-interface SearchDirectoryResult {
+interface SearchIgnoreMatcher {
+  readonly basePath: string
+  readonly matcher: Ignore
+}
+
+interface SearchDirectory {
   readonly directoryPath: string
+  readonly ignoreMatchers: readonly SearchIgnoreMatcher[]
+}
+
+interface SearchDirectoryResult extends SearchDirectory {
   readonly dirents: readonly FileSystemDirent[]
+}
+
+const readSearchIgnoreMatcher = async (
+  workspaceUri: string,
+  directoryPath: string,
+  dirents: readonly FileSystemDirent[],
+  api: WorkspaceFileSystemApi,
+): Promise<SearchIgnoreMatcher | undefined> => {
+  const hasGitIgnore = dirents.some(
+    (dirent) => dirent.name === '.gitignore' && fileEntryTypes.has(dirent.type),
+  )
+  if (!hasGitIgnore) {
+    return undefined
+  }
+  const relativePath = joinWorkspacePath(directoryPath, '.gitignore')
+  const uri = resolveWorkspaceFileUri(workspaceUri, relativePath)
+  try {
+    const content = await api.readFile(uri)
+    return {
+      basePath: directoryPath,
+      matcher: ignore().add(content),
+    }
+  } catch {
+    return undefined
+  }
 }
 
 const readSearchDirectory = async (
   workspaceUri: string,
-  directoryPath: string,
+  directory: SearchDirectory,
   api: WorkspaceFileSystemApi,
 ): Promise<SearchDirectoryResult> => {
+  const { directoryPath, ignoreMatchers } = directory
   const directoryUri = resolveWorkspaceDirectoryUri(workspaceUri, directoryPath)
   try {
     const dirents = await api.readDirWithFileTypes(directoryUri)
-    return { directoryPath, dirents }
+    const ignoreMatcher = await readSearchIgnoreMatcher(
+      workspaceUri,
+      directoryPath,
+      dirents,
+      api,
+    )
+    return {
+      directoryPath,
+      dirents,
+      ignoreMatchers: ignoreMatcher
+        ? [...ignoreMatchers, ignoreMatcher]
+        : ignoreMatchers,
+    }
   } catch (error) {
     if (directoryPath === '.') {
       throw new Error(
         `Failed to search workspace files: ${getErrorMessage(error)}`,
       )
     }
-    return { directoryPath, dirents: [] }
+    return { directoryPath, dirents: [], ignoreMatchers }
   }
+}
+
+const isSearchPathIgnored = (
+  relativePath: string,
+  isDirectory: boolean,
+  ignoreMatchers: readonly SearchIgnoreMatcher[],
+): boolean => {
+  let ignored = false
+  for (const { basePath, matcher } of ignoreMatchers) {
+    const pathFromBase =
+      basePath === '.'
+        ? relativePath
+        : relativePath.slice(basePath.length + 1)
+    const result = matcher.test(isDirectory ? `${pathFromBase}/` : pathFromBase)
+    if (result.ignored) {
+      ignored = true
+    } else if (result.unignored) {
+      ignored = false
+    }
+  }
+  return ignored
 }
 
 const collectSearchBatch = (
   batchResults: readonly SearchDirectoryResult[],
   terms: readonly string[],
 ): Readonly<{
-  directories: readonly string[]
+  directories: readonly SearchDirectory[]
   matches: readonly string[]
 }> => {
-  const directories: string[] = []
+  const directories: SearchDirectory[] = []
   const matches: string[] = []
-  for (const { directoryPath, dirents } of batchResults) {
+  for (const { directoryPath, dirents, ignoreMatchers } of batchResults) {
     for (const dirent of dirents) {
       const relativePath = joinWorkspacePath(directoryPath, dirent.name)
+      const isDirectory = directoryEntryTypes.has(dirent.type)
       if (
-        directoryEntryTypes.has(dirent.type) &&
-        !ignoredSearchDirectoryNames.has(dirent.name)
+        isDirectory &&
+        !ignoredSearchDirectoryNames.has(dirent.name) &&
+        !isSearchPathIgnored(relativePath, true, ignoreMatchers)
       ) {
-        directories.push(relativePath)
+        directories.push({ directoryPath: relativePath, ignoreMatchers })
       } else if (
         fileEntryTypes.has(dirent.type) &&
+        !isSearchPathIgnored(relativePath, false, ignoreMatchers) &&
         matchesSearchTerms(relativePath, terms)
       ) {
         matches.push(relativePath)
@@ -286,7 +358,9 @@ export const searchWorkspaceFiles = async (
 > => {
   const terms = getSearchTerms(query)
   const workspaceUri = await api.getWorkspaceUri()
-  const pendingDirectories = ['.']
+  const pendingDirectories: SearchDirectory[] = [
+    { directoryPath: '.', ignoreMatchers: [] },
+  ]
   const matches: string[] = []
   let nextDirectoryIndex = 0
   let searchedDirectoryCount = 0
@@ -308,8 +382,8 @@ export const searchWorkspaceFiles = async (
     nextDirectoryIndex += batchSize
     searchedDirectoryCount += batchSize
     const batchResults = await Promise.all(
-      batch.map((directoryPath) =>
-        readSearchDirectory(workspaceUri, directoryPath, api),
+      batch.map((directory) =>
+        readSearchDirectory(workspaceUri, directory, api),
       ),
     )
     const batchEntries = collectSearchBatch(batchResults, terms)
