@@ -5,6 +5,7 @@ import {
 } from '@lvce-editor/virtual-dom-worker'
 import type { ITranscript } from '../CreateInstance/CreateInstance.ts'
 import { getTranscriptClassName } from '../GetTranscriptClassName/GetTranscriptClassName.ts'
+import { normalizeSpokenPaths } from '../NormalizeSpokenPaths/NormalizeSpokenPaths.ts'
 
 export const renderTranscriptItem = (
   item: ITranscript,
@@ -15,6 +16,6 @@ export const renderTranscriptItem = (
       className: getTranscriptClassName(item),
       type: VirtualDomElements.Div,
     },
-    text(item.text),
+    text(normalizeSpokenPaths(item.text)),
   ]
 }
