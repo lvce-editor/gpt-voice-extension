@@ -8,6 +8,7 @@ import {
 import {
   closeWorkspaceFile,
   openWorkspaceFile,
+  setQuickPickValue,
   showFileQuickPick,
   type WorkspaceMainAreaApi,
 } from '../WorkspaceMainArea/WorkspaceMainArea.ts'
@@ -130,6 +131,9 @@ const getErrorMessage = (error: unknown): string => {
 const getToolErrorHint = (toolName: string): string => {
   if (toolName === 'show_file_quick_pick') {
     return 'Call show_file_quick_pick with no arguments: {}.'
+  }
+  if (toolName === 'set_quick_pick_value') {
+    return 'Pass the text to type into the open quick pick, such as {"value":"package.json"}.'
   }
   if (toolName === 'list_workspace_directory') {
     return 'To list the workspace root, call list_workspace_directory with no arguments: {}. To list a subdirectory, pass only a relative path such as {"path":"src"}. Never pass an absolute path or URI.'
@@ -256,6 +260,24 @@ const showFileQuickPickTool: FunctionToolDefinition = {
   type: 'function',
 }
 
+const setQuickPickValueTool: FunctionToolDefinition = {
+  description:
+    'Type text into the currently open editor quick pick input. Use this after show_file_quick_pick to filter the displayed files without opening one directly.',
+  name: 'set_quick_pick_value',
+  parameters: {
+    additionalProperties: false,
+    properties: {
+      value: {
+        description: 'The complete text to put in the open quick pick input',
+        type: 'string',
+      },
+    },
+    required: ['value'],
+    type: 'object',
+  },
+  type: 'function',
+}
+
 export const workspaceFileFunctionTools: readonly FunctionToolDefinition[] = [
   listWorkspaceDirectoryTool,
   readWorkspaceFileTool,
@@ -263,6 +285,7 @@ export const workspaceFileFunctionTools: readonly FunctionToolDefinition[] = [
   openWorkspaceFileTool,
   closeWorkspaceFileTool,
   showFileQuickPickTool,
+  setQuickPickValueTool,
 ]
 
 const workspaceFileFunctionToolNames = workspaceFileFunctionTools.map(
@@ -311,6 +334,12 @@ export const executeWorkspaceFileFunctionToolCall = async (
         break
       case 'show_file_quick_pick':
         output = await showFileQuickPick(mainAreaApi)
+        break
+      case 'set_quick_pick_value':
+        output = await setQuickPickValue(
+          getRequiredString(argumentsValue, 'value'),
+          mainAreaApi,
+        )
         break
       case 'write_workspace_file':
         output = await writeWorkspaceFile(

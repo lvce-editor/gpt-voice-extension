@@ -78,3 +78,30 @@ test('createE2eTestSource - creates and verifies an opened workspace file', () =
     'Editor.shouldHaveText("Voice fixture workspace file")',
   )
 })
+
+test('createE2eTestSource - verifies a quick pick input value', () => {
+  const source = createE2eTestSource({
+    expect: {
+      assistantText: 'The file picker is filtered.',
+      toolCalls: [
+        {
+          arguments: { value: 'ci.yaml' },
+          name: 'set_quick_pick_value',
+          output: { updated: true, value: 'ci.yaml' },
+        },
+      ],
+      userText: 'Type ci.yaml in the file picker.',
+    },
+    name: 'quick-pick-input',
+    schemaVersion: 1,
+    source: { text: 'Type ci.yaml in the file picker.' },
+    trace: [],
+  })
+
+  expect(source).toContain(
+    "const quickPickInput = Locator('#QuickPick .InputBox')",
+  )
+  expect(source).toContain(
+    'await expect(quickPickInput).toHaveValue("ci.yaml")',
+  )
+})

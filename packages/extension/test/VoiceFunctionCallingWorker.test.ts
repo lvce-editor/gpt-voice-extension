@@ -122,6 +122,7 @@ test('creates a web worker RPC and queries registered tools', async () => {
       'WorkspaceMainArea.closeUri': closeUri,
       'WorkspaceMainArea.getWorkspaceUri': getWorkspaceUri,
       'WorkspaceMainArea.openUri': openUri,
+      'WorkspaceMainArea.setQuickPickValue': expect.any(Function),
       'WorkspaceMainArea.showFileQuickPick': showFileQuickPick,
     },
     contentSecurityPolicy: "default-src 'none'; script-src 'self'",
@@ -185,6 +186,19 @@ test('bridges panel view commands from the function calling worker', async () =>
   expect(openProblemsView).toHaveBeenCalledWith({ filter: 'typescript' })
   expect(openOutputView).toHaveBeenCalledWith({ channel: 'Window' })
   expect(openDebugConsole).toHaveBeenCalledWith({ input: 'process.version' })
+})
+
+test('bridges quick pick input from the function calling worker', async () => {
+  invoke.mockResolvedValue([])
+  await VoiceFunctionCallingWorker.getRegisteredTools()
+
+  const options = createRpc.mock.calls[0]?.[0]
+  const commandMap = options?.commandMap as Readonly<
+    Record<string, (...args: readonly unknown[]) => Promise<void>>
+  >
+  await commandMap['WorkspaceMainArea.setQuickPickValue']?.('ci.yaml')
+
+  expect(executeCommand).toHaveBeenCalledWith('QuickPick.setValue', 'ci.yaml')
 })
 
 test('invokes a workspace file tool on the worker', async () => {

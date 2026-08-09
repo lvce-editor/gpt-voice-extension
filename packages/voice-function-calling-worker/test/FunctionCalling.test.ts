@@ -236,6 +236,30 @@ test('executes show file quick pick calls in the worker', async () => {
   expect(result[0]).toContain('\\"shown\\":true')
 })
 
+test('executes set quick pick value calls in the worker', async () => {
+  const invoke = jest
+    .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
+    .mockResolvedValue(undefined)
+  const globalScope = globalThis as typeof globalThis & {
+    rpc: { readonly invoke: typeof invoke }
+  }
+  globalScope.rpc = { invoke }
+
+  const result = await executeFunctionToolCall({
+    arguments: '{"value":"ci.yaml"}',
+    call_id: 'set-quick-pick-value-call',
+    name: 'set_quick_pick_value',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(invoke).toHaveBeenCalledWith(
+    'WorkspaceMainArea.setQuickPickValue',
+    'ci.yaml',
+  )
+  expect(result[0]).toContain('\\"updated\\":true')
+  expect(result[0]).toContain('ci.yaml')
+})
+
 test.each([
   undefined,
   null,
