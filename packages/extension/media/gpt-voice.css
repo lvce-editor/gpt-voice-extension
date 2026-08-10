@@ -17,7 +17,7 @@
 }
 
 .ContentArea > .GptVoice {
-  flex: 0 0 calc(var(--PreviewWidth) - 22px);
+  flex: 0 0 calc(var(--SecondaryPreviewWidth) - 22px);
 }
 
 .ContentArea > .GptVoice + .Actions {
