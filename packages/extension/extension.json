@@ -108,7 +108,7 @@
       "title": "Gpt Voice",
       "icon": "media/voice-chat.svg",
       "kind": "virtualDom",
-      "preferredLocation": "preview"
+      "preferredLocation": "secondaryPreview"
     }
   ],
   "rpc": [
