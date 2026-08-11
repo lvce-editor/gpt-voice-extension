@@ -25,9 +25,9 @@
   "author": "Lvce Editor",
   "license": "MIT",
   "devDependencies": {
-    "@lvce-editor/eslint-config": "^18.2.0",
+    "@lvce-editor/eslint-config": "^18.4.0",
     "eslint": "^10.8.1",
-    "knip": "^6.32.0",
+    "knip": "^6.32.1",
     "prettier": "^4.0.0-alpha.10",
     "typescript": "^6.0.3"
   },
