@@ -175,6 +175,7 @@ test('creates a web worker RPC and queries registered tools', async () => {
       'Settings.openSettings': openSettings,
       'Settings.setSearchValue': setSettingsSearchValue,
       'Terminal.executeBash': expect.any(Function),
+      'Terminal.runInTerminal': expect.any(Function),
       'Workspace.getRecentlyOpenedWorkspaceUris':
         getRecentlyOpenedWorkspaceUris,
       'Workspace.setWorkspaceUri': setWorkspaceUri,

@@ -98,6 +98,7 @@ const commandMap = {
   'Settings.openSettings': openSettings,
   'Settings.setSearchValue': setSettingsSearchValue,
   'Terminal.executeBash': TerminalNode.executeBash,
+  'Terminal.runInTerminal': TerminalNode.runInTerminal,
   'Workspace.getRecentlyOpenedWorkspaceUris': getRecentlyOpenedWorkspaceUris,
   'Workspace.setWorkspaceUri': setWorkspaceUri,
   'WorkspaceFileSystem.exists': exists,
