@@ -172,6 +172,7 @@ test('creates a web worker RPC and queries registered tools', async () => {
       'PanelView.openOutputView': expect.any(Function),
       'PanelView.openProblemsView': expect.any(Function),
       'ProcessExplorer.open': openProcessExplorer,
+      'Preview.open': expect.any(Function),
       'Settings.openSettings': openSettings,
       'Settings.setSearchValue': setSettingsSearchValue,
       'Terminal.executeBash': expect.any(Function),
@@ -259,6 +260,22 @@ test('bridges sidebar position commands from the function calling worker', async
   await commandMap['Layout.toggleSideBarPosition']?.()
 
   expect(executeCommand).toHaveBeenCalledWith('Layout.toggleSideBarPosition')
+})
+
+test('bridges HTML preview commands from the function calling worker', async () => {
+  invoke.mockResolvedValue([])
+  await VoiceFunctionCallingWorker.getRegisteredTools()
+
+  const options = createRpc.mock.calls[0]?.[0]
+  const commandMap = options?.commandMap as Readonly<
+    Record<string, (...args: readonly unknown[]) => Promise<void>>
+  >
+  await commandMap['Preview.open']?.('file:///workspace/index.html')
+
+  expect(executeCommand).toHaveBeenCalledWith(
+    'Layout.showPreview',
+    'file:///workspace/index.html',
+  )
 })
 
 test('bridges open editor queries from the function calling worker', async () => {

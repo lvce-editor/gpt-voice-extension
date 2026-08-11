@@ -5,6 +5,7 @@ import { mainAreaFunctionTools } from '../MainAreaFunctionTools/MainAreaFunction
 import { panelFunctionTools } from '../PanelFunctionTools/PanelFunctionTools.ts'
 import { panelViewFunctionTools } from '../PanelViewFunctionTools/PanelViewFunctionTools.ts'
 import { processExplorerFunctionTools } from '../ProcessExplorerFunctionTools/ProcessExplorerFunctionTools.ts'
+import { previewFunctionTools } from '../PreviewFunctionTools/PreviewFunctionTools.ts'
 import { settingsFunctionTools } from '../SettingsFunctionTools/SettingsFunctionTools.ts'
 import { terminalFunctionTools } from '../TerminalFunctionTools/TerminalFunctionTools.ts'
 import { workspaceFileFunctionTools } from '../WorkspaceFileFunctionTools/WorkspaceFileFunctionTools.ts'
@@ -105,6 +106,7 @@ export const getRegisteredTools = (
     ...panelFunctionTools,
     ...panelViewFunctionTools,
     ...processExplorerFunctionTools,
+    ...previewFunctionTools,
     ...settingsFunctionTools,
     ...workspaceFunctionTools,
     ...workspaceFileFunctionTools,
