@@ -134,6 +134,10 @@ const maximumConcurrentDirectoryReads = 16
 const maximumSearchDirectoryCount = 5000
 const maximumSearchMatchCount = 50
 const searchTermRegex = /[\p{L}\p{N}]+/gu
+const yamlExtensionAliases: Readonly<Record<string, string>> = {
+  yaml: 'yml',
+  yml: 'yaml',
+}
 
 const getErrorMessage = (error: unknown): string => {
   return error instanceof Error ? error.message : String(error)
@@ -220,7 +224,11 @@ const matchesSearchTerms = (
   terms: readonly string[],
 ): boolean => {
   const normalizedPath = relativePath.toLocaleLowerCase()
-  return terms.every((term) => normalizedPath.includes(term))
+  return terms.every(
+    (term) =>
+      normalizedPath.includes(term) ||
+      normalizedPath.includes(yamlExtensionAliases[term] || term),
+  )
 }
 
 interface SearchIgnoreMatcher {

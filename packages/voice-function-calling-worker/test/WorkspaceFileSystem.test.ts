@@ -166,6 +166,25 @@ test('searchWorkspaceFiles - finds a file in a hidden nested directory', async (
   )
 })
 
+test.each([
+  ['release.yaml', 'release.yml'],
+  ['release.yml', 'release.yaml'],
+])(
+  'searchWorkspaceFiles - treats YAML extensions as equivalent for %s',
+  async (query, fileName) => {
+    const api = createApi()
+    jest
+      .mocked(api.readDirWithFileTypes)
+      .mockResolvedValue([{ name: fileName, type: 7 }])
+
+    await expect(searchWorkspaceFiles(query, api)).resolves.toEqual({
+      matches: [fileName],
+      query,
+      truncated: false,
+    })
+  },
+)
+
 test('searchWorkspaceFiles - excludes gitignored build output', async () => {
   const api = createApi()
   jest.mocked(api.readDirWithFileTypes).mockImplementation(async (uri) => {
