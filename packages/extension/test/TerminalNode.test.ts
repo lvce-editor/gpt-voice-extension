@@ -6,12 +6,14 @@ const invoke =
 const createNodeRpc = jest.fn<typeof Api.createNodeRpc>(
   async () => ({ invoke }) as never,
 )
+const executeCommand = jest.fn<typeof Api.executeCommand>()
 const getPreference = jest.fn<() => Promise<unknown>>(async () => false)
 const getWorkspaceUri = jest.fn(async () => 'file:///workspace')
 
 // eslint-disable-next-line jest/no-restricted-jest-methods
 jest.unstable_mockModule('@lvce-editor/api', () => ({
   createNodeRpc,
+  executeCommand,
   getPreference,
   getWorkspaceUri,
 }))
@@ -23,6 +25,7 @@ beforeEach(() => {
   getPreference.mockReset()
   getPreference.mockResolvedValue(false)
   getWorkspaceUri.mockClear()
+  executeCommand.mockReset()
   invoke.mockReset()
   TerminalNode.state.rpcPromise = undefined
 })
@@ -73,4 +76,34 @@ test('requires an opened workspace before starting the node process', async () =
     'Open a local workspace',
   )
   expect(createNodeRpc).not.toHaveBeenCalled()
+})
+
+test('runs a command in the visible integrated terminal', async () => {
+  getPreference.mockResolvedValue(true)
+
+  await expect(TerminalNode.runInTerminal('echo hello world')).resolves.toEqual(
+    {
+      command: 'echo hello world',
+      success: true,
+    },
+  )
+
+  expect(executeCommand).toHaveBeenNthCalledWith(
+    1,
+    'Layout.showPanel',
+    'Terminals',
+  )
+  expect(executeCommand).toHaveBeenNthCalledWith(
+    2,
+    'Terminals.sendText',
+    'echo hello world\r',
+  )
+  expect(createNodeRpc).not.toHaveBeenCalled()
+})
+
+test('refuses integrated terminal command execution while disabled', async () => {
+  await expect(TerminalNode.runInTerminal('echo hello world')).rejects.toThrow(
+    'Terminal tool access is disabled',
+  )
+  expect(executeCommand).not.toHaveBeenCalled()
 })

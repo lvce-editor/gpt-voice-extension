@@ -9,14 +9,15 @@ const getOutput = (messages: readonly string[]): unknown => {
   return JSON.parse(message.item.output)
 }
 
-test('declares a Bash command tool', () => {
+test('declares background and integrated terminal command tools', () => {
   expect(terminalFunctionTools).toEqual([
-    expect.objectContaining({
-      name: 'execute_bash',
-      parameters: expect.objectContaining({ required: ['command'] }),
-      type: 'function',
-    }),
+    expect.objectContaining({ name: 'execute_bash', type: 'function' }),
+    expect.objectContaining({ name: 'run_in_terminal', type: 'function' }),
   ])
+  const executeBashDefinition = terminalFunctionTools[0]
+  expect(executeBashDefinition?.parameters).toEqual(
+    expect.objectContaining({ required: ['command'] }),
+  )
 })
 
 test('executes a Bash function call and returns its result', async () => {
@@ -29,6 +30,9 @@ test('executes a Bash function call and returns its result', async () => {
   const executeBash = jest.fn<(command: string) => Promise<typeof result>>(
     async () => result,
   )
+  const runInTerminal = jest.fn<(command: string) => Promise<undefined>>(
+    async () => undefined,
+  )
 
   const messages = await executeTerminalFunctionToolCall(
     {
@@ -37,7 +41,7 @@ test('executes a Bash function call and returns its result', async () => {
       name: 'execute_bash',
       type: 'response.function_call_arguments.done',
     },
-    { executeBash },
+    { executeBash, runInTerminal },
   )
 
   expect(executeBash).toHaveBeenCalledWith('npm test')
@@ -45,8 +49,35 @@ test('executes a Bash function call and returns its result', async () => {
   expect(JSON.parse(messages?.[1] || '{}')).toEqual({ type: 'response.create' })
 })
 
+test('runs a command in the integrated terminal', async () => {
+  const executeBash = jest.fn<(command: string) => Promise<undefined>>(
+    async () => undefined,
+  )
+  const result = { command: 'echo hello world', success: true }
+  const runInTerminal = jest.fn<(command: string) => Promise<typeof result>>(
+    async () => result,
+  )
+
+  const messages = await executeTerminalFunctionToolCall(
+    {
+      arguments: '{"command":"echo hello world"}',
+      call_id: 'terminal-call',
+      name: 'run_in_terminal',
+      type: 'response.function_call_arguments.done',
+    },
+    { executeBash, runInTerminal },
+  )
+
+  expect(runInTerminal).toHaveBeenCalledWith('echo hello world')
+  expect(executeBash).not.toHaveBeenCalled()
+  expect(getOutput(messages || [])).toEqual(result)
+})
+
 test('returns a useful error for invalid arguments', async () => {
   const executeBash = jest.fn<(command: string) => Promise<undefined>>(
+    async () => undefined,
+  )
+  const runInTerminal = jest.fn<(command: string) => Promise<undefined>>(
     async () => undefined,
   )
 
@@ -57,7 +88,7 @@ test('returns a useful error for invalid arguments', async () => {
       name: 'execute_bash',
       type: 'response.function_call_arguments.done',
     },
-    { executeBash },
+    { executeBash, runInTerminal },
   )
 
   expect(executeBash).not.toHaveBeenCalled()

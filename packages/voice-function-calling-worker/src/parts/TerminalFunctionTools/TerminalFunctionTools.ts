@@ -4,19 +4,24 @@ import * as Rpc from '../Rpc/Rpc.ts'
 interface FunctionCallArguments {
   readonly argumentsValue: string
   readonly callId: string
+  readonly name: TerminalFunctionToolName
 }
 
 interface TerminalApi {
   readonly executeBash: (command: string) => Promise<unknown>
+  readonly runInTerminal: (command: string) => Promise<unknown>
 }
 
 const defaultApi: TerminalApi = {
   executeBash: (command) => Rpc.invoke('Terminal.executeBash', command),
+  runInTerminal: (command) => Rpc.invoke('Terminal.runInTerminal', command),
 }
+
+type TerminalFunctionToolName = 'execute_bash' | 'run_in_terminal'
 
 const executeBashTool: FunctionToolDefinition = {
   description:
-    'Execute a Bash command in the opened workspace. This tool is available only because the user explicitly enabled terminal access. Use it when the user asks to run a command or when a coding task requires inspecting, building, testing, or modifying the workspace.',
+    'Execute a hidden Bash command in the opened workspace and return its captured output. Use it for background command-line work needed to inspect, search, build, or test the workspace. Do not use it when the user asks to run a command in the visible integrated terminal.',
   name: 'execute_bash',
   parameters: {
     additionalProperties: false,
@@ -32,9 +37,34 @@ const executeBashTool: FunctionToolDefinition = {
   type: 'function',
 }
 
+const runInTerminalTool: FunctionToolDefinition = {
+  description:
+    'Type and execute a shell command in the visible integrated terminal. Use it whenever the user directly asks to run or execute a command, especially when they mention the terminal, so the command and its output remain visible.',
+  name: 'run_in_terminal',
+  parameters: {
+    additionalProperties: false,
+    properties: {
+      command: {
+        description: 'The complete shell command to type and execute.',
+        type: 'string',
+      },
+    },
+    required: ['command'],
+    type: 'object',
+  },
+  type: 'function',
+}
+
 export const terminalFunctionTools: readonly FunctionToolDefinition[] = [
   executeBashTool,
+  runInTerminalTool,
 ]
+
+const isTerminalFunctionToolName = (
+  value: unknown,
+): value is TerminalFunctionToolName => {
+  return value === 'execute_bash' || value === 'run_in_terminal'
+}
 
 const parseFunctionCall = (
   value: unknown,
@@ -48,11 +78,15 @@ const parseFunctionCall = (
     'call_id' in value &&
     typeof value.call_id === 'string' &&
     'name' in value &&
-    value.name === 'execute_bash' &&
+    isTerminalFunctionToolName(value.name) &&
     'arguments' in value &&
     typeof value.arguments === 'string'
   ) {
-    return { argumentsValue: value.arguments, callId: value.call_id }
+    return {
+      argumentsValue: value.arguments,
+      callId: value.call_id,
+      name: value.name,
+    }
   }
   if (
     'type' in value &&
@@ -65,11 +99,15 @@ const parseFunctionCall = (
     'call_id' in value.item &&
     typeof value.item.call_id === 'string' &&
     'name' in value.item &&
-    value.item.name === 'execute_bash' &&
+    isTerminalFunctionToolName(value.item.name) &&
     'arguments' in value.item &&
     typeof value.item.arguments === 'string'
   ) {
-    return { argumentsValue: value.item.arguments, callId: value.item.call_id }
+    return {
+      argumentsValue: value.item.arguments,
+      callId: value.item.call_id,
+      name: value.item.name,
+    }
   }
   return undefined
 }
@@ -118,12 +156,16 @@ export const executeTerminalFunctionToolCall = async (
   }
   let output: unknown
   try {
-    output = await api.executeBash(parseCommand(functionCall.argumentsValue))
+    const command = parseCommand(functionCall.argumentsValue)
+    output =
+      functionCall.name === 'run_in_terminal'
+        ? await api.runInTerminal(command)
+        : await api.executeBash(command)
   } catch (error) {
     output = {
       error: getErrorMessage(error),
       hint: 'The terminal tool requires an opened local workspace and the gptvoice.tools.terminal.enabled setting.',
-      tool: 'execute_bash',
+      tool: functionCall.name,
     }
   }
   return [

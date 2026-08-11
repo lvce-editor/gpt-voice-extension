@@ -1,4 +1,9 @@
-import { createNodeRpc, getPreference, getWorkspaceUri } from '@lvce-editor/api'
+import {
+  createNodeRpc,
+  executeCommand,
+  getPreference,
+  getWorkspaceUri,
+} from '@lvce-editor/api'
 
 interface Rpc {
   readonly invoke: (
@@ -14,6 +19,11 @@ export interface TerminalCommandResult {
   readonly stderr: string
   readonly stdout: string
   readonly timedOut: boolean
+}
+
+export interface IntegratedTerminalCommandResult {
+  readonly command: string
+  readonly success: true
 }
 
 export const terminalToolEnabledPreference = 'gptvoice.tools.terminal.enabled'
@@ -66,4 +76,20 @@ export const executeBash = async (
     command,
     workspaceUri,
   ) as Promise<TerminalCommandResult>
+}
+
+export const runInTerminal = async (
+  command: string,
+): Promise<IntegratedTerminalCommandResult> => {
+  if (!(await isEnabled())) {
+    throw new Error(
+      `Terminal tool access is disabled. Enable ${terminalToolEnabledPreference} to allow terminal command execution.`,
+    )
+  }
+  if (typeof command !== 'string' || !command.trim()) {
+    throw new TypeError('Terminal command must be a non-empty string.')
+  }
+  await executeCommand('Layout.showPanel', 'Terminals')
+  await executeCommand('Terminals.sendText', `${command}\r`)
+  return { command, success: true }
 }

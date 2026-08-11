@@ -88,6 +88,14 @@ test('includes the terminal tool only when enabled', () => {
       type: 'function',
     }),
   )
+  expect(
+    getRegisteredTools(true).find((tool) => tool.name === 'run_in_terminal'),
+  ).toEqual(
+    expect.objectContaining({
+      name: 'run_in_terminal',
+      type: 'function',
+    }),
+  )
 })
 
 test('executes a registered function tool call', () => {

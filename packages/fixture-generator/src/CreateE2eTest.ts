@@ -36,32 +36,61 @@ const createSettingsSearchAssertions = (
   ]
 }
 
+const createTerminalCapabilityTestSource = (
+  fixture: NormalizedRecording,
+): CapabilityTestSource => {
+  const runInTerminalToolCall = fixture.expect.toolCalls.find(
+    (toolCall) => toolCall.name === 'run_in_terminal',
+  )
+  const opensTerminal =
+    Boolean(runInTerminalToolCall) ||
+    fixture.expect.toolCalls.some(
+      (toolCall) =>
+        toolCall.name === 'set_panel' &&
+        toolCall.arguments &&
+        typeof toolCall.arguments === 'object' &&
+        'action' in toolCall.arguments &&
+        toolCall.arguments.action === 'open' &&
+        'view' in toolCall.arguments &&
+        toolCall.arguments.view === 'terminal',
+    )
+  if (!opensTerminal) {
+    return { apiNames: [], assertions: [], setup: [] }
+  }
+  const settings = runInTerminalToolCall
+    ? "{ 'gptvoice.tools.terminal.enabled': true, 'terminal.backend': 'mock' }"
+    : "{ 'terminal.backend': 'mock' }"
+  const assertions = [
+    `const terminalTab = Locator('.PanelTab[name="Terminals"]')`,
+    `const terminal = Locator('.XtermTerminal')`,
+    'await expect(terminalTab).toBeVisible()',
+    'await expect(terminal).toBeVisible()',
+  ]
+  const argumentsValue = runInTerminalToolCall?.arguments
+  if (
+    argumentsValue &&
+    typeof argumentsValue === 'object' &&
+    'command' in argumentsValue &&
+    typeof argumentsValue.command === 'string'
+  ) {
+    assertions.push(
+      `await expect(terminal).toContainText(${JSON.stringify(argumentsValue.command)})`,
+    )
+  }
+  return {
+    apiNames: ['Settings'],
+    assertions,
+    setup: [`await Settings.update(${settings})`],
+  }
+}
+
 const createCapabilityTestSource = (
   fixture: NormalizedRecording,
 ): CapabilityTestSource => {
-  const apiNames = new Set<string>()
-  const assertions: string[] = []
-  const setup: string[] = []
-  const opensTerminal = fixture.expect.toolCalls.some(
-    (toolCall) =>
-      toolCall.name === 'set_panel' &&
-      toolCall.arguments &&
-      typeof toolCall.arguments === 'object' &&
-      'action' in toolCall.arguments &&
-      toolCall.arguments.action === 'open' &&
-      'view' in toolCall.arguments &&
-      toolCall.arguments.view === 'terminal',
-  )
-  if (opensTerminal) {
-    apiNames.add('Settings')
-    setup.push("await Settings.update({ 'terminal.backend': 'mock' })")
-    assertions.push(
-      `const terminalTab = Locator('.PanelTab[name="Terminals"]')`,
-      `const terminal = Locator('.XtermTerminal')`,
-      'await expect(terminalTab).toBeVisible()',
-      'await expect(terminal).toBeVisible()',
-    )
-  }
+  const terminalCapability = createTerminalCapabilityTestSource(fixture)
+  const apiNames = new Set<string>(terminalCapability.apiNames)
+  const assertions: string[] = [...terminalCapability.assertions]
+  const setup: string[] = [...terminalCapability.setup]
 
   const opensSettings = fixture.expect.toolCalls.some(
     (toolCall) => toolCall.name === 'open_settings',

@@ -51,6 +51,32 @@ test('createE2eTestSource - verifies an opened terminal', () => {
   expect(source).toContain("const terminal = Locator('.XtermTerminal')")
 })
 
+test('createE2eTestSource - verifies a command in the integrated terminal', () => {
+  const source = createE2eTestSource({
+    expect: {
+      assistantText: 'The command is running in the terminal.',
+      toolCalls: [
+        {
+          arguments: { command: 'echo hello world' },
+          name: 'run_in_terminal',
+          output: { command: 'echo hello world', success: true },
+        },
+      ],
+      userText: 'Run echo hello world in the terminal.',
+    },
+    name: 'run-in-terminal',
+    schemaVersion: 1,
+    source: { text: 'Run echo hello world in the terminal.' },
+    trace: [],
+  })
+
+  expect(source).toContain("'gptvoice.tools.terminal.enabled': true")
+  expect(source).toContain("'terminal.backend': 'mock'")
+  expect(source).toContain(
+    'await expect(terminal).toContainText("echo hello world")',
+  )
+})
+
 test('createE2eTestSource - verifies opened settings', () => {
   const source = createE2eTestSource({
     expect: {
