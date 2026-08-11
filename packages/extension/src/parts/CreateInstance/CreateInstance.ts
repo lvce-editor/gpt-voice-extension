@@ -45,6 +45,8 @@ import {
 } from '../WebRtc/WebRtc.ts'
 
 const focusSelector = `.${ClassNames.Main}`
+const transcriptSelector = `.${ClassNames.GptVoiceTranscript}`
+const maxScrollTop = 9_999_999
 
 export interface ActiveGptVoiceViewInstance extends VirtualDomViewInstance {
   readonly addTranscript: (
@@ -67,6 +69,9 @@ export interface ActiveGptVoiceViewInstance extends VirtualDomViewInstance {
   readonly handleOutputTranscript: (parsed: any) => void
   readonly handleSaveOpenAiApiKey: () => Promise<void>
   readonly renderActionsDom: () => readonly VirtualDomNode[]
+  readonly renderScrollPosition: () =>
+    | readonly []
+    | readonly [selector: string, scrollTop: number]
   readonly renderTitle: () => string
   readonly replayFixture: (fixture: unknown) => Promise<void>
   readonly setAnimation: (enabled: boolean, scale: number) => void
@@ -182,6 +187,12 @@ export const createInstance = async (
   const handledToolCallIds = new Set<string>()
   let fixtureRecording: FixtureRecording | undefined
   let fixtureReplay: FixtureReplay | undefined
+  let transcriptScrollPending = false
+
+  const requestTranscriptRerender = (): void => {
+    transcriptScrollPending = true
+    context?.requestRerender()
+  }
 
   const sendToDataChannel = async (data: string): Promise<void> => {
     fixtureRecording?.recordClientMessage(data)
@@ -222,7 +233,7 @@ export const createInstance = async (
           },
         ],
       }
-      context?.requestRerender()
+      requestTranscriptRerender()
     }
     let responseMessages: readonly string[]
     try {
@@ -240,7 +251,7 @@ export const createInstance = async (
             : message,
         ),
       }
-      context?.requestRerender()
+      requestTranscriptRerender()
       throw error
     }
     const { messages: currentMessages } = state
@@ -257,7 +268,7 @@ export const createInstance = async (
           : message,
       ),
     }
-    context?.requestRerender()
+    requestTranscriptRerender()
     if (toolCall.name === 'stop_talking') {
       await instance.stop()
       return
@@ -324,7 +335,7 @@ export const createInstance = async (
         ...state,
         messages: [...messages, { id, text: value, type }],
       }
-      context?.requestRerender()
+      requestTranscriptRerender()
     },
     async captureFixture(options): Promise<void> {
       if (fixtureRecording) {
@@ -658,6 +669,15 @@ export const createInstance = async (
     ): string {
       return focusSelector
     },
+    renderScrollPosition():
+      | readonly []
+      | readonly [selector: string, scrollTop: number] {
+      if (!transcriptScrollPending) {
+        return []
+      }
+      transcriptScrollPending = false
+      return [transcriptSelector, maxScrollTop]
+    },
     renderSelections(): readonly ViewSelection[] {
       return []
     },
@@ -772,7 +792,7 @@ export const createInstance = async (
           text: value,
         }),
       }
-      context?.requestRerender()
+      requestTranscriptRerender()
     },
   }
 

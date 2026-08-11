@@ -3,8 +3,12 @@ import {
   createRpc,
   executeCommand,
   exists,
+  focusNextTab,
+  focusPreviousTab,
   formatDocument,
   getDiagnostics,
+  getEditorSelections,
+  getRecentlyOpenedWorkspaceUris,
   getWorkspaceUri,
   openDebugConsole,
   openOutputView,
@@ -14,6 +18,8 @@ import {
   openUri,
   readDirWithFileTypes,
   readFile,
+  setEditorSelections,
+  setSettingsSearchValue,
   setWorkspaceUri,
   showCompletions,
   showFileQuickPick,
@@ -60,10 +66,29 @@ const setQuickPickValue = async (value: string): Promise<void> => {
   await executeCommand('QuickPick.setValue', value)
 }
 
+const closeAllEditors = async (): Promise<void> => {
+  await executeCommand('Main.closeAllEditors')
+}
+
+const getOpenEditorUris = async (): Promise<unknown> => {
+  return executeCommand('GetActiveEditor.getOpenEditorUris')
+}
+
+const toggleSideBarPosition = async (): Promise<void> => {
+  await executeCommand('Layout.toggleSideBarPosition')
+}
+
 const commandMap = {
   'Editor.formatDocument': formatDocument,
   'Editor.getDiagnostics': getDiagnostics,
+  'Editor.getSelections': getEditorSelections,
+  'Editor.setSelections': setEditorSelections,
   'Editor.showCompletions': showCompletions,
+  'Layout.toggleSideBarPosition': toggleSideBarPosition,
+  'MainArea.closeAllEditors': closeAllEditors,
+  'MainArea.focusNextTab': focusNextTab,
+  'MainArea.focusPreviousTab': focusPreviousTab,
+  'MainArea.getOpenEditorUris': getOpenEditorUris,
   'Panel.close': closePanel,
   'Panel.open': openPanel,
   'PanelView.openDebugConsole': openDebugConsole,
@@ -71,7 +96,9 @@ const commandMap = {
   'PanelView.openProblemsView': openProblemsView,
   'ProcessExplorer.open': openProcessExplorer,
   'Settings.openSettings': openSettings,
+  'Settings.setSearchValue': setSettingsSearchValue,
   'Terminal.executeBash': TerminalNode.executeBash,
+  'Workspace.getRecentlyOpenedWorkspaceUris': getRecentlyOpenedWorkspaceUris,
   'Workspace.setWorkspaceUri': setWorkspaceUri,
   'WorkspaceFileSystem.exists': exists,
   'WorkspaceFileSystem.getWorkspaceUri': getWorkspaceUri,

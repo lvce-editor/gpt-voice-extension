@@ -135,6 +135,90 @@ test('executes workspace file function calls in the worker', async () => {
   expect(result[0]).toContain('const value = 1')
 })
 
+test('executes open editor tab queries in the worker', async () => {
+  const invoke = jest.fn(async (method: string): Promise<unknown> => {
+    if (method === 'MainArea.getOpenEditorUris') {
+      return ['file:///workspace/src/index.ts']
+    }
+    if (method === 'WorkspaceMainArea.getWorkspaceUri') {
+      return 'file:///workspace'
+    }
+    return undefined
+  })
+  const globalScope = globalThis as typeof globalThis & {
+    rpc: { readonly invoke: typeof invoke }
+  }
+  globalScope.rpc = { invoke }
+
+  const result = await executeFunctionToolCall({
+    arguments: '{}',
+    call_id: 'tabs-call',
+    name: 'get_open_editor_tabs',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(invoke).toHaveBeenCalledWith('MainArea.getOpenEditorUris')
+  expect(invoke).toHaveBeenCalledWith('WorkspaceMainArea.getWorkspaceUri')
+  const outputMessage = JSON.parse(result[0] || '{}')
+  expect(JSON.parse(outputMessage.item.output)).toEqual({
+    count: 1,
+    tabs: [
+      {
+        path: 'src/index.ts',
+        title: 'index.ts',
+        uri: 'file:///workspace/src/index.ts',
+      },
+    ],
+  })
+})
+
+test.each([
+  ['focus_next_tab', 'MainArea.focusNextTab'],
+  ['focus_previous_tab', 'MainArea.focusPreviousTab'],
+])('executes %s calls in the worker', async (name, method) => {
+  const invoke = jest
+    .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
+    .mockResolvedValue(undefined)
+  const globalScope = globalThis as typeof globalThis & {
+    rpc: { readonly invoke: typeof invoke }
+  }
+  globalScope.rpc = { invoke }
+
+  const result = await executeFunctionToolCall({
+    arguments: '{}',
+    call_id: 'focus-call',
+    name,
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(invoke).toHaveBeenCalledWith(method)
+  const outputMessage = JSON.parse(result[0] || '{}')
+  expect(JSON.parse(outputMessage.item.output)).toEqual({ focused: true })
+})
+
+test('executes close all editor calls in the worker', async () => {
+  const invoke = jest
+    .fn<(method: string) => Promise<unknown>>()
+    .mockResolvedValueOnce(['file:///workspace/src/index.ts', 'settings://'])
+    .mockResolvedValueOnce(undefined)
+  const globalScope = globalThis as typeof globalThis & {
+    rpc: { readonly invoke: typeof invoke }
+  }
+  globalScope.rpc = { invoke }
+
+  const result = await executeFunctionToolCall({
+    arguments: '{}',
+    call_id: 'close-call',
+    name: 'close_all_editors',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(invoke).toHaveBeenNthCalledWith(1, 'MainArea.getOpenEditorUris')
+  expect(invoke).toHaveBeenNthCalledWith(2, 'MainArea.closeAllEditors')
+  const outputMessage = JSON.parse(result[0] || '{}')
+  expect(JSON.parse(outputMessage.item.output)).toEqual({ closed: 2 })
+})
+
 test('executes workspace directory listing calls in the worker', async () => {
   const invoke = jest
     .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
@@ -187,6 +271,51 @@ test('executes open workspace folder calls in the worker', async () => {
   expect(result[0]).toContain('file:///home/user/project')
 })
 
+test('queries the current workspace folder URI in the worker', async () => {
+  const invoke = jest
+    .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
+    .mockResolvedValue('file:///workspace')
+  const globalScope = globalThis as typeof globalThis & {
+    rpc: { readonly invoke: typeof invoke }
+  }
+  globalScope.rpc = { invoke }
+
+  const result = await executeFunctionToolCall({
+    arguments: '{}',
+    call_id: 'get-workspace-call',
+    name: 'get_workspace_folder_uri',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(invoke).toHaveBeenCalledWith('WorkspaceFileSystem.getWorkspaceUri')
+  expect(result[0]).toContain('file:///workspace')
+})
+
+test('queries recently opened workspace folders in the worker', async () => {
+  const invoke = jest
+    .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
+    .mockResolvedValue([
+      'file:///home/user/about-view',
+      'remote-ssh://host/projects/other',
+    ])
+  const globalScope = globalThis as typeof globalThis & {
+    rpc: { readonly invoke: typeof invoke }
+  }
+  globalScope.rpc = { invoke }
+
+  const result = await executeFunctionToolCall({
+    arguments: '{}',
+    call_id: 'get-recent-call',
+    name: 'get_recently_opened_folders',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(invoke).toHaveBeenCalledWith(
+    'Workspace.getRecentlyOpenedWorkspaceUris',
+  )
+  expect(result[0]).toContain('about-view')
+})
+
 test('executes panel calls in the worker', async () => {
   const invoke = jest
     .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
@@ -205,6 +334,27 @@ test('executes panel calls in the worker', async () => {
 
   expect(invoke).toHaveBeenCalledWith('Panel.open', 'Terminals')
   expect(result[0]).toContain('terminal')
+})
+
+test('executes sidebar position calls in the worker', async () => {
+  const invoke = jest
+    .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
+    .mockResolvedValue(undefined)
+  const globalScope = globalThis as typeof globalThis & {
+    rpc: { readonly invoke: typeof invoke }
+  }
+  globalScope.rpc = { invoke }
+
+  const result = await executeFunctionToolCall({
+    arguments: '{}',
+    call_id: 'layout-call',
+    name: 'toggle_sidebar_position',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(invoke).toHaveBeenCalledWith('Layout.toggleSideBarPosition')
+  const outputMessage = JSON.parse(result[0] || '{}')
+  expect(JSON.parse(outputMessage.item.output)).toEqual({ toggled: true })
 })
 
 test('executes process explorer calls in the worker', async () => {
@@ -247,6 +397,30 @@ test('executes open settings calls in the worker', async () => {
   expect(invoke).toHaveBeenCalledWith('Settings.openSettings')
   const outputMessage = JSON.parse(result[0] || '{}')
   expect(JSON.parse(outputMessage.item.output)).toEqual({ opened: true })
+})
+
+test('executes settings search value calls in the worker', async () => {
+  const invoke = jest
+    .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
+    .mockResolvedValue(undefined)
+  const globalScope = globalThis as typeof globalThis & {
+    rpc: { readonly invoke: typeof invoke }
+  }
+  globalScope.rpc = { invoke }
+
+  const result = await executeFunctionToolCall({
+    arguments: '{"value":"font size"}',
+    call_id: 'settings-search-call',
+    name: 'set_settings_search_value',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(invoke).toHaveBeenCalledWith('Settings.setSearchValue', 'font size')
+  const outputMessage = JSON.parse(result[0] || '{}')
+  expect(JSON.parse(outputMessage.item.output)).toEqual({
+    updated: true,
+    value: 'font size',
+  })
 })
 
 test.each([

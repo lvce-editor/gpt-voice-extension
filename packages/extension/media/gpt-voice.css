@@ -1,8 +1,9 @@
 .GptVoice {
   box-sizing: border-box;
-  height: 100vh;
+  height: 100%;
   margin: 0;
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -13,6 +14,14 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   padding: 14px 12px 12px;
   overflow: hidden;
+}
+
+.ContentArea > .GptVoice {
+  flex: 0 0 calc(var(--SecondaryPreviewWidth) - 22px);
+}
+
+.ContentArea > .GptVoice + .Actions {
+  background: #0a0c14;
 }
 
 .GptVoiceSetup {

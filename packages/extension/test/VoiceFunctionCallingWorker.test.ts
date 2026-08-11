@@ -30,12 +30,23 @@ const openProcessExplorer = jest.fn<typeof Api.openProcessExplorer>(
   async () => undefined,
 )
 const openSettings = jest.fn<typeof Api.openSettings>(async () => undefined)
+const setSettingsSearchValue = jest.fn<typeof Api.setSettingsSearchValue>(
+  async () => undefined,
+)
 const executeCommand = jest.fn<typeof Api.executeCommand>(async () => undefined)
 const exists = jest.fn<typeof Api.exists>(async () => true)
+const focusNextTab = jest.fn<() => Promise<void>>(async () => undefined)
+const focusPreviousTab = jest.fn<() => Promise<void>>(async () => undefined)
 const formatDocument = jest.fn<() => Promise<void>>(async () => undefined)
 const getDiagnostics = jest.fn<() => Promise<readonly Api.Diagnostic[]>>(
   async () => [],
 )
+const getEditorSelections = jest.fn<typeof Api.getEditorSelections>(
+  async () => [],
+)
+const getRecentlyOpenedWorkspaceUris = jest.fn<
+  typeof Api.getRecentlyOpenedWorkspaceUris
+>(async () => [])
 const getWorkspaceUri = jest.fn(async () => 'file:///workspace')
 const getPreference = jest.fn<() => Promise<unknown>>(async () => false)
 const readDirWithFileTypes = jest.fn(async () => [
@@ -45,6 +56,9 @@ const readFile = jest.fn<(uri: string) => Promise<string>>(
   async () => 'workspace content',
 )
 const setWorkspaceUri = jest.fn<(uri: string) => Promise<void>>(
+  async () => undefined,
+)
+const setEditorSelections = jest.fn<typeof Api.setEditorSelections>(
   async () => undefined,
 )
 const showCompletions = jest.fn<() => Promise<void>>(async () => undefined)
@@ -63,9 +77,13 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
     createRpc,
     executeCommand,
     exists,
+    focusNextTab,
+    focusPreviousTab,
     formatDocument,
     getDiagnostics,
+    getEditorSelections,
     getPreference,
+    getRecentlyOpenedWorkspaceUris,
     getWorkspaceUri,
     openDebugConsole,
     openOutputView,
@@ -75,6 +93,8 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
     openUri,
     readDirWithFileTypes,
     readFile,
+    setEditorSelections,
+    setSettingsSearchValue,
     setWorkspaceUri,
     showCompletions,
     showFileQuickPick,
@@ -91,8 +111,12 @@ beforeEach(() => {
   closeUri.mockClear()
   executeCommand.mockClear()
   exists.mockClear()
+  focusNextTab.mockClear()
+  focusPreviousTab.mockClear()
   formatDocument.mockClear()
   getDiagnostics.mockClear()
+  getEditorSelections.mockClear()
+  getRecentlyOpenedWorkspaceUris.mockClear()
   invoke.mockReset()
   getWorkspaceUri.mockClear()
   openDebugConsole.mockClear()
@@ -107,6 +131,8 @@ beforeEach(() => {
   readDirWithFileTypes.mockClear()
   readFile.mockClear()
   setWorkspaceUri.mockClear()
+  setEditorSelections.mockClear()
+  setSettingsSearchValue.mockClear()
   showCompletions.mockClear()
   showFileQuickPick.mockClear()
   writeFile.mockClear()
@@ -132,7 +158,14 @@ test('creates a web worker RPC and queries registered tools', async () => {
     commandMap: {
       'Editor.formatDocument': formatDocument,
       'Editor.getDiagnostics': getDiagnostics,
+      'Editor.getSelections': getEditorSelections,
+      'Editor.setSelections': setEditorSelections,
       'Editor.showCompletions': showCompletions,
+      'Layout.toggleSideBarPosition': expect.any(Function),
+      'MainArea.closeAllEditors': expect.any(Function),
+      'MainArea.focusNextTab': focusNextTab,
+      'MainArea.focusPreviousTab': focusPreviousTab,
+      'MainArea.getOpenEditorUris': expect.any(Function),
       'Panel.close': expect.any(Function),
       'Panel.open': expect.any(Function),
       'PanelView.openDebugConsole': expect.any(Function),
@@ -140,7 +173,10 @@ test('creates a web worker RPC and queries registered tools', async () => {
       'PanelView.openProblemsView': expect.any(Function),
       'ProcessExplorer.open': openProcessExplorer,
       'Settings.openSettings': openSettings,
+      'Settings.setSearchValue': setSettingsSearchValue,
       'Terminal.executeBash': expect.any(Function),
+      'Workspace.getRecentlyOpenedWorkspaceUris':
+        getRecentlyOpenedWorkspaceUris,
       'Workspace.setWorkspaceUri': setWorkspaceUri,
       'WorkspaceFileSystem.exists': exists,
       'WorkspaceFileSystem.getWorkspaceUri': getWorkspaceUri,
@@ -212,6 +248,64 @@ test('bridges panel commands from the function calling worker', async () => {
   expect(executeCommand).toHaveBeenNthCalledWith(3, 'Layout.hidePanel')
 })
 
+test('bridges sidebar position commands from the function calling worker', async () => {
+  invoke.mockResolvedValue([])
+  await VoiceFunctionCallingWorker.getRegisteredTools()
+
+  const options = createRpc.mock.calls[0]?.[0]
+  const commandMap = options?.commandMap as Readonly<
+    Record<string, (...args: readonly unknown[]) => Promise<void>>
+  >
+  await commandMap['Layout.toggleSideBarPosition']?.()
+
+  expect(executeCommand).toHaveBeenCalledWith('Layout.toggleSideBarPosition')
+})
+
+test('bridges open editor queries from the function calling worker', async () => {
+  const uris = ['file:///workspace/package.json', 'settings://']
+  executeCommand.mockResolvedValue(uris)
+  invoke.mockResolvedValue([])
+  await VoiceFunctionCallingWorker.getRegisteredTools()
+
+  const options = createRpc.mock.calls[0]?.[0]
+  const commandMap = options?.commandMap as Readonly<
+    Record<string, (...args: readonly unknown[]) => Promise<unknown>>
+  >
+  await expect(commandMap['MainArea.getOpenEditorUris']?.()).resolves.toBe(uris)
+
+  expect(executeCommand).toHaveBeenCalledWith(
+    'GetActiveEditor.getOpenEditorUris',
+  )
+})
+
+test('bridges close all editors commands from the function calling worker', async () => {
+  invoke.mockResolvedValue([])
+  await VoiceFunctionCallingWorker.getRegisteredTools()
+
+  const options = createRpc.mock.calls[0]?.[0]
+  const commandMap = options?.commandMap as Readonly<
+    Record<string, (...args: readonly unknown[]) => Promise<unknown>>
+  >
+  await commandMap['MainArea.closeAllEditors']?.()
+
+  expect(executeCommand).toHaveBeenCalledWith('Main.closeAllEditors')
+})
+
+test('bridges editor tab focus commands from the function calling worker', async () => {
+  invoke.mockResolvedValue([])
+  await VoiceFunctionCallingWorker.getRegisteredTools()
+
+  const options = createRpc.mock.calls[0]?.[0]
+  const commandMap = options?.commandMap as Readonly<
+    Record<string, (...args: readonly unknown[]) => Promise<void>>
+  >
+  await commandMap['MainArea.focusNextTab']?.()
+  await commandMap['MainArea.focusPreviousTab']?.()
+
+  expect(focusNextTab).toHaveBeenCalledWith()
+  expect(focusPreviousTab).toHaveBeenCalledWith()
+})
+
 test('bridges editor commands from the function calling worker', async () => {
   invoke.mockResolvedValue([])
   await VoiceFunctionCallingWorker.getRegisteredTools()
@@ -222,10 +316,28 @@ test('bridges editor commands from the function calling worker', async () => {
   >
   await commandMap['Editor.formatDocument']?.()
   await commandMap['Editor.getDiagnostics']?.()
+  await commandMap['Editor.getSelections']?.()
+  await commandMap['Editor.setSelections']?.([
+    {
+      endColumnIndex: 8,
+      endRowIndex: 4,
+      startColumnIndex: 2,
+      startRowIndex: 3,
+    },
+  ])
   await commandMap['Editor.showCompletions']?.()
 
   expect(formatDocument).toHaveBeenCalledWith()
   expect(getDiagnostics).toHaveBeenCalledWith()
+  expect(getEditorSelections).toHaveBeenCalledWith()
+  expect(setEditorSelections).toHaveBeenCalledWith([
+    {
+      endColumnIndex: 8,
+      endRowIndex: 4,
+      startColumnIndex: 2,
+      startRowIndex: 3,
+    },
+  ])
   expect(showCompletions).toHaveBeenCalledWith()
 })
 
@@ -257,6 +369,19 @@ test('bridges opening settings from the function calling worker', async () => {
   await commandMap['Settings.openSettings']?.()
 
   expect(openSettings).toHaveBeenCalledWith()
+})
+
+test('bridges settings search input from the function calling worker', async () => {
+  invoke.mockResolvedValue([])
+  await VoiceFunctionCallingWorker.getRegisteredTools()
+
+  const options = createRpc.mock.calls[0]?.[0]
+  const commandMap = options?.commandMap as Readonly<
+    Record<string, (...args: readonly unknown[]) => Promise<void>>
+  >
+  await commandMap['Settings.setSearchValue']?.('font size')
+
+  expect(setSettingsSearchValue).toHaveBeenCalledWith('font size')
 })
 
 test('bridges quick pick input from the function calling worker', async () => {

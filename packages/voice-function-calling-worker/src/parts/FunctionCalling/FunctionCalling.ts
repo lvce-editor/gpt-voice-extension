@@ -1,5 +1,7 @@
 import { executeEditorFunctionToolCall } from '../EditorFunctionTools/EditorFunctionTools.ts'
 import { executeRegisteredFunctionTool } from '../FunctionToolRegistry/FunctionToolRegistry.ts'
+import { executeLayoutFunctionToolCall } from '../LayoutFunctionTools/LayoutFunctionTools.ts'
+import { executeMainAreaFunctionToolCall } from '../MainAreaFunctionTools/MainAreaFunctionTools.ts'
 import { executePanelFunctionToolCall } from '../PanelFunctionTools/PanelFunctionTools.ts'
 import { executePanelViewFunctionToolCall } from '../PanelViewFunctionTools/PanelViewFunctionTools.ts'
 import { executeProcessExplorerFunctionToolCall } from '../ProcessExplorerFunctionTools/ProcessExplorerFunctionTools.ts'
@@ -90,6 +92,14 @@ export const executeFunctionToolCall = async (
   const editorMessages = await executeEditorFunctionToolCall(parsed)
   if (editorMessages) {
     return editorMessages
+  }
+  const layoutMessages = await executeLayoutFunctionToolCall(parsed)
+  if (layoutMessages) {
+    return layoutMessages
+  }
+  const mainAreaMessages = await executeMainAreaFunctionToolCall(parsed)
+  if (mainAreaMessages) {
+    return mainAreaMessages
   }
   const panelMessages = await executePanelFunctionToolCall(parsed)
   if (panelMessages) {
