@@ -86,6 +86,32 @@ test('executes active editor function calls in the worker', async () => {
   expect(result[0]).toContain('\\"formatted\\":true')
 })
 
+test('opens the active HTML editor in the preview area', async () => {
+  const invoke = jest
+    .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
+    .mockResolvedValueOnce(['file:///workspace/index.html'])
+    .mockResolvedValueOnce(undefined)
+  const globalScope = globalThis as typeof globalThis & {
+    rpc: { readonly invoke: typeof invoke }
+  }
+  globalScope.rpc = { invoke }
+
+  const result = await executeFunctionToolCall({
+    arguments: '{}',
+    call_id: 'preview-call',
+    name: 'open_html_preview',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(invoke).toHaveBeenNthCalledWith(1, 'MainArea.getOpenEditorUris')
+  expect(invoke).toHaveBeenNthCalledWith(
+    2,
+    'Preview.open',
+    'file:///workspace/index.html',
+  )
+  expect(result[0]).toContain('\\"opened\\":true')
+})
+
 test('waits silently after background noise', async () => {
   const result = await executeFunctionToolCall({
     arguments: '{}',

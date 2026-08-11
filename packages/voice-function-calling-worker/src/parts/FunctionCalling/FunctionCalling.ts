@@ -4,6 +4,7 @@ import { executeLayoutFunctionToolCall } from '../LayoutFunctionTools/LayoutFunc
 import { executeMainAreaFunctionToolCall } from '../MainAreaFunctionTools/MainAreaFunctionTools.ts'
 import { executePanelFunctionToolCall } from '../PanelFunctionTools/PanelFunctionTools.ts'
 import { executePanelViewFunctionToolCall } from '../PanelViewFunctionTools/PanelViewFunctionTools.ts'
+import { executePreviewFunctionToolCall } from '../PreviewFunctionTools/PreviewFunctionTools.ts'
 import { executeProcessExplorerFunctionToolCall } from '../ProcessExplorerFunctionTools/ProcessExplorerFunctionTools.ts'
 import { executeSettingsFunctionToolCall } from '../SettingsFunctionTools/SettingsFunctionTools.ts'
 import { executeTerminalFunctionToolCall } from '../TerminalFunctionTools/TerminalFunctionTools.ts'
@@ -113,6 +114,10 @@ export const executeFunctionToolCall = async (
     await executeProcessExplorerFunctionToolCall(parsed)
   if (processExplorerMessages) {
     return processExplorerMessages
+  }
+  const previewMessages = await executePreviewFunctionToolCall(parsed)
+  if (previewMessages) {
+    return previewMessages
   }
   const settingsMessages = await executeSettingsFunctionToolCall(parsed)
   if (settingsMessages) {

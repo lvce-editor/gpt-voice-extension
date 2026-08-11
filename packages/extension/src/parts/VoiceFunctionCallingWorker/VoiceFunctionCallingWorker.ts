@@ -78,6 +78,10 @@ const toggleSideBarPosition = async (): Promise<void> => {
   await executeCommand('Layout.toggleSideBarPosition')
 }
 
+const openPreview = async (uri: string): Promise<void> => {
+  await executeCommand('Layout.showPreview', uri)
+}
+
 const commandMap = {
   'Editor.formatDocument': formatDocument,
   'Editor.getDiagnostics': getDiagnostics,
@@ -94,6 +98,7 @@ const commandMap = {
   'PanelView.openDebugConsole': openDebugConsole,
   'PanelView.openOutputView': openOutputView,
   'PanelView.openProblemsView': openProblemsView,
+  'Preview.open': openPreview,
   'ProcessExplorer.open': openProcessExplorer,
   'Settings.openSettings': openSettings,
   'Settings.setSearchValue': setSettingsSearchValue,

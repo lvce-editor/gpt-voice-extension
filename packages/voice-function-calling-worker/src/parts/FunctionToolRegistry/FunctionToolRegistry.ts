@@ -4,6 +4,7 @@ import { layoutFunctionTools } from '../LayoutFunctionTools/LayoutFunctionTools.
 import { mainAreaFunctionTools } from '../MainAreaFunctionTools/MainAreaFunctionTools.ts'
 import { panelFunctionTools } from '../PanelFunctionTools/PanelFunctionTools.ts'
 import { panelViewFunctionTools } from '../PanelViewFunctionTools/PanelViewFunctionTools.ts'
+import { previewFunctionTools } from '../PreviewFunctionTools/PreviewFunctionTools.ts'
 import { processExplorerFunctionTools } from '../ProcessExplorerFunctionTools/ProcessExplorerFunctionTools.ts'
 import { settingsFunctionTools } from '../SettingsFunctionTools/SettingsFunctionTools.ts'
 import { terminalFunctionTools } from '../TerminalFunctionTools/TerminalFunctionTools.ts'
@@ -105,6 +106,7 @@ export const getRegisteredTools = (
     ...panelFunctionTools,
     ...panelViewFunctionTools,
     ...processExplorerFunctionTools,
+    ...previewFunctionTools,
     ...settingsFunctionTools,
     ...workspaceFunctionTools,
     ...workspaceFileFunctionTools,
