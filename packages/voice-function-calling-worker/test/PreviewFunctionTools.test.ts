@@ -147,6 +147,11 @@ test.each([
     name: 'other',
     type: 'response.function_call_arguments.done',
   },
-] as const)('ignores unrelated events %#', async (event) => {
-  await expect(executePreviewFunctionToolCall(event)).resolves.toBeUndefined()
-})
+] as const)(
+  'ignores unrelated events %#',
+  async (
+    event: Readonly<Record<string, unknown>> | null | undefined,
+  ): Promise<void> => {
+    await expect(executePreviewFunctionToolCall(event)).resolves.toBeUndefined()
+  },
+)
