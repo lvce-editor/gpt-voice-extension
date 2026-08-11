@@ -17,6 +17,8 @@ const defaultApi: PreviewApi = {
   open: (uri) => Rpc.invoke<void>('Preview.open', uri),
 }
 
+const htmlUriRegex = /\.html?(?:[?#].*)?$/i
+
 export const previewFunctionTools: readonly FunctionToolDefinition[] = [
   {
     description:
@@ -54,7 +56,8 @@ const parseFunctionCall = (
     parsed.type === 'response.output_item.done' &&
     'item' in parsed
   ) {
-    item = parsed.item
+    const { item: outputItem } = parsed
+    item = outputItem
   } else {
     return undefined
   }
@@ -105,7 +108,7 @@ const parseArguments = (value: string): string | undefined => {
 }
 
 const isHtmlUri = (uri: string): boolean => {
-  return /\.html?(?:[?#].*)?$/i.test(uri)
+  return htmlUriRegex.test(uri)
 }
 
 const resolveHtmlUri = async (
@@ -130,7 +133,7 @@ const resolveHtmlUri = async (
       'Multiple HTML editor tabs are open. Pass the URI of the file to preview.',
     )
   }
-  return htmlUris[0] as string
+  return htmlUris[0]
 }
 
 const createToolOutputMessage = (callId: string, output: unknown): string => {

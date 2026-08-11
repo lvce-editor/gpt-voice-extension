@@ -14,7 +14,10 @@ const createApi = (uris: readonly string[] = []): TestApi => ({
   open: jest.fn(async () => undefined),
 })
 
-const execute = (argumentsValue: string, api: TestApi) => {
+const execute = (
+  argumentsValue: string,
+  api: TestApi,
+): Promise<readonly string[] | undefined> => {
   return executePreviewFunctionToolCall(
     {
       arguments: argumentsValue,
