@@ -27,6 +27,7 @@ const developerVocabulary = [
   'CI (pronounced "see eye"; continuous integration)',
   'Git',
   'GitHub',
+  'Knip (pronounced "nip"; configuration file knip.json)',
   'npm',
   'Node.js',
   'TypeScript',
