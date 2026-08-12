@@ -161,6 +161,7 @@ test('creates a web worker RPC and queries registered tools', async () => {
       'Editor.getSelections': getEditorSelections,
       'Editor.setSelections': setEditorSelections,
       'Editor.showCompletions': showCompletions,
+      'Layout.closeSideBar': expect.any(Function),
       'Layout.toggleSideBarPosition': expect.any(Function),
       'MainArea.closeAllEditors': expect.any(Function),
       'MainArea.focusNextTab': focusNextTab,
@@ -250,7 +251,7 @@ test('bridges panel commands from the function calling worker', async () => {
   expect(executeCommand).toHaveBeenNthCalledWith(3, 'Layout.hidePanel')
 })
 
-test('bridges sidebar position commands from the function calling worker', async () => {
+test('bridges sidebar commands from the function calling worker', async () => {
   invoke.mockResolvedValue([])
   await VoiceFunctionCallingWorker.getRegisteredTools()
 
@@ -258,9 +259,14 @@ test('bridges sidebar position commands from the function calling worker', async
   const commandMap = options?.commandMap as Readonly<
     Record<string, (...args: readonly unknown[]) => Promise<void>>
   >
+  await commandMap['Layout.closeSideBar']?.()
   await commandMap['Layout.toggleSideBarPosition']?.()
 
-  expect(executeCommand).toHaveBeenCalledWith('Layout.toggleSideBarPosition')
+  expect(executeCommand).toHaveBeenNthCalledWith(1, 'Layout.hideSideBar')
+  expect(executeCommand).toHaveBeenNthCalledWith(
+    2,
+    'Layout.toggleSideBarPosition',
+  )
 })
 
 test('bridges HTML preview commands from the function calling worker', async () => {

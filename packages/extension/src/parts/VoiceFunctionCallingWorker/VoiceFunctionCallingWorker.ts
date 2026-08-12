@@ -74,6 +74,10 @@ const getOpenEditorUris = async (): Promise<unknown> => {
   return executeCommand('GetActiveEditor.getOpenEditorUris')
 }
 
+const closeSideBar = async (): Promise<void> => {
+  await executeCommand('Layout.hideSideBar')
+}
+
 const toggleSideBarPosition = async (): Promise<void> => {
   await executeCommand('Layout.toggleSideBarPosition')
 }
@@ -88,6 +92,7 @@ const commandMap = {
   'Editor.getSelections': getEditorSelections,
   'Editor.setSelections': setEditorSelections,
   'Editor.showCompletions': showCompletions,
+  'Layout.closeSideBar': closeSideBar,
   'Layout.toggleSideBarPosition': toggleSideBarPosition,
   'MainArea.closeAllEditors': closeAllEditors,
   'MainArea.focusNextTab': focusNextTab,
