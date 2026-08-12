@@ -164,6 +164,41 @@ test('returns a tool error without opening a missing workspace file', async () =
   })
 })
 
+test.each([
+  [
+    'release.yaml',
+    'Pass an exact file path relative to the workspace, such as {"path":"src/index.ts"}. If the path is unknown or was not found, call search_workspace_files with the filename, then retry with a returned path. Check if the user meant "release.yml" instead.',
+  ],
+  [
+    '.github/workflows/release.yml',
+    'Pass an exact file path relative to the workspace, such as {"path":"src/index.ts"}. If the path is unknown or was not found, call search_workspace_files with the filename, then retry with a returned path. Check if the user meant ".github/workflows/release.yaml" instead.',
+  ],
+])(
+  'suggests the alternative YAML extension for a missing %s file',
+  async (path, hint) => {
+    const fileSystemApi = createFileSystemApi()
+    jest.mocked(fileSystemApi.exists).mockResolvedValue(false)
+    const mainAreaApi = createMainAreaApi()
+    const messages = await executeWorkspaceFileFunctionToolCall(
+      {
+        arguments: JSON.stringify({ path }),
+        call_id: 'open-call',
+        name: 'open_workspace_file',
+        type: 'response.function_call_arguments.done',
+      },
+      fileSystemApi,
+      mainAreaApi,
+    )
+
+    expect(mainAreaApi.openUri).not.toHaveBeenCalled()
+    expect(getToolOutput(messages || [])).toEqual({
+      error: `Workspace file "${path}" was not found.`,
+      hint,
+      tool: 'open_workspace_file',
+    })
+  },
+)
+
 test.each(['open_workspace_file', 'close_workspace_file'])(
   'returns relative path guidance for invalid %s calls',
   async (name) => {
