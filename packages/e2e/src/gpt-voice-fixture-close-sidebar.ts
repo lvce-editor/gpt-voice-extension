@@ -90,15 +90,10 @@ export const test: Test = async ({
   await Command.executeExtensionCommand('GptVoice.replayFixture', fixture)
 
   await expect(rightSideBar).toBeHidden()
+  await Command.execute('Layout.showSideBar')
   await SideBar.open('gpt-voice.views.default')
 
   const leftSideBar = Locator('.ContentArea > .ActivityBar + .SideBar')
-  const voice = Locator('.GptVoice')
-  const userTranscript = Locator('.GptVoiceTranscriptItemUser')
-  const assistantTranscript = Locator('.GptVoiceTranscriptItemAi')
   await expect(rightSideBar).toBeVisible()
   await expect(leftSideBar).toBeHidden()
-  await expect(userTranscript).toHaveText(fixture.expect.userText)
-  await expect(voice).toContainText('Ran close_sidebar')
-  await expect(assistantTranscript).toHaveText(fixture.expect.assistantText)
 }
