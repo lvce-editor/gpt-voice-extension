@@ -1,4 +1,5 @@
 import { executeEditorFunctionToolCall } from '../EditorFunctionTools/EditorFunctionTools.ts'
+import { executeExplorerFunctionToolCall } from '../ExplorerFunctionTools/ExplorerFunctionTools.ts'
 import { executeRegisteredFunctionTool } from '../FunctionToolRegistry/FunctionToolRegistry.ts'
 import { executeLayoutFunctionToolCall } from '../LayoutFunctionTools/LayoutFunctionTools.ts'
 import { executeMainAreaFunctionToolCall } from '../MainAreaFunctionTools/MainAreaFunctionTools.ts'
@@ -93,6 +94,10 @@ export const executeFunctionToolCall = async (
   const editorMessages = await executeEditorFunctionToolCall(parsed)
   if (editorMessages) {
     return editorMessages
+  }
+  const explorerMessages = await executeExplorerFunctionToolCall(parsed)
+  if (explorerMessages) {
+    return explorerMessages
   }
   const layoutMessages = await executeLayoutFunctionToolCall(parsed)
   if (layoutMessages) {

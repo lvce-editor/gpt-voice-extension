@@ -86,6 +86,46 @@ test('executes active editor function calls in the worker', async () => {
   expect(result[0]).toContain('\\"formatted\\":true')
 })
 
+test('executes Explorer function calls in the worker', async () => {
+  const invoke = jest
+    .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
+    .mockResolvedValueOnce(undefined)
+    .mockResolvedValueOnce('file:///workspace')
+    .mockResolvedValueOnce(true)
+    .mockResolvedValueOnce(undefined)
+    .mockResolvedValueOnce(undefined)
+    .mockResolvedValueOnce(undefined)
+    .mockResolvedValueOnce('file:///workspace')
+    .mockResolvedValueOnce(true)
+    .mockResolvedValueOnce(undefined)
+  const globalScope = globalThis as typeof globalThis & {
+    rpc: { readonly invoke: typeof invoke }
+  }
+  globalScope.rpc = { invoke }
+
+  const result = await executeFunctionToolCall({
+    arguments: '{"path":"scripts"}',
+    call_id: 'explorer-call',
+    name: 'expand_explorer_folder',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(invoke).toHaveBeenNthCalledWith(1, 'Explorer.open')
+  expect(invoke).toHaveBeenNthCalledWith(
+    4,
+    'Explorer.revealItem',
+    'file:///workspace/scripts',
+  )
+  expect(invoke).toHaveBeenNthCalledWith(5, 'Explorer.expandFocusedFolder')
+  expect(invoke).toHaveBeenNthCalledWith(6, 'Explorer.open')
+  expect(invoke).toHaveBeenNthCalledWith(
+    9,
+    'Explorer.revealItem',
+    'file:///workspace/scripts',
+  )
+  expect(result[0]).toContain('\\"expanded\\":true')
+})
+
 test('opens the active HTML editor in the preview area', async () => {
   const invoke = jest
     .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()

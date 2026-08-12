@@ -1,0 +1,73 @@
+{
+  "expect": {
+    "assistantText": "The scripts folder is expanded in Explorer.",
+    "toolCalls": [
+      {
+        "arguments": {
+          "path": "scripts"
+        },
+        "name": "expand_explorer_folder",
+        "output": {
+          "expanded": true,
+          "path": "scripts"
+        }
+      }
+    ],
+    "userText": "Open the scripts folder in Explorer."
+  },
+  "name": "expand-explorer-folder",
+  "schemaVersion": 1,
+  "source": {
+    "realtimeModel": "gpt-realtime-2.1-mini",
+    "text": "Open the scripts folder in Explorer."
+  },
+  "trace": [
+    {
+      "atMs": 0,
+      "direction": "server",
+      "event": {
+        "delta": "Open the scripts folder in Explorer.",
+        "item_id": "user_item_1",
+        "type": "conversation.item.input_audio_transcription.delta"
+      }
+    },
+    {
+      "atMs": 350,
+      "direction": "server",
+      "event": {
+        "arguments": "{\"path\":\"scripts\"}",
+        "call_id": "call_1",
+        "name": "expand_explorer_folder",
+        "type": "response.function_call_arguments.done"
+      }
+    },
+    {
+      "atMs": 351,
+      "direction": "client",
+      "event": {
+        "item": {
+          "call_id": "call_1",
+          "output": "{\"expanded\":true,\"path\":\"scripts\"}",
+          "type": "function_call_output"
+        },
+        "type": "conversation.item.create"
+      }
+    },
+    {
+      "atMs": 352,
+      "direction": "client",
+      "event": {
+        "type": "response.create"
+      }
+    },
+    {
+      "atMs": 800,
+      "direction": "server",
+      "event": {
+        "delta": "The scripts folder is expanded in Explorer.",
+        "item_id": "assistant_item_1",
+        "type": "response.output_audio_transcript.delta"
+      }
+    }
+  ]
+}

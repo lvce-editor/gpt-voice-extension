@@ -5,6 +5,7 @@ import {
   readWorkspaceFile,
   resolveWorkspaceDirectoryUri,
   resolveWorkspaceFileUri,
+  resolveWorkspaceItemUri,
   searchWorkspaceFiles,
   type WorkspaceFileSystemApi,
   writeWorkspaceFile,
@@ -36,6 +37,34 @@ test.each([
   'resolveWorkspaceFileUri - resolves %s and %s',
   (workspaceUri, relativePath, expected) => {
     expect(resolveWorkspaceFileUri(workspaceUri, relativePath)).toBe(expected)
+  },
+)
+
+test.each([
+  ['file:///workspace', 'scripts', 'file:///workspace/scripts'],
+  ['file:///workspace/', 'src/index.ts', 'file:///workspace/src/index.ts'],
+  ['github://owner/repo', 'folder name', 'github://owner/repo/folder%20name'],
+])(
+  'resolveWorkspaceItemUri - resolves %s and %s',
+  (workspaceUri, relativePath, expected) => {
+    expect(resolveWorkspaceItemUri(workspaceUri, relativePath)).toBe(expected)
+  },
+)
+
+test.each([
+  ['file:///workspace', '', 'Workspace item path is required.'],
+  ['file:///workspace', '/tmp', 'Workspace item path must be relative.'],
+  [
+    'file:///workspace',
+    '../outside',
+    'Workspace item path cannot leave the opened workspace.',
+  ],
+])(
+  'resolveWorkspaceItemUri - rejects unsafe path %#',
+  (workspaceUri, relativePath, message) => {
+    expect(() => resolveWorkspaceItemUri(workspaceUri, relativePath)).toThrow(
+      message,
+    )
   },
 )
 

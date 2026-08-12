@@ -90,12 +90,42 @@ const getPreviewRuntimeDiagnostics = async (): Promise<unknown> => {
   return executeCommand('Preview.getRuntimeDiagnostics')
 }
 
+const openExplorer = async (): Promise<void> => {
+  await executeCommand('Layout.showSideBar', 'Explorer', false)
+}
+
+const revealExplorerItem = async (uri: string): Promise<void> => {
+  await executeCommand('Explorer.revealItem', uri)
+}
+
+const collapseFocusedExplorerFolder = async (): Promise<void> => {
+  await executeCommand('Explorer.handleArrowLeft')
+}
+
+const expandFocusedExplorerFolder = async (): Promise<void> => {
+  await executeCommand('Explorer.handleArrowRight')
+}
+
+const openFocusedExplorerContextMenu = async (): Promise<void> => {
+  await executeCommand('Explorer.handleContextMenuKeyboard')
+}
+
+const startExplorerRename = async (): Promise<void> => {
+  await executeCommand('Explorer.renameDirent')
+}
+
 const commandMap = {
   'Editor.formatDocument': formatDocument,
   'Editor.getDiagnostics': getDiagnostics,
   'Editor.getSelections': getEditorSelections,
   'Editor.setSelections': setEditorSelections,
   'Editor.showCompletions': showCompletions,
+  'Explorer.collapseFocusedFolder': collapseFocusedExplorerFolder,
+  'Explorer.expandFocusedFolder': expandFocusedExplorerFolder,
+  'Explorer.open': openExplorer,
+  'Explorer.openFocusedContextMenu': openFocusedExplorerContextMenu,
+  'Explorer.revealItem': revealExplorerItem,
+  'Explorer.startRename': startExplorerRename,
   'Layout.closeSideBar': closeSideBar,
   'Layout.toggleSideBarPosition': toggleSideBarPosition,
   'MainArea.closeAllEditors': closeAllEditors,

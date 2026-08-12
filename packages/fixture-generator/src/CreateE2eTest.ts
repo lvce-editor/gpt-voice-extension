@@ -84,13 +84,104 @@ const createTerminalCapabilityTestSource = (
   }
 }
 
+const explorerToolNames = new Set([
+  'collapse_explorer_folder',
+  'expand_explorer_folder',
+  'open_explorer_context_menu',
+  'start_explorer_rename',
+])
+
+const createExplorerCapabilityTestSource = (
+  fixture: NormalizedRecording,
+): CapabilityTestSource => {
+  const toolCall = fixture.expect.toolCalls.find((item) =>
+    explorerToolNames.has(item.name),
+  )
+  if (!toolCall) {
+    return { apiNames: [], assertions: [], setup: [] }
+  }
+  const argumentsValue = toolCall.arguments
+  const relativePath =
+    argumentsValue &&
+    typeof argumentsValue === 'object' &&
+    'path' in argumentsValue &&
+    typeof argumentsValue.path === 'string'
+      ? argumentsValue.path
+      : 'voice-explorer-folder'
+  const pathSegments = relativePath.split('/').filter(Boolean)
+  const itemName = pathSegments.at(-1) || relativePath
+  const directoryPaths = pathSegments.map((_, index) =>
+    pathSegments.slice(0, index + 1).join('/'),
+  )
+  const setup = [
+    'const explorerWorkspaceUri = await FileSystem.getTmpDir()',
+    ...directoryPaths.map(
+      (directoryPath) =>
+        `await FileSystem.mkdir(explorerWorkspaceUri + ${JSON.stringify('/' + directoryPath)})`,
+    ),
+    `await FileSystem.writeFile(explorerWorkspaceUri + ${JSON.stringify('/' + relativePath + '/voice-child.txt')}, 'Explorer voice fixture')`,
+    'await Workspace.setPath(explorerWorkspaceUri)',
+    `await SideBar.open('Explorer')`,
+  ]
+  const itemLocator = `Locator('.Explorer .TreeItem[aria-label=${JSON.stringify(itemName)}]')`
+  const assertions: string[] = []
+  const apiNames = ['FileSystem', 'Workspace']
+
+  switch (toolCall.name) {
+    case 'collapse_explorer_folder':
+      apiNames.push('Explorer')
+      setup.push('await Explorer.handleClick(0)')
+      assertions.push(
+        `const explorerItem = ${itemLocator}`,
+        `const explorerChild = Locator('.Explorer .TreeItem[aria-label="voice-child.txt"]')`,
+        `await expect(explorerItem).toHaveAttribute('aria-expanded', 'false')`,
+        `await expect(explorerChild).toHaveCount(0)`,
+      )
+      break
+    case 'expand_explorer_folder':
+      assertions.push(
+        `const explorerItem = ${itemLocator}`,
+        `const explorerChild = Locator('.Explorer .TreeItem[aria-label="voice-child.txt"]')`,
+        `await expect(explorerItem).toHaveAttribute('aria-expanded', 'true')`,
+        `await expect(explorerChild).toBeVisible()`,
+      )
+      break
+    case 'open_explorer_context_menu':
+      assertions.push(
+        `const explorerContextMenu = Locator('.Menu')`,
+        `await expect(explorerContextMenu).toBeVisible()`,
+      )
+      break
+    case 'start_explorer_rename':
+      assertions.push(
+        `const explorerInput = Locator('.ExplorerInputBox')`,
+        'await expect(explorerInput).toBeVisible()',
+        'await expect(explorerInput).toBeFocused()',
+        `await expect(explorerInput).toHaveValue(${JSON.stringify(itemName)})`,
+      )
+      break
+  }
+
+  return { apiNames, assertions, setup }
+}
+
 const createCapabilityTestSource = (
   fixture: NormalizedRecording,
 ): CapabilityTestSource => {
   const terminalCapability = createTerminalCapabilityTestSource(fixture)
-  const apiNames = new Set<string>(terminalCapability.apiNames)
-  const assertions: string[] = [...terminalCapability.assertions]
-  const setup: string[] = [...terminalCapability.setup]
+  const explorerCapability = createExplorerCapabilityTestSource(fixture)
+  const apiNames = new Set<string>([
+    ...terminalCapability.apiNames,
+    ...explorerCapability.apiNames,
+  ])
+  const assertions: string[] = [
+    ...terminalCapability.assertions,
+    ...explorerCapability.assertions,
+  ]
+  const setup: string[] = [
+    ...terminalCapability.setup,
+    ...explorerCapability.setup,
+  ]
 
   const opensSettings = fixture.expect.toolCalls.some(
     (toolCall) => toolCall.name === 'open_settings',

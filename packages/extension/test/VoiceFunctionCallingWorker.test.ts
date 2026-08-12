@@ -161,6 +161,12 @@ test('creates a web worker RPC and queries registered tools', async () => {
       'Editor.getSelections': getEditorSelections,
       'Editor.setSelections': setEditorSelections,
       'Editor.showCompletions': showCompletions,
+      'Explorer.collapseFocusedFolder': expect.any(Function),
+      'Explorer.expandFocusedFolder': expect.any(Function),
+      'Explorer.open': expect.any(Function),
+      'Explorer.openFocusedContextMenu': expect.any(Function),
+      'Explorer.revealItem': expect.any(Function),
+      'Explorer.startRename': expect.any(Function),
       'Layout.closeSideBar': expect.any(Function),
       'Layout.toggleSideBarPosition': expect.any(Function),
       'MainArea.closeAllEditors': expect.any(Function),
@@ -217,6 +223,41 @@ test('bridges process explorer commands from the function calling worker', async
   await commandMap['ProcessExplorer.open']?.()
 
   expect(openProcessExplorer).toHaveBeenCalledWith()
+})
+
+test('bridges Explorer commands from the function calling worker', async () => {
+  invoke.mockResolvedValue([])
+  await VoiceFunctionCallingWorker.getRegisteredTools()
+
+  const options = createRpc.mock.calls[0]?.[0]
+  const commandMap = options?.commandMap as Readonly<
+    Record<string, (...args: readonly unknown[]) => Promise<void>>
+  >
+  await commandMap['Explorer.open']?.()
+  await commandMap['Explorer.revealItem']?.('file:///workspace/scripts')
+  await commandMap['Explorer.expandFocusedFolder']?.()
+  await commandMap['Explorer.collapseFocusedFolder']?.()
+  await commandMap['Explorer.startRename']?.()
+  await commandMap['Explorer.openFocusedContextMenu']?.()
+
+  expect(executeCommand).toHaveBeenNthCalledWith(
+    1,
+    'Layout.showSideBar',
+    'Explorer',
+    false,
+  )
+  expect(executeCommand).toHaveBeenNthCalledWith(
+    2,
+    'Explorer.revealItem',
+    'file:///workspace/scripts',
+  )
+  expect(executeCommand).toHaveBeenNthCalledWith(3, 'Explorer.handleArrowRight')
+  expect(executeCommand).toHaveBeenNthCalledWith(4, 'Explorer.handleArrowLeft')
+  expect(executeCommand).toHaveBeenNthCalledWith(5, 'Explorer.renameDirent')
+  expect(executeCommand).toHaveBeenNthCalledWith(
+    6,
+    'Explorer.handleContextMenuKeyboard',
+  )
 })
 
 test('registers the terminal tool only when its setting is enabled', async () => {

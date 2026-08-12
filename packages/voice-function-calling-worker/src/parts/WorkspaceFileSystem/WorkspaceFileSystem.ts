@@ -36,7 +36,7 @@ const pathSeparatorRegex = /[\\/]+/
 
 const getPathSegments = (
   relativePath: string,
-  pathKind: 'directory' | 'file',
+  pathKind: 'directory' | 'file' | 'item',
   allowWorkspaceRoot = false,
 ): readonly string[] => {
   const trimmedPath = relativePath.trim()
@@ -68,7 +68,7 @@ const getPathSegments = (
 const resolveWorkspaceUri = (
   workspaceUri: string,
   relativePath: string,
-  pathKind: 'directory' | 'file',
+  pathKind: 'directory' | 'file' | 'item',
   allowWorkspaceRoot = false,
 ): string => {
   if (!workspaceUri) {
@@ -110,6 +110,13 @@ export const resolveWorkspaceDirectoryUri = (
   relativePath: string,
 ): string => {
   return resolveWorkspaceUri(workspaceUri, relativePath, 'directory', true)
+}
+
+export const resolveWorkspaceItemUri = (
+  workspaceUri: string,
+  relativePath: string,
+): string => {
+  return resolveWorkspaceUri(workspaceUri, relativePath, 'item')
 }
 
 type WorkspaceDirectoryEntryType =
