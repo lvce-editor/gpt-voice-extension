@@ -190,7 +190,7 @@ const listWorkspaceDirectoryTool: FunctionToolDefinition = {
 
 const searchWorkspaceFilesTool: FunctionToolDefinition = {
   description:
-    'Search for files by name anywhere in the opened workspace, including hidden folders such as .devcontainer. Git-ignored paths are excluded. Use this before open_workspace_file when the exact relative path is unknown. The result contains relative paths that can be passed directly to open_workspace_file.',
+    'Search for files by name anywhere in the opened workspace, including hidden folders such as .devcontainer. Git-ignored paths are excluded. Use this before open_workspace_file when the exact relative path is unknown. The result contains relative paths that can be passed directly to open_workspace_file. If no files match, follow the returned hint and search again with a corrected or shorter filename.',
   name: 'search_workspace_files',
   parameters: {
     additionalProperties: false,
