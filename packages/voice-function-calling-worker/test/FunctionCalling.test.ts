@@ -112,6 +112,31 @@ test('opens the active HTML editor in the preview area', async () => {
   expect(result[0]).toContain('\\"opened\\":true')
 })
 
+test('gets runtime diagnostics from the active preview', async () => {
+  const diagnostics = {
+    entries: [{ level: 'log', message: 'ready', type: 'console' }],
+    errorCount: 0,
+  }
+  const invoke = jest
+    .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
+    .mockResolvedValue(diagnostics)
+  const globalScope = globalThis as typeof globalThis & {
+    rpc: { readonly invoke: typeof invoke }
+  }
+  globalScope.rpc = { invoke }
+
+  const result = await executeFunctionToolCall({
+    arguments: '{}',
+    call_id: 'preview-diagnostics-call',
+    name: 'get_preview_runtime_diagnostics',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(invoke).toHaveBeenCalledWith('Preview.getRuntimeDiagnostics')
+  const outputMessage = JSON.parse(result[0] || '{}')
+  expect(JSON.parse(outputMessage.item.output)).toEqual(diagnostics)
+})
+
 test('waits silently after background noise', async () => {
   const result = await executeFunctionToolCall({
     arguments: '{}',

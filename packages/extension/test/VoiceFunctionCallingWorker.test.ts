@@ -171,6 +171,7 @@ test('creates a web worker RPC and queries registered tools', async () => {
       'PanelView.openDebugConsole': expect.any(Function),
       'PanelView.openOutputView': expect.any(Function),
       'PanelView.openProblemsView': expect.any(Function),
+      'Preview.getRuntimeDiagnostics': expect.any(Function),
       'Preview.open': expect.any(Function),
       'ProcessExplorer.open': openProcessExplorer,
       'Settings.openSettings': openSettings,
@@ -277,6 +278,23 @@ test('bridges HTML preview commands from the function calling worker', async () 
     'Layout.showPreview',
     'file:///workspace/index.html',
   )
+})
+
+test('bridges preview runtime diagnostic queries from the function calling worker', async () => {
+  const diagnostics = { entries: [], errorCount: 0 }
+  executeCommand.mockResolvedValue(diagnostics)
+  invoke.mockResolvedValue([])
+  await VoiceFunctionCallingWorker.getRegisteredTools()
+
+  const options = createRpc.mock.calls[0]?.[0]
+  const commandMap = options?.commandMap as Readonly<
+    Record<string, (...args: readonly unknown[]) => Promise<unknown>>
+  >
+  await expect(commandMap['Preview.getRuntimeDiagnostics']?.()).resolves.toBe(
+    diagnostics,
+  )
+
+  expect(executeCommand).toHaveBeenCalledWith('Preview.getRuntimeDiagnostics')
 })
 
 test('bridges open editor queries from the function calling worker', async () => {
