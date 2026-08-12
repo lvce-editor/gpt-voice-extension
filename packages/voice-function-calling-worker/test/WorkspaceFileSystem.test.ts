@@ -249,6 +249,7 @@ test('searchWorkspaceFiles - ignores unreadable nested directories', async () =>
   })
 
   await expect(searchWorkspaceFiles('file', api)).resolves.toEqual({
+    hint: 'No files matched. Double-check whether the filename was heard or read correctly, then search again with a likely correction or a shorter distinctive part of the filename before giving up.',
     matches: [],
     query: 'file',
     truncated: false,

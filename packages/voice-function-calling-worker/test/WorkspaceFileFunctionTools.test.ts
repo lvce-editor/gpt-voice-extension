@@ -263,6 +263,27 @@ test('searches for workspace files in nested directories', async () => {
   })
 })
 
+test('returns recovery guidance when no workspace files match', async () => {
+  const fileSystemApi = createFileSystemApi()
+  jest.mocked(fileSystemApi.readDirWithFileTypes).mockResolvedValue([])
+  const messages = await executeWorkspaceFileFunctionToolCall(
+    {
+      arguments: JSON.stringify({ query: 'styles.css' }),
+      call_id: 'search-call',
+      name: 'search_workspace_files',
+      type: 'response.function_call_arguments.done',
+    },
+    fileSystemApi,
+  )
+
+  expect(getToolOutput(messages || [])).toEqual({
+    hint: 'No files matched. Double-check whether the filename was heard or read correctly, then search again with a likely correction or a shorter distinctive part of the filename before giving up.',
+    matches: [],
+    query: 'styles.css',
+    truncated: false,
+  })
+})
+
 test('reads a workspace file', async () => {
   const fileSystemApi = createFileSystemApi()
   const messages = await executeWorkspaceFileFunctionToolCall(

@@ -133,6 +133,8 @@ const ignoredSearchDirectoryNames = new Set(['.git', 'node_modules'])
 const maximumConcurrentDirectoryReads = 16
 const maximumSearchDirectoryCount = 5000
 const maximumSearchMatchCount = 50
+const noSearchMatchesHint =
+  'No files matched. Double-check whether the filename was heard or read correctly, then search again with a likely correction or a shorter distinctive part of the filename before giving up.'
 const searchTermRegex = /[\p{L}\p{N}]+/gu
 const yamlExtensionAliases: Readonly<Record<string, string>> = {
   yaml: 'yml',
@@ -357,6 +359,7 @@ export const searchWorkspaceFiles = async (
   api: WorkspaceFileSystemApi = defaultApi,
 ): Promise<
   Readonly<{
+    hint?: string
     matches: readonly string[]
     query: string
     truncated: boolean
@@ -398,8 +401,10 @@ export const searchWorkspaceFiles = async (
     matches.push(...batchEntries.matches.slice(0, remainingMatchCount))
   }
 
+  const sortedMatches = matches.toSorted((a, b) => a.localeCompare(b))
   return {
-    matches: matches.toSorted((a, b) => a.localeCompare(b)),
+    ...(sortedMatches.length === 0 && { hint: noSearchMatchesHint }),
+    matches: sortedMatches,
     query,
     truncated:
       nextDirectoryIndex < pendingDirectories.length ||
