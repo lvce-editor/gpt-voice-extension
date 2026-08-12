@@ -6,23 +6,28 @@ import {
 
 interface TestApi {
   readonly getOpenEditorUris: () => Promise<readonly string[]>
+  readonly getRuntimeDiagnostics: () => Promise<unknown>
   readonly open: (uri: string) => Promise<void>
 }
 
 const createApi = (uris: readonly string[] = []): TestApi => ({
   getOpenEditorUris: jest.fn(async () => uris),
+  getRuntimeDiagnostics: jest.fn(async () => ({ entries: [], errorCount: 0 })),
   open: jest.fn(async () => undefined),
 })
 
 const execute = (
   argumentsValue: string,
   api: TestApi,
+  name:
+    | 'get_preview_runtime_diagnostics'
+    | 'open_html_preview' = 'open_html_preview',
 ): Promise<readonly string[] | undefined> => {
   return executePreviewFunctionToolCall(
     {
       arguments: argumentsValue,
       call_id: 'preview-call',
-      name: 'open_html_preview',
+      name,
       type: 'response.function_call_arguments.done',
     },
     api,
@@ -53,7 +58,53 @@ test('defines the HTML preview tool', () => {
       },
       type: 'function',
     },
+    {
+      description:
+        'Get recent console output and uncaught exceptions from the active LVCE Editor preview. Call this after creating or modifying preview code and refreshing the preview, then fix any reported runtime errors before finishing.',
+      name: 'get_preview_runtime_diagnostics',
+      parameters: {
+        additionalProperties: false,
+        properties: {},
+        type: 'object',
+      },
+      type: 'function',
+    },
   ])
+})
+
+test('gets runtime diagnostics from the active preview', async () => {
+  const diagnostics = {
+    entries: [
+      {
+        level: 'error',
+        message: 'addPipe is not defined',
+        type: 'exception',
+      },
+    ],
+    errorCount: 1,
+  }
+  const api = createApi()
+  jest.mocked(api.getRuntimeDiagnostics).mockResolvedValue(diagnostics)
+
+  const messages = await execute('{}', api, 'get_preview_runtime_diagnostics')
+
+  expect(api.getRuntimeDiagnostics).toHaveBeenCalledWith()
+  expect(parseOutput(messages)).toEqual(diagnostics)
+})
+
+test('returns a useful error when no preview is active', async () => {
+  const api = createApi()
+  jest
+    .mocked(api.getRuntimeDiagnostics)
+    .mockRejectedValue(new Error('No active Preview instance'))
+
+  const messages = await execute('{}', api, 'get_preview_runtime_diagnostics')
+
+  expect(parseOutput(messages)).toEqual({
+    error: 'No active Preview instance',
+    hint: 'Open an HTML preview first, then retry after the preview has loaded.',
+    tool: 'get_preview_runtime_diagnostics',
+  })
 })
 
 test('opens the only HTML editor in the preview area', async () => {

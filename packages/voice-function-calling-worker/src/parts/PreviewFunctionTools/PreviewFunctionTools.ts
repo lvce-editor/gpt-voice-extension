@@ -4,20 +4,29 @@ import * as Rpc from '../Rpc/Rpc.ts'
 interface FunctionCallArguments {
   readonly argumentsValue: string
   readonly callId: string
+  readonly name: PreviewToolName
 }
 
 interface PreviewApi {
   readonly getOpenEditorUris: () => Promise<readonly string[]>
+  readonly getRuntimeDiagnostics: () => Promise<unknown>
   readonly open: (uri: string) => Promise<void>
 }
 
 const defaultApi: PreviewApi = {
   getOpenEditorUris: () =>
     Rpc.invoke<readonly string[]>('MainArea.getOpenEditorUris'),
+  getRuntimeDiagnostics: () =>
+    Rpc.invoke<unknown>('Preview.getRuntimeDiagnostics'),
   open: (uri) => Rpc.invoke<void>('Preview.open', uri),
 }
 
 const htmlUriRegex = /\.html?(?:[?#].*)?$/i
+const previewToolNames = [
+  'get_preview_runtime_diagnostics',
+  'open_html_preview',
+] as const
+type PreviewToolName = (typeof previewToolNames)[number]
 
 export const previewFunctionTools: readonly FunctionToolDefinition[] = [
   {
@@ -37,7 +46,25 @@ export const previewFunctionTools: readonly FunctionToolDefinition[] = [
     },
     type: 'function',
   },
+  {
+    description:
+      'Get recent console output and uncaught exceptions from the active LVCE Editor preview. Call this after creating or modifying preview code and refreshing the preview, then fix any reported runtime errors before finishing.',
+    name: 'get_preview_runtime_diagnostics',
+    parameters: {
+      additionalProperties: false,
+      properties: {},
+      type: 'object',
+    },
+    type: 'function',
+  },
 ]
+
+const isPreviewToolName = (value: unknown): value is PreviewToolName => {
+  return (
+    typeof value === 'string' &&
+    previewToolNames.includes(value as PreviewToolName)
+  )
+}
 
 const parseFunctionCall = (
   parsed: unknown,
@@ -68,7 +95,7 @@ const parseFunctionCall = (
     !('call_id' in item) ||
     typeof item.call_id !== 'string' ||
     !('name' in item) ||
-    item.name !== 'open_html_preview' ||
+    !isPreviewToolName(item.name) ||
     !('arguments' in item) ||
     typeof item.arguments !== 'string'
   ) {
@@ -77,10 +104,11 @@ const parseFunctionCall = (
   return {
     argumentsValue: item.arguments,
     callId: item.call_id,
+    name: item.name,
   }
 }
 
-const parseArguments = (value: string): string | undefined => {
+const parseArguments = (value: string): Readonly<Record<string, unknown>> => {
   let parsed: unknown
   try {
     parsed = JSON.parse(value)
@@ -90,7 +118,11 @@ const parseArguments = (value: string): string | undefined => {
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
     throw new TypeError('Function tool arguments must be a JSON object.')
   }
-  const argumentsValue = parsed as Readonly<Record<string, unknown>>
+  return parsed as Readonly<Record<string, unknown>>
+}
+
+const parseOpenArguments = (value: string): string | undefined => {
+  const argumentsValue = parseArguments(value)
   const unexpectedKey = Object.keys(argumentsValue).find((key) => key !== 'uri')
   if (unexpectedKey) {
     throw new TypeError(
@@ -105,6 +137,16 @@ const parseArguments = (value: string): string | undefined => {
     throw new TypeError('Function tool argument "uri" must be a string.')
   }
   return uri
+}
+
+const parseEmptyArguments = (value: string): void => {
+  const argumentsValue = parseArguments(value)
+  const unexpectedKey = Object.keys(argumentsValue)[0]
+  if (unexpectedKey) {
+    throw new TypeError(
+      `Function tool argument "${unexpectedKey}" is not supported.`,
+    )
+  }
 }
 
 const isHtmlUri = (uri: string): boolean => {
@@ -161,15 +203,23 @@ export const executePreviewFunctionToolCall = async (
   }
   let output: unknown
   try {
-    const requestedUri = parseArguments(functionCall.argumentsValue)
-    const uri = await resolveHtmlUri(requestedUri, api)
-    await api.open(uri)
-    output = { opened: true }
+    if (functionCall.name === 'get_preview_runtime_diagnostics') {
+      parseEmptyArguments(functionCall.argumentsValue)
+      output = await api.getRuntimeDiagnostics()
+    } else {
+      const requestedUri = parseOpenArguments(functionCall.argumentsValue)
+      const uri = await resolveHtmlUri(requestedUri, api)
+      await api.open(uri)
+      output = { opened: true }
+    }
   } catch (error) {
     output = {
       error: getErrorMessage(error),
-      hint: 'Open an HTML editor tab first. Pass its full URI when more than one HTML tab is open.',
-      tool: 'open_html_preview',
+      hint:
+        functionCall.name === 'get_preview_runtime_diagnostics'
+          ? 'Open an HTML preview first, then retry after the preview has loaded.'
+          : 'Open an HTML editor tab first. Pass its full URI when more than one HTML tab is open.',
+      tool: functionCall.name,
     }
   }
   return [
