@@ -97,9 +97,12 @@ test('toggles the sidebar position and returns response messages', async () => {
   ])
 })
 
-test.each(['close_sidebar', 'toggle_sidebar_position'] as const)(
+test.each([
+  ['close_sidebar', 1, 0],
+  ['toggle_sidebar_position', 0, 1],
+] as const)(
   'supports completed output items for %s',
-  async (name) => {
+  async (name, closeCallCount, toggleCallCount) => {
     const api = createApi()
 
     await executeLayoutFunctionToolCall(
@@ -115,11 +118,8 @@ test.each(['close_sidebar', 'toggle_sidebar_position'] as const)(
       api,
     )
 
-    if (name === 'close_sidebar') {
-      expect(api.closeSideBar).toHaveBeenCalledWith()
-    } else {
-      expect(api.toggleSideBarPosition).toHaveBeenCalledWith()
-    }
+    expect(api.closeSideBar).toHaveBeenCalledTimes(closeCallCount)
+    expect(api.toggleSideBarPosition).toHaveBeenCalledTimes(toggleCallCount)
   },
 )
 
