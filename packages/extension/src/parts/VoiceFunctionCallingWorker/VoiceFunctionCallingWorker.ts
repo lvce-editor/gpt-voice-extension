@@ -74,6 +74,14 @@ const getOpenEditorUris = async (): Promise<unknown> => {
   return executeCommand('GetActiveEditor.getOpenEditorUris')
 }
 
+const getVisibleEditorLineRange = async (): Promise<unknown> => {
+  return executeCommand('GetActiveEditor.getVisibleLineRange')
+}
+
+const scrollEditorByLines = async (lineCount: number): Promise<void> => {
+  await executeCommand('Editor.scrollByLines', lineCount)
+}
+
 const toggleSideBarPosition = async (): Promise<void> => {
   await executeCommand('Layout.toggleSideBarPosition')
 }
@@ -86,6 +94,8 @@ const commandMap = {
   'Editor.formatDocument': formatDocument,
   'Editor.getDiagnostics': getDiagnostics,
   'Editor.getSelections': getEditorSelections,
+  'Editor.getVisibleLineRange': getVisibleEditorLineRange,
+  'Editor.scrollByLines': scrollEditorByLines,
   'Editor.setSelections': setEditorSelections,
   'Editor.showCompletions': showCompletions,
   'Layout.toggleSideBarPosition': toggleSideBarPosition,

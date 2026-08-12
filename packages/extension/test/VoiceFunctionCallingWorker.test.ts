@@ -159,6 +159,8 @@ test('creates a web worker RPC and queries registered tools', async () => {
       'Editor.formatDocument': formatDocument,
       'Editor.getDiagnostics': getDiagnostics,
       'Editor.getSelections': getEditorSelections,
+      'Editor.getVisibleLineRange': expect.any(Function),
+      'Editor.scrollByLines': expect.any(Function),
       'Editor.setSelections': setEditorSelections,
       'Editor.showCompletions': showCompletions,
       'Layout.toggleSideBarPosition': expect.any(Function),
@@ -335,6 +337,12 @@ test('bridges editor commands from the function calling worker', async () => {
   await commandMap['Editor.formatDocument']?.()
   await commandMap['Editor.getDiagnostics']?.()
   await commandMap['Editor.getSelections']?.()
+  executeCommand.mockResolvedValueOnce({
+    endRowIndex: 20,
+    startRowIndex: 4,
+  })
+  await commandMap['Editor.getVisibleLineRange']?.()
+  await commandMap['Editor.scrollByLines']?.(-5)
   await commandMap['Editor.setSelections']?.([
     {
       endColumnIndex: 8,
@@ -348,6 +356,10 @@ test('bridges editor commands from the function calling worker', async () => {
   expect(formatDocument).toHaveBeenCalledWith()
   expect(getDiagnostics).toHaveBeenCalledWith()
   expect(getEditorSelections).toHaveBeenCalledWith()
+  expect(executeCommand).toHaveBeenCalledWith(
+    'GetActiveEditor.getVisibleLineRange',
+  )
+  expect(executeCommand).toHaveBeenCalledWith('Editor.scrollByLines', -5)
   expect(setEditorSelections).toHaveBeenCalledWith([
     {
       endColumnIndex: 8,

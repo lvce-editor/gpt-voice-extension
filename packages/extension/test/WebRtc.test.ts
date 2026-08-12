@@ -42,6 +42,12 @@ test('createSessionConfig - includes registered function tools', () => {
     'Use close_all_editors whenever the user asks to close every editor or all editor tabs.',
   )
   expect(config.session.instructions).toContain(
+    'Use get_visible_editor_lines when the user asks which lines are currently visible. Use scroll_editor when the user asks to scroll the active editor up or down.',
+  )
+  expect(config.session.instructions).toContain(
+    'To scroll to named code, first locate its line with the workspace tools, then use set_editor_selections to reveal it.',
+  )
+  expect(config.session.instructions).toContain(
     'When the user says "open README", search_workspace_files for "README" and pass the returned relative path to open_workspace_file.',
   )
   expect(config.session.instructions).toContain(

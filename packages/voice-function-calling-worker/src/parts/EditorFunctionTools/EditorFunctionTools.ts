@@ -5,6 +5,10 @@ interface EditorApi {
   readonly formatDocument: () => Promise<void>
   readonly getDiagnostics: () => Promise<readonly unknown[]>
   readonly getEditorSelections: () => Promise<readonly EditorSelection[]>
+  readonly getVisibleLineRange: () => Promise<
+    EditorVisibleLineRange | undefined
+  >
+  readonly scrollByLines: (lineCount: number) => Promise<void>
   readonly setEditorSelections: (
     selections: readonly EditorSelection[],
   ) => Promise<void>
@@ -15,6 +19,11 @@ interface EditorSelection {
   readonly endColumnIndex: number
   readonly endRowIndex: number
   readonly startColumnIndex: number
+  readonly startRowIndex: number
+}
+
+interface EditorVisibleLineRange {
+  readonly endRowIndex: number
   readonly startRowIndex: number
 }
 
@@ -30,6 +39,12 @@ const defaultApi: EditorApi = {
   getDiagnostics: () => Rpc.invoke<readonly unknown[]>('Editor.getDiagnostics'),
   getEditorSelections: () =>
     Rpc.invoke<readonly EditorSelection[]>('Editor.getSelections'),
+  getVisibleLineRange: () =>
+    Rpc.invoke<EditorVisibleLineRange | undefined>(
+      'Editor.getVisibleLineRange',
+    ),
+  scrollByLines: (lineCount) =>
+    Rpc.invoke<void>('Editor.scrollByLines', lineCount),
   setEditorSelections: (selections) =>
     Rpc.invoke<void>('Editor.setSelections', selections),
   showCompletions: () => Rpc.invoke<void>('Editor.showCompletions'),
@@ -39,6 +54,8 @@ const editorToolNames = [
   'format_document',
   'get_editor_diagnostics',
   'get_editor_selections',
+  'get_visible_editor_lines',
+  'scroll_editor',
   'set_editor_selections',
   'show_completions',
 ] as const
@@ -80,6 +97,42 @@ export const editorFunctionTools: readonly FunctionToolDefinition[] = [
     parameters: {
       additionalProperties: false,
       properties: {},
+      type: 'object',
+    },
+    type: 'function',
+  },
+  {
+    description:
+      'Get the first and last line currently visible in the active editor. Returned line numbers are 1-based.',
+    name: 'get_visible_editor_lines',
+    parameters: {
+      additionalProperties: false,
+      properties: {},
+      type: 'object',
+    },
+    type: 'function',
+  },
+  {
+    description:
+      'Scroll the active editor up or down by a number of lines. Use get_visible_editor_lines before or after scrolling when the visible range matters.',
+    name: 'scroll_editor',
+    parameters: {
+      additionalProperties: false,
+      properties: {
+        direction: {
+          description: 'Direction to scroll the active editor.',
+          enum: ['up', 'down'],
+          type: 'string',
+        },
+        lineCount: {
+          default: 10,
+          description: 'Number of editor lines to scroll. Defaults to 10.',
+          maximum: 100,
+          minimum: 1,
+          type: 'integer',
+        },
+      },
+      required: ['direction'],
       type: 'object',
     },
     type: 'function',
@@ -261,6 +314,47 @@ const toToolSelection = (selection: EditorSelection): ToolSelection => ({
   startLine: selection.startRowIndex + 1,
 })
 
+const getVisibleLines = async (
+  api: EditorApi,
+): Promise<{
+  readonly endLine: number
+  readonly lineCount: number
+  readonly startLine: number
+}> => {
+  const range = await api.getVisibleLineRange()
+  if (!range) {
+    throw new Error('No active text editor')
+  }
+  const startLine = range.startRowIndex + 1
+  const endLine = range.endRowIndex + 1
+  return {
+    endLine,
+    lineCount: Math.max(endLine - startLine + 1, 0),
+    startLine,
+  }
+}
+
+const parseScrollArguments = (
+  argumentsValue: Readonly<Record<string, unknown>>,
+): { readonly direction: 'down' | 'up'; readonly lineCount: number } => {
+  const { direction, lineCount = 10 } = argumentsValue
+  if (direction !== 'up' && direction !== 'down') {
+    throw new TypeError(
+      'Function tool argument "direction" must be "up" or "down".',
+    )
+  }
+  if (
+    !Number.isSafeInteger(lineCount) ||
+    (lineCount as number) < 1 ||
+    (lineCount as number) > 100
+  ) {
+    throw new TypeError(
+      'Function tool argument "lineCount" must be an integer from 1 to 100.',
+    )
+  }
+  return { direction, lineCount: lineCount as number }
+}
+
 const execute = async (
   name: EditorToolName,
   argumentsValue: Readonly<Record<string, unknown>>,
@@ -278,6 +372,18 @@ const execute = async (
     const editorSelections = await api.getEditorSelections()
     const selections = editorSelections.map(toToolSelection)
     return { count: selections.length, selections }
+  }
+  if (name === 'get_visible_editor_lines') {
+    return getVisibleLines(api)
+  }
+  if (name === 'scroll_editor') {
+    const { direction, lineCount } = parseScrollArguments(argumentsValue)
+    await api.scrollByLines(direction === 'up' ? -lineCount : lineCount)
+    return {
+      direction,
+      lineCount,
+      scrolled: true,
+    }
   }
   if (name === 'set_editor_selections') {
     const selections = parseSelections(argumentsValue)
@@ -303,6 +409,16 @@ const getErrorMessage = (error: unknown): string => {
   return error instanceof Error ? error.message : String(error)
 }
 
+const getErrorHint = (name: EditorToolName): string => {
+  if (name === 'set_editor_selections') {
+    return 'Pass one or more selections with positive, 1-based startLine, startColumn, endLine, and endColumn values, and make sure a text document is open.'
+  }
+  if (name === 'scroll_editor') {
+    return 'Pass direction as "up" or "down" and an optional lineCount from 1 to 100, and make sure a text document is open.'
+  }
+  return 'Pass no arguments and make sure a text document is open in the active editor.'
+}
+
 export const executeEditorFunctionToolCall = async (
   functionCallEvent: unknown,
   api: EditorApi = defaultApi,
@@ -318,10 +434,7 @@ export const executeEditorFunctionToolCall = async (
   } catch (error) {
     output = {
       error: getErrorMessage(error),
-      hint:
-        functionCall.name === 'set_editor_selections'
-          ? 'Pass one or more selections with positive, 1-based startLine, startColumn, endLine, and endColumn values, and make sure a text document is open.'
-          : 'Pass no arguments and make sure a text document is open in the active editor.',
+      hint: getErrorHint(functionCall.name),
       tool: functionCall.name,
     }
   }
