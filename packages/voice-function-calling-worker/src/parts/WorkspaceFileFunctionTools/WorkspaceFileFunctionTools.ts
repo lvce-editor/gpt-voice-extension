@@ -129,7 +129,26 @@ const getErrorMessage = (error: unknown): string => {
   return String(error)
 }
 
-const getToolErrorHint = (toolName: string): string => {
+const getAlternativeYamlPath = (
+  argumentsValue: Readonly<Record<string, unknown>> | undefined,
+): string | undefined => {
+  const path = argumentsValue?.path
+  if (typeof path !== 'string') {
+    return undefined
+  }
+  if (path.endsWith('.yaml')) {
+    return `${path.slice(0, -5)}.yml`
+  }
+  if (path.endsWith('.yml')) {
+    return `${path.slice(0, -4)}.yaml`
+  }
+  return undefined
+}
+
+const getToolErrorHint = (
+  toolName: string,
+  argumentsValue?: Readonly<Record<string, unknown>>,
+): string => {
   if (toolName === 'show_file_quick_pick') {
     return 'Call show_file_quick_pick with no arguments: {}.'
   }
@@ -143,7 +162,11 @@ const getToolErrorHint = (toolName: string): string => {
     return 'Pass part or all of a filename, such as {"query":"devcontainer.json"}. Use a returned relative path with open_workspace_file.'
   }
   if (toolName === 'open_workspace_file') {
-    return 'Pass an exact file path relative to the workspace, such as {"path":"src/index.ts"}. If the path is unknown or was not found, call search_workspace_files with the filename, then retry with a returned path.'
+    const alternativeYamlPath = getAlternativeYamlPath(argumentsValue)
+    const yamlHint = alternativeYamlPath
+      ? ` Check if the user meant "${alternativeYamlPath}" instead.`
+      : ''
+    return `Pass an exact file path relative to the workspace, such as {"path":"src/index.ts"}. If the path is unknown or was not found, call search_workspace_files with the filename, then retry with a returned path.${yamlHint}`
   }
   if (['read_workspace_file', 'close_workspace_file'].includes(toolName)) {
     return 'Pass a file path relative to the workspace, such as {"path":"src/index.ts"}. Never pass an absolute path or URI.'
@@ -326,8 +349,9 @@ export const executeWorkspaceFileFunctionToolCall = async (
     return undefined
   }
   let output: unknown
+  let argumentsValue: Readonly<Record<string, unknown>> | undefined
   try {
-    const argumentsValue = parseArguments(functionCall.argumentsValue)
+    argumentsValue = parseArguments(functionCall.argumentsValue)
     switch (functionCall.name) {
       case 'close_workspace_file':
         output = await closeWorkspaceFile(
@@ -382,7 +406,7 @@ export const executeWorkspaceFileFunctionToolCall = async (
   } catch (error) {
     output = {
       error: getErrorMessage(error),
-      hint: getToolErrorHint(functionCall.name),
+      hint: getToolErrorHint(functionCall.name, argumentsValue),
       tool: functionCall.name,
     }
   }
