@@ -4,20 +4,38 @@ import * as Rpc from '../Rpc/Rpc.ts'
 interface FunctionCallArguments {
   readonly argumentsValue: string
   readonly callId: string
+  readonly name: LayoutToolName
 }
 
 interface LayoutApi {
+  readonly closeSideBar: () => Promise<void>
   readonly toggleSideBarPosition: () => Promise<void>
 }
 
 const defaultApi: LayoutApi = {
+  closeSideBar: () => Rpc.invoke<void>('Layout.closeSideBar'),
   toggleSideBarPosition: () => Rpc.invoke<void>('Layout.toggleSideBarPosition'),
 }
+
+const layoutToolNames = ['close_sidebar', 'toggle_sidebar_position'] as const
+
+type LayoutToolName = (typeof layoutToolNames)[number]
 
 export const layoutFunctionTools: readonly FunctionToolDefinition[] = [
   {
     description:
-      'Toggle the LVCE Editor primary sidebar between the left and right sides of the window.',
+      'Close and hide the LVCE Editor primary sidebar. Use this when the user asks to close, hide, or dismiss the sidebar; do not move it to the other side.',
+    name: 'close_sidebar',
+    parameters: {
+      additionalProperties: false,
+      properties: {},
+      type: 'object',
+    },
+    type: 'function',
+  },
+  {
+    description:
+      'Move the LVCE Editor primary sidebar to the opposite side of the window. Use this only when the user asks to move, switch, or change the sidebar position; do not use it to close or hide the sidebar.',
     name: 'toggle_sidebar_position',
     parameters: {
       additionalProperties: false,
@@ -57,7 +75,7 @@ const parseFunctionCall = (
     !('call_id' in item) ||
     typeof item.call_id !== 'string' ||
     !('name' in item) ||
-    item.name !== 'toggle_sidebar_position' ||
+    !layoutToolNames.includes(item.name as LayoutToolName) ||
     !('arguments' in item) ||
     typeof item.arguments !== 'string'
   ) {
@@ -66,10 +84,11 @@ const parseFunctionCall = (
   return {
     argumentsValue: item.arguments,
     callId: item.call_id,
+    name: item.name as LayoutToolName,
   }
 }
 
-const validateArguments = (value: string): void => {
+const validateArguments = (name: LayoutToolName, value: string): void => {
   let parsed: unknown
   try {
     parsed = JSON.parse(value)
@@ -80,17 +99,15 @@ const validateArguments = (value: string): void => {
     throw new TypeError('Function tool arguments must be a JSON object.')
   }
   if (Object.keys(parsed).length > 0) {
-    throw new TypeError(
-      'The toggle_sidebar_position tool does not accept arguments.',
-    )
+    throw new TypeError(`The ${name} tool does not accept arguments.`)
   }
 }
 
-const createToolOutputMessage = (callId: string): string => {
+const createToolOutputMessage = (callId: string, output: unknown): string => {
   return JSON.stringify({
     item: {
       call_id: callId,
-      output: JSON.stringify({ toggled: true }),
+      output: JSON.stringify(output),
       type: 'function_call_output',
     },
     type: 'conversation.item.create',
@@ -105,10 +122,17 @@ export const executeLayoutFunctionToolCall = async (
   if (!functionCall) {
     return undefined
   }
-  validateArguments(functionCall.argumentsValue)
-  await api.toggleSideBarPosition()
+  validateArguments(functionCall.name, functionCall.argumentsValue)
+  let output: unknown
+  if (functionCall.name === 'close_sidebar') {
+    await api.closeSideBar()
+    output = { closed: true }
+  } else {
+    await api.toggleSideBarPosition()
+    output = { toggled: true }
+  }
   return [
-    createToolOutputMessage(functionCall.callId),
+    createToolOutputMessage(functionCall.callId, output),
     JSON.stringify({ type: 'response.create' }),
   ]
 }
