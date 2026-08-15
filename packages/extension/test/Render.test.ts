@@ -177,6 +177,50 @@ test('render - shows saving state in welcome form', () => {
   expect(result).toContainEqual(text('Saving...'))
 })
 
+test('render - lets an exhausted funded user explicitly choose personal billing', () => {
+  const result = render(
+    createRenderState({
+      allowanceExceeded: true,
+      fundedAvailable: true,
+      fundedError: 'Monthly allowance exceeded',
+      hasOpenAiApiKey: false,
+      voiceProvider: 'funded',
+    }),
+  )
+
+  expect(result).toContainEqual(
+    text('Your monthly AI allowance has been used.'),
+  )
+  expect(result).toContainEqual(text('Monthly allowance exceeded'))
+  expect(result).toContainEqual(text('Use your own API key'))
+})
+
+test('render - allows funded voice to start without a personal API key', () => {
+  const result = render(
+    createRenderState({
+      fundedAvailable: true,
+      hasOpenAiApiKey: false,
+      voiceProvider: 'funded',
+    }),
+  )
+
+  expect(result).toContainEqual(text('Start talking'))
+  expect(result).not.toContainEqual(text('Change API key'))
+})
+
+test('render - distinguishes a funded backend failure from allowance exhaustion', () => {
+  const result = render(
+    createRenderState({
+      fundedError: 'Connection unavailable',
+      hasOpenAiApiKey: false,
+      voiceProvider: 'funded',
+    }),
+  )
+
+  expect(result).toContainEqual(text('Backend-funded voice is unavailable.'))
+  expect(result).toContainEqual(text('Connection unavailable'))
+})
+
 test('render - returns in-progress standard state for active conversation', () => {
   const transcript: ITranscript = {
     id: 'id-1',

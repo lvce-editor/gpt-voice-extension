@@ -9,7 +9,7 @@
   "contentSecurityPolicy": [
     "default-src 'none'",
     "script-src 'self'",
-    "connect-src 'self' https://api.openai.com"
+    "connect-src 'self' https://api.openai.com wss: ws:"
   ],
   "categories": ["Other"],
   "configuration": {
@@ -29,6 +29,7 @@
     "onCommand:GptVoice.handleClearOpenAiApiKey",
     "onCommand:GptVoice.handleOpenAiApiKeyInput",
     "onCommand:GptVoice.handleSaveOpenAiApiKey",
+    "onCommand:GptVoice.handleUseOwnApiKey",
     "onCommand:GptVoice.replayFixture",
     "onCommand:GptVoice.setIsTest",
     "onCommand:GptVoice.setAnimation",
@@ -69,6 +70,10 @@
     {
       "id": "GptVoice.handleSaveOpenAiApiKey",
       "label": "gpt-voice: Save OpenAI API key"
+    },
+    {
+      "id": "GptVoice.handleUseOwnApiKey",
+      "label": "gpt-voice: Use own OpenAI API key"
     },
     {
       "id": "GptVoice.replayFixture",

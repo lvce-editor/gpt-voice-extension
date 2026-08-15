@@ -5,6 +5,9 @@ export const FailedToClearOpenAiApiKey = 'Failed to clear OpenAI API key.'
 export const FailedToCreateToken = 'Failed to create token.'
 export const FailedToCreateTokenWithDetails =
   'Failed to create token. Check your network and API key.'
+export const FundedVoiceClosed =
+  'The backend-funded voice connection closed. Start again to reconnect.'
+export const FundedVoiceUnavailable = 'Backend-funded voice is unavailable.'
 export const FailedToSaveOpenAiApiKey = 'Failed to save OpenAI API key.'
 export const GptVoice = 'Gpt Voice'
 export const GptVoiceDisplayName = 'GptVoice'
@@ -28,6 +31,9 @@ export const SavingKey = 'Saving key'
 export const SetUpOpenAiApiKey = 'Set up your OpenAI API key'
 export const StartTalking = 'Start talking'
 export const StopTalking = 'Stop talking'
+export const MonthlyAllowanceExceeded =
+  'Your monthly AI allowance has been used.'
+export const UseOwnApiKey = 'Use your own API key'
 export const UseBetter = 'Use better'
 export const UseCheap = 'Use cheap'
 export const WelcomeDescription =

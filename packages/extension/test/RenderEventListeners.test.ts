@@ -33,5 +33,9 @@ test('renderEventListeners - returns all listeners', () => {
       name: DomEventListenerFunctions.ToggleToolCall,
       params: ['toggleToolCall', 'event.target.name'],
     },
+    {
+      name: DomEventListenerFunctions.HandleUseOwnApiKey,
+      params: ['handleUseOwnApiKey'],
+    },
   ])
 })

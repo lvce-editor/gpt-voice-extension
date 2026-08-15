@@ -50,6 +50,10 @@ export const view: GptVoiceView = {
       await context.handleSaveOpenAiApiKey()
       return context
     },
+    async 'GptVoice.handleUseOwnApiKey'(context) {
+      context.handleUseOwnApiKey()
+      return context
+    },
     async 'GptVoice.replayFixture'(context, fixture: unknown) {
       await context.replayFixture(fixture)
       return context

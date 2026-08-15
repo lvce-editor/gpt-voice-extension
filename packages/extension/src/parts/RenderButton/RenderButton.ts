@@ -25,9 +25,20 @@ export const renderButton = (state: {
   readonly hasOpenAiApiKey: boolean
   readonly isCreatingToken: boolean
   readonly isSavingApiKey: boolean
+  readonly voiceProvider: 'byok' | 'funded'
 }): readonly VirtualDomNode[] => {
-  const { hasOpenAiApiKey, inProgress, isCreatingToken, isSavingApiKey } = state
-  if (!hasOpenAiApiKey || isCreatingToken || isSavingApiKey) {
+  const {
+    hasOpenAiApiKey,
+    inProgress,
+    isCreatingToken,
+    isSavingApiKey,
+    voiceProvider,
+  } = state
+  if (
+    (voiceProvider === 'byok' && !hasOpenAiApiKey) ||
+    isCreatingToken ||
+    isSavingApiKey
+  ) {
     let label = GptVoiceStrings.startTalking()
     if (isCreatingToken) {
       label = GptVoiceStrings.creatingToken()

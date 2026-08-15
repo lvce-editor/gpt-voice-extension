@@ -14,6 +14,10 @@ export const failedToCreateToken = (): string =>
   getString(UiStrings.FailedToCreateToken)
 export const failedToCreateTokenWithDetails = (): string =>
   getString(UiStrings.FailedToCreateTokenWithDetails)
+export const fundedVoiceClosed = (): string =>
+  getString(UiStrings.FundedVoiceClosed)
+export const fundedVoiceUnavailable = (): string =>
+  getString(UiStrings.FundedVoiceUnavailable)
 export const failedToSaveOpenAiApiKey = (): string =>
   getString(UiStrings.FailedToSaveOpenAiApiKey)
 export const gptVoice = (): string => getString(UiStrings.GptVoice)
@@ -30,6 +34,8 @@ export const missingOpenAiApiKey = (): string =>
 export const missingOpenAiApiKeyPrompt = (): string =>
   getString(UiStrings.MissingOpenAiApiKeyPrompt)
 export const networkFailure = (): string => getString(UiStrings.NetworkFailure)
+export const monthlyAllowanceExceeded = (): string =>
+  getString(UiStrings.MonthlyAllowanceExceeded)
 export const openAiApiKeyRequired = (): string =>
   getString(UiStrings.OpenAiApiKeyRequired)
 export const openAiApiKeyRequiredForVoice = (): string =>
@@ -47,5 +53,6 @@ export const startTalking = (): string => getString(UiStrings.StartTalking)
 export const stopTalking = (): string => getString(UiStrings.StopTalking)
 export const useBetter = (): string => getString(UiStrings.UseBetter)
 export const useCheap = (): string => getString(UiStrings.UseCheap)
+export const useOwnApiKey = (): string => getString(UiStrings.UseOwnApiKey)
 export const welcomeDescription = (): string =>
   getString(UiStrings.WelcomeDescription)
