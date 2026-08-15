@@ -29,8 +29,8 @@ export const activate = async (): Promise<void> => {
     id: 'gpt-voice.show',
   })
   registerCommand({
-    async execute() {
-      enableTestMode()
+    async execute(voiceProvider?: unknown) {
+      enableTestMode(voiceProvider === 'funded' ? 'funded' : 'byok')
     },
     id: 'GptVoice.setIsTest',
   })

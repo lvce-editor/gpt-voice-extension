@@ -9,7 +9,12 @@ const readMicLevels = jest.fn(async () => ({
   remoteAnalyzerData: [],
 }))
 const registerCommand = jest.fn(
-  (command: Readonly<{ id: string; execute: () => Promise<void> }>) => ({
+  (
+    command: Readonly<{
+      id: string
+      execute: (...args: readonly unknown[]) => Promise<void>
+    }>,
+  ) => ({
     dispose: jest.fn(),
   }),
 )
@@ -74,6 +79,25 @@ test('setIsTest initializes the next view instance in test mode', async () => {
 
   const instance = await view.create({
     requestRerender,
+  } as unknown as Api.ViewContext)
+  expect(instance.render()).toContainEqual(text('Start talking'))
+
+  await view.commands['GptVoice.handleClickStart'](instance)
+
+  expect(instance.render()).toContainEqual(text('Stop talking'))
+})
+
+test('setIsTest can initialize the funded provider without an API key', async () => {
+  await Main.activate()
+  const setIsTestCommand = registerCommand.mock.calls.at(1)?.[0]
+  if (!setIsTestCommand) {
+    throw new Error('Expected setIsTest command')
+  }
+
+  await setIsTestCommand.execute('funded')
+
+  const instance = await view.create({
+    requestRerender: jest.fn(),
   } as unknown as Api.ViewContext)
   expect(instance.render()).toContainEqual(text('Start talking'))
 

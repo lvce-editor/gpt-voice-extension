@@ -1094,3 +1094,13 @@ test('instance - enters test mode before and after creation', async () => {
   await createdInTestMode.stop()
   expect(stopWebRtcAudioStream).not.toHaveBeenCalled()
 })
+
+test('instance - funded test mode does not require a stored API key', async () => {
+  enableTestMode('funded')
+  getSecret.mockRejectedValueOnce(new Error('storage unavailable'))
+
+  const instance = await createInstance()
+  await instance.handleClickStart()
+
+  expect(instance.render()).toContainEqual(text('Stop talking'))
+})

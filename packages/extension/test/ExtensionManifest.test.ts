@@ -5,6 +5,12 @@ const extensionManifest = JSON.parse(
   readFileSync(new URL('../extension.json', import.meta.url), 'utf8'),
 )
 
+test('allows the production funded voice websocket', () => {
+  expect(extensionManifest.contentSecurityPolicy).toContain(
+    "connect-src 'self' https://api.openai.com wss://lvce-editor.dev",
+  )
+})
+
 test('declares the voice function calling web worker', () => {
   expect(extensionManifest.rpc).toContainEqual({
     contentSecurityPolicy: ["default-src 'none'", "script-src 'self'"],

@@ -9,7 +9,7 @@
   "contentSecurityPolicy": [
     "default-src 'none'",
     "script-src 'self'",
-    "connect-src 'self' https://api.openai.com wss: ws:"
+    "connect-src 'self' https://api.openai.com wss://lvce-editor.dev"
   ],
   "categories": ["Other"],
   "configuration": {

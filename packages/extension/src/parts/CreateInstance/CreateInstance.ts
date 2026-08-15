@@ -37,7 +37,7 @@ import { createOpenAiApiKeyStorage } from '../OpenAiApiKeyStorage/OpenAiApiKeySt
 import { readLevel } from '../ReadLevel/ReadLevel.ts'
 import { render } from '../Render/Render.ts'
 import { renderActionsDom } from '../RenderActionsDom/RenderActionsDom.ts'
-import { isInTestMode } from '../TestMode/TestMode.ts'
+import { getTestVoiceProvider, isInTestMode } from '../TestMode/TestMode.ts'
 import {
   getToolCallOutput,
   isToolCallErrorOutput,
@@ -168,17 +168,24 @@ export const createInstance = async (
 ): Promise<ActiveGptVoiceViewInstance> => {
   const openAiApiKeyStorage = createOpenAiApiKeyStorage(ExtensionApi)
   const hasTestMode = isInTestMode()
+  const testVoiceProvider = getTestVoiceProvider()
+  const hasTestApiKey = hasTestMode && testVoiceProvider === 'byok'
   let fundedVoiceConfiguration: BackendVoiceConfiguration | undefined
   let hasOpenAiApiKey = false
   try {
     const existingApiKey = await openAiApiKeyStorage.read()
     hasOpenAiApiKey =
       (existingApiKey !== undefined && existingApiKey.trim().length > 0) ||
-      hasTestMode
+      hasTestApiKey
   } catch {
-    hasOpenAiApiKey = hasTestMode
+    hasOpenAiApiKey = hasTestApiKey
   }
-  if (!hasTestMode) {
+  if (hasTestMode && testVoiceProvider === 'funded') {
+    fundedVoiceConfiguration = {
+      accessToken: 'mock-access-token',
+      baseUrl: 'https://lvce-editor.dev',
+    }
+  } else if (!hasTestMode) {
     fundedVoiceConfiguration = await resolveBackendVoiceConfiguration()
   }
 
@@ -696,7 +703,7 @@ export const createInstance = async (
         return
       }
       if (isTest || isInTestMode()) {
-        hasOpenAiApiKey = true
+        hasOpenAiApiKey = voiceProvider === 'byok'
         state = {
           ...state,
           hasOpenAiApiKey,
