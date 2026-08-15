@@ -9,6 +9,7 @@ import * as DomEventListenerFunctions from '../DomEventListenerFunctions/DomEven
 import * as GptVoiceStrings from '../GptVoiceStrings/GptVoiceStrings.ts'
 import { renderAudio } from '../RenderAudio/RenderAudio.ts'
 import { renderButton } from '../RenderButton/RenderButton.ts'
+import { renderFundedError } from '../RenderFundedError/RenderFundedError.ts'
 import { renderModelSettings } from '../RenderModelSettings/RenderModelSettings.ts'
 import { renderStage } from '../RenderStage/RenderStage.ts'
 import { renderStatus } from '../RenderStatus/RenderStatus.ts'
@@ -21,10 +22,15 @@ const voiceContainerNode: VirtualDomNode = {
   type: VirtualDomElements.Div,
 }
 
-const toolbarNode: VirtualDomNode = {
+const byokToolbarNode: VirtualDomNode = {
   childCount: 2,
   className: ClassNames.GptVoiceToolbar,
   type: VirtualDomElements.Div,
+}
+
+const fundedToolbarNode: VirtualDomNode = {
+  ...byokToolbarNode,
+  childCount: 1,
 }
 
 const apiKeyActionsNode: VirtualDomNode = {
@@ -33,16 +39,14 @@ const apiKeyActionsNode: VirtualDomNode = {
   type: VirtualDomElements.Div,
 }
 
-export const render = (state: IState): readonly VirtualDomNode[] => {
-  const { hasOpenAiApiKey, inProgress } = state
-  if (!hasOpenAiApiKey) {
-    return renderWelcome(state)
+const renderApiKeyActions = (
+  voiceProvider: IState['voiceProvider'],
+  inProgress: boolean,
+): readonly VirtualDomNode[] => {
+  if (voiceProvider !== 'byok') {
+    return []
   }
-
   return [
-    voiceContainerNode,
-    toolbarNode,
-    ...renderModelSettings(state),
     apiKeyActionsNode,
     {
       childCount: 1,
@@ -52,6 +56,34 @@ export const render = (state: IState): readonly VirtualDomNode[] => {
       type: VirtualDomElements.Button,
     },
     text(GptVoiceStrings.changeApiKey()),
+  ]
+}
+
+export const render = (state: IState): readonly VirtualDomNode[] => {
+  const {
+    allowanceExceeded,
+    fundedError,
+    hasOpenAiApiKey,
+    inProgress,
+    voiceProvider,
+  } = state
+  if (voiceProvider === 'funded' && fundedError) {
+    return renderFundedError(
+      allowanceExceeded
+        ? GptVoiceStrings.monthlyAllowanceExceeded()
+        : GptVoiceStrings.fundedVoiceUnavailable(),
+      fundedError,
+    )
+  }
+  if (voiceProvider === 'byok' && !hasOpenAiApiKey) {
+    return renderWelcome(state)
+  }
+
+  return [
+    voiceContainerNode,
+    voiceProvider === 'funded' ? fundedToolbarNode : byokToolbarNode,
+    ...renderModelSettings(state),
+    ...renderApiKeyActions(voiceProvider, inProgress),
     ...renderStage(state),
     ...renderStatus(state),
     ...renderButton(state),

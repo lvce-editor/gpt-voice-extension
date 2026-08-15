@@ -11,6 +11,10 @@ import {
 import { text } from '@lvce-editor/virtual-dom-worker'
 
 const deleteSecret = jest.fn<(key: string) => Promise<void>>()
+const executeCommand =
+  jest.fn<(...args: readonly unknown[]) => Promise<unknown>>()
+const getAccessToken =
+  jest.fn<(...args: readonly unknown[]) => Promise<unknown>>()
 const getSecret = jest.fn<(key: string) => Promise<string | undefined>>()
 const readMicLevels = jest.fn(async () => ({
   micAnalyzerData: new Uint8Array([128]),
@@ -19,7 +23,9 @@ const readMicLevels = jest.fn(async () => ({
 const setRemoteDescription = jest.fn<(options: unknown) => Promise<void>>(
   async () => undefined,
 )
-const startWebRtcAudioStream = jest.fn(async () => 'offer-sdp')
+const startWebRtcAudioStream = jest.fn<(options: unknown) => Promise<string>>(
+  async () => 'offer-sdp',
+)
 const stopWebRtcAudioStream = jest.fn<(uid: number) => Promise<void>>(
   async () => undefined,
 )
@@ -65,6 +71,8 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
   return {
     ...actual,
     deleteSecret,
+    executeCommand,
+    getAccessToken,
     getSecret,
     readMicLevels,
     setRemoteDescription,
@@ -103,6 +111,56 @@ const originalRequestAnimationFrame = Object.getOwnPropertyDescriptor(
   globalThis,
   'requestAnimationFrame',
 )
+const originalWebSocket = Object.getOwnPropertyDescriptor(
+  globalThis,
+  'WebSocket',
+)
+
+class FakeFundedWebSocket extends EventTarget {
+  static readonly OPEN = 1
+  static readonly instances: FakeFundedWebSocket[] = []
+
+  static get latest(): FakeFundedWebSocket | undefined {
+    return this.instances.at(-1)
+  }
+
+  readonly sent: string[] = []
+  readyState = FakeFundedWebSocket.OPEN
+
+  constructor(
+    readonly url: string,
+    readonly protocols: readonly string[],
+  ) {
+    super()
+    FakeFundedWebSocket.instances.push(this)
+    queueMicrotask(() => this.dispatchEvent(new Event('open')))
+  }
+
+  close(): void {
+    this.readyState = 3
+    this.dispatchEvent(new Event('close'))
+  }
+
+  send(data: string): void {
+    this.sent.push(data)
+    const parsed = JSON.parse(data)
+    if (parsed.type === 'lvce.session.create') {
+      queueMicrotask(() => {
+        this.dispatchEvent(
+          new MessageEvent('message', {
+            data: JSON.stringify({
+              answerSdp: 'funded-answer-sdp',
+              limitVirtualTokens: 100,
+              remainingVirtualTokens: 100,
+              type: 'lvce.session.created',
+              usedVirtualTokens: 0,
+            }),
+          }),
+        )
+      })
+    }
+  }
+}
 
 beforeAll(() => {
   Object.defineProperties(globalThis, {
@@ -145,10 +203,15 @@ afterAll(() => {
       value: undefined,
     })
   }
+  if (originalWebSocket) {
+    Object.defineProperty(globalThis, 'WebSocket', originalWebSocket)
+  }
 })
 
 beforeEach(() => {
   deleteSecret.mockReset().mockResolvedValue(undefined)
+  executeCommand.mockReset().mockResolvedValue('')
+  getAccessToken.mockReset().mockResolvedValue('')
   getSecret.mockReset().mockResolvedValue('sk-abcdefghijk')
   readMicLevels.mockClear()
   setRemoteDescription.mockClear()
@@ -158,6 +221,7 @@ beforeEach(() => {
   writeFile.mockReset().mockResolvedValue(undefined)
   executeFunctionToolCall.mockClear()
   getRegisteredTools.mockClear()
+  FakeFundedWebSocket.instances.length = 0
   // eslint-disable-next-line unicorn/no-top-level-assignment-in-function
   latestPort2 = undefined
   jest.useFakeTimers()
@@ -166,6 +230,14 @@ beforeEach(() => {
 afterEach(() => {
   jest.restoreAllMocks()
   jest.useRealTimers()
+  if (originalWebSocket) {
+    Object.defineProperty(globalThis, 'WebSocket', originalWebSocket)
+  } else {
+    Object.defineProperty(globalThis, 'WebSocket', {
+      configurable: true,
+      value: undefined,
+    })
+  }
 })
 
 const createContext = (): {
@@ -446,6 +518,192 @@ test('instance - starts, receives data, animates, and stops session', async () =
   await instance.handleClickStart()
   expect(stopWebRtcAudioStream).toHaveBeenCalledWith(-1)
   expect(latestPort2?.close).toHaveBeenCalled()
+})
+
+test('instance - starts funded voice without an API key and routes tool control events through the backend', async () => {
+  jest.useRealTimers()
+  getSecret.mockResolvedValue(undefined)
+  executeCommand.mockResolvedValue('https://lvce.example')
+  getAccessToken.mockResolvedValue('editor-access-token')
+  Object.defineProperty(globalThis, 'WebSocket', {
+    configurable: true,
+    value: FakeFundedWebSocket,
+  })
+  const fetch = jest.spyOn(globalThis, 'fetch')
+  const instance = await createInstance()
+
+  expect(instance.render()).toContainEqual(text('Start talking'))
+  await instance.handleClickStart()
+
+  expect(fetch).not.toHaveBeenCalled()
+  expect(startWebRtcAudioStream).toHaveBeenCalledWith(
+    expect.objectContaining({ ephemeralKey: '' }),
+  )
+  expect(setRemoteDescription).toHaveBeenCalledWith({
+    sdp: 'funded-answer-sdp',
+    type: 'answer',
+    uid: -1,
+  })
+  expect(FakeFundedWebSocket.latest?.protocols).toEqual([
+    'lvce.realtime.voice.v1',
+    'editor-access-token',
+  ])
+  expect(JSON.parse(FakeFundedWebSocket.latest?.sent[0] || '{}')).toMatchObject(
+    {
+      offerSdp: 'offer-sdp',
+      session: { model: 'gpt-realtime-2.1-mini' },
+      type: 'lvce.session.create',
+    },
+  )
+  instance.handleUseOwnApiKey()
+  expect(instance.render()).toContainEqual(text('In Progress'))
+  FakeFundedWebSocket.latest?.dispatchEvent(
+    new MessageEvent('message', { data: '{' }),
+  )
+  FakeFundedWebSocket.latest?.dispatchEvent(
+    new MessageEvent('message', {
+      data: JSON.stringify({ type: 'lvce.usage.updated' }),
+    }),
+  )
+  FakeFundedWebSocket.latest?.dispatchEvent(
+    new MessageEvent('message', {
+      data: JSON.stringify({ type: 'session.updated' }),
+    }),
+  )
+
+  instance.handleData(
+    JSON.stringify({
+      arguments: JSON.stringify({ location: 'Paris' }),
+      call_id: 'call',
+      name: 'getweather',
+      type: 'response.function_call_arguments.done',
+    }),
+  )
+  await flushAnimation()
+
+  const controlEvents = (FakeFundedWebSocket.latest?.sent || [])
+    .slice(1)
+    .map((value) => JSON.parse(value))
+  expect(controlEvents).toEqual([
+    expect.objectContaining({
+      item: expect.objectContaining({ type: 'function_call_output' }),
+      type: 'conversation.item.create',
+    }),
+    { type: 'response.create' },
+  ])
+  expect(latestPort2?.postMessage).not.toHaveBeenCalled()
+
+  FakeFundedWebSocket.latest?.dispatchEvent(
+    new MessageEvent('message', {
+      data: JSON.stringify({
+        message: 'Monthly allowance exceeded',
+        type: 'lvce.usage.exceeded',
+      }),
+    }),
+  )
+  await flushAnimation()
+  expect(instance.render()).toContainEqual(
+    text('Your monthly AI allowance has been used.'),
+  )
+  expect(instance.render()).toContainEqual(text('Use your own API key'))
+  instance.handleUseOwnApiKey()
+  expect(instance.render()).toContainEqual(
+    text('OpenAI API key required to start a live voice session.'),
+  )
+})
+
+test('instance - stops WebRTC when a funded backend reports an error', async () => {
+  jest.useRealTimers()
+  executeCommand.mockResolvedValue('https://lvce.example')
+  getAccessToken.mockResolvedValue('editor-access-token')
+  Object.defineProperty(globalThis, 'WebSocket', {
+    configurable: true,
+    value: FakeFundedWebSocket,
+  })
+  const instance = await createInstance()
+  await instance.handleClickStart()
+
+  FakeFundedWebSocket.latest?.dispatchEvent(
+    new MessageEvent('message', {
+      data: JSON.stringify({ error: {}, type: 'error' }),
+    }),
+  )
+  await flushAnimation()
+
+  expect(stopWebRtcAudioStream).toHaveBeenCalledWith(-1)
+  expect(instance.render()).toContainEqual(
+    text('Backend-funded voice is unavailable.'),
+  )
+  expect(instance.render()).toContainEqual(text('Use your own API key'))
+})
+
+test('instance - displays a funded backend error message', async () => {
+  jest.useRealTimers()
+  executeCommand.mockResolvedValue('https://lvce.example')
+  getAccessToken.mockResolvedValue('editor-access-token')
+  Object.defineProperty(globalThis, 'WebSocket', {
+    configurable: true,
+    value: FakeFundedWebSocket,
+  })
+  const instance = await createInstance()
+  await instance.handleClickStart()
+
+  FakeFundedWebSocket.latest?.dispatchEvent(
+    new MessageEvent('message', {
+      data: JSON.stringify({
+        error: { message: 'Upstream voice failed' },
+        type: 'error',
+      }),
+    }),
+  )
+  await flushAnimation()
+
+  expect(instance.render()).toContainEqual(text('Upstream voice failed'))
+})
+
+test('instance - shows the default allowance message when the funded backend omits details', async () => {
+  jest.useRealTimers()
+  executeCommand.mockResolvedValue('https://lvce.example')
+  getAccessToken.mockResolvedValue('editor-access-token')
+  Object.defineProperty(globalThis, 'WebSocket', {
+    configurable: true,
+    value: FakeFundedWebSocket,
+  })
+  const instance = await createInstance()
+  await instance.handleClickStart()
+
+  FakeFundedWebSocket.latest?.dispatchEvent(
+    new MessageEvent('message', {
+      data: JSON.stringify({ type: 'lvce.usage.exceeded' }),
+    }),
+  )
+  await flushAnimation()
+
+  expect(instance.render()).toContainEqual(
+    text('Your monthly AI allowance has been used.'),
+  )
+})
+
+test('instance - stops WebRTC when the funded control socket closes unexpectedly', async () => {
+  jest.useRealTimers()
+  executeCommand.mockResolvedValue('https://lvce.example')
+  getAccessToken.mockResolvedValue('editor-access-token')
+  Object.defineProperty(globalThis, 'WebSocket', {
+    configurable: true,
+    value: FakeFundedWebSocket,
+  })
+  const instance = await createInstance()
+  await instance.handleClickStart()
+
+  FakeFundedWebSocket.latest?.dispatchEvent(new Event('close'))
+  await flushAnimation()
+
+  expect(stopWebRtcAudioStream).toHaveBeenCalledWith(-1)
+  expect(instance.render()).toContainEqual(
+    text(
+      'The backend-funded voice connection closed. Start again to reconnect.',
+    ),
+  )
 })
 
 test('instance - recovers from one animation read failure', async () => {
@@ -835,4 +1093,14 @@ test('instance - enters test mode before and after creation', async () => {
   expect(createdInTestMode.render()).toContainEqual(text('Ran getweather'))
   await createdInTestMode.stop()
   expect(stopWebRtcAudioStream).not.toHaveBeenCalled()
+})
+
+test('instance - funded test mode does not require a stored API key', async () => {
+  enableTestMode('funded')
+  getSecret.mockRejectedValueOnce(new Error('storage unavailable'))
+
+  const instance = await createInstance()
+  await instance.handleClickStart()
+
+  expect(instance.render()).toContainEqual(text('Stop talking'))
 })

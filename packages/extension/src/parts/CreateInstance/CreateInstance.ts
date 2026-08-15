@@ -13,6 +13,10 @@ import {
 } from '@lvce-editor/api'
 import type { MenuEntry } from '../MenuEntries/MenuEntries.ts'
 import { animateBubble } from '../AnimateBubble/AnimateBubble.ts'
+import {
+  resolveBackendVoiceConfiguration,
+  type BackendVoiceConfiguration,
+} from '../BackendConfiguration/BackendConfiguration.ts'
 import * as ClassNames from '../ClassNames/ClassNames.ts'
 import {
   createFixtureRecording,
@@ -22,6 +26,10 @@ import {
   createFixtureReplay,
   type FixtureReplay,
 } from '../FixtureReplay/FixtureReplay.ts'
+import {
+  openFundedVoiceSocket,
+  waitForFundedSessionCreated,
+} from '../FundedVoice/FundedVoice.ts'
 import { getCss } from '../GetCss/GetCss.ts'
 import { getTitle } from '../GetTitle/GetTitle.ts'
 import * as GptVoiceStrings from '../GptVoiceStrings/GptVoiceStrings.ts'
@@ -29,7 +37,7 @@ import { createOpenAiApiKeyStorage } from '../OpenAiApiKeyStorage/OpenAiApiKeySt
 import { readLevel } from '../ReadLevel/ReadLevel.ts'
 import { render } from '../Render/Render.ts'
 import { renderActionsDom } from '../RenderActionsDom/RenderActionsDom.ts'
-import { isInTestMode } from '../TestMode/TestMode.ts'
+import { getTestVoiceProvider, isInTestMode } from '../TestMode/TestMode.ts'
 import {
   getToolCallOutput,
   isToolCallErrorOutput,
@@ -68,6 +76,7 @@ export interface ActiveGptVoiceViewInstance extends VirtualDomViewInstance {
   readonly handleOpenAiApiKeyInput: (value: string) => void
   readonly handleOutputTranscript: (parsed: any) => void
   readonly handleSaveOpenAiApiKey: () => Promise<void>
+  readonly handleUseOwnApiKey: () => void
   readonly renderActionsDom: () => readonly VirtualDomNode[]
   readonly renderScrollPosition: () =>
     | readonly []
@@ -106,11 +115,14 @@ export interface IToolCallMessage {
 export type IMessage = ITranscript | IToolCallMessage
 
 export interface IState {
+  readonly allowanceExceeded: boolean
   readonly animationEnabled: boolean
   readonly animationFrame: number
   readonly animationScale: number
   readonly apiKeyError: string
   readonly apiKeyInput: string
+  readonly fundedAvailable: boolean
+  readonly fundedError: string
   readonly hasOpenAiApiKey: boolean
   readonly inProgress: boolean
   readonly isCreatingToken: boolean
@@ -122,6 +134,7 @@ export interface IState {
   readonly tokenError: string
   readonly transcribedText: string
   readonly uid: number
+  readonly voiceProvider: 'byok' | 'funded'
 }
 
 const createTokenErrorMessage = (error: unknown): string => {
@@ -155,22 +168,36 @@ export const createInstance = async (
 ): Promise<ActiveGptVoiceViewInstance> => {
   const openAiApiKeyStorage = createOpenAiApiKeyStorage(ExtensionApi)
   const hasTestMode = isInTestMode()
+  const testVoiceProvider = getTestVoiceProvider()
+  const hasTestApiKey = hasTestMode && testVoiceProvider === 'byok'
+  let fundedVoiceConfiguration: BackendVoiceConfiguration | undefined
   let hasOpenAiApiKey = false
   try {
     const existingApiKey = await openAiApiKeyStorage.read()
     hasOpenAiApiKey =
       (existingApiKey !== undefined && existingApiKey.trim().length > 0) ||
-      hasTestMode
+      hasTestApiKey
   } catch {
-    hasOpenAiApiKey = hasTestMode
+    hasOpenAiApiKey = hasTestApiKey
+  }
+  if (hasTestMode && testVoiceProvider === 'funded') {
+    fundedVoiceConfiguration = {
+      accessToken: 'mock-access-token',
+      baseUrl: 'https://lvce-editor.dev',
+    }
+  } else if (!hasTestMode) {
+    fundedVoiceConfiguration = await resolveBackendVoiceConfiguration()
   }
 
   let state: IState = {
+    allowanceExceeded: false,
     animationEnabled: false,
     animationFrame: -1,
     animationScale: 1,
     apiKeyError: '',
     apiKeyInput: '',
+    fundedAvailable: Boolean(fundedVoiceConfiguration),
+    fundedError: '',
     hasOpenAiApiKey,
     inProgress: false,
     isCreatingToken: false,
@@ -182,8 +209,11 @@ export const createInstance = async (
     tokenError: '',
     transcribedText: '',
     uid: -1,
+    voiceProvider: fundedVoiceConfiguration ? 'funded' : 'byok',
   }
   let dataChannelPort: MessagePort | undefined
+  let fundedControlSocket: WebSocket | undefined
+  let fundedSocketIntentionalClose = false
   const handledToolCallIds = new Set<string>()
   let fixtureRecording: FixtureRecording | undefined
   let fixtureReplay: FixtureReplay | undefined
@@ -198,6 +228,17 @@ export const createInstance = async (
     fixtureRecording?.recordClientMessage(data)
     if (fixtureReplay) {
       fixtureReplay.acceptClientMessage(data)
+      return
+    }
+    const { voiceProvider } = state
+    if (voiceProvider === 'funded') {
+      if (
+        !fundedControlSocket ||
+        fundedControlSocket.readyState !== WebSocket.OPEN
+      ) {
+        throw new Error('Backend-funded voice control socket is not connected')
+      }
+      fundedControlSocket.send(data)
       return
     }
     if (!dataChannelPort) {
@@ -326,6 +367,188 @@ export const createInstance = async (
     }
 
     await handleFunctionCall(parsed)
+  }
+
+  const handleFundedControlMessage = (event: {
+    readonly data: unknown
+  }): void => {
+    let parsed: any
+    try {
+      parsed = JSON.parse(String(event.data))
+    } catch {
+      return
+    }
+    if (parsed?.type === 'lvce.usage.updated') {
+      return
+    }
+    if (parsed?.type === 'lvce.usage.exceeded') {
+      state = {
+        ...state,
+        allowanceExceeded: true,
+        fundedError:
+          typeof parsed.message === 'string'
+            ? parsed.message
+            : GptVoiceStrings.monthlyAllowanceExceeded(),
+      }
+      requestRerender()
+      void instance.stop()
+      return
+    }
+    if (parsed?.type === 'error') {
+      state = {
+        ...state,
+        fundedError:
+          typeof parsed.error?.message === 'string'
+            ? parsed.error.message
+            : GptVoiceStrings.fundedVoiceUnavailable(),
+      }
+      requestRerender()
+      void instance.stop()
+    }
+  }
+
+  const handleFundedControlClose = (): void => {
+    if (fundedSocketIntentionalClose) {
+      return
+    }
+    fundedControlSocket = undefined
+    const { fundedError, inProgress } = state
+    if (inProgress) {
+      state = {
+        ...state,
+        fundedError: fundedError || GptVoiceStrings.fundedVoiceClosed(),
+      }
+      requestRerender()
+      void instance.stop()
+    }
+  }
+
+  const getAnswerSdp = async (
+    voiceProvider: IState['voiceProvider'],
+    offerSdp: string,
+    ephemeralKey: string,
+    session: Readonly<Record<string, unknown>>,
+  ): Promise<string> => {
+    if (voiceProvider === 'byok') {
+      return getSdp(offerSdp, ephemeralKey)
+    }
+    if (!fundedVoiceConfiguration) {
+      throw new Error('Backend-funded voice is unavailable.')
+    }
+    fundedSocketIntentionalClose = false
+    const socket = await openFundedVoiceSocket(fundedVoiceConfiguration)
+    fundedControlSocket = socket
+    const { answerSdp } = await waitForFundedSessionCreated(
+      socket,
+      offerSdp,
+      session,
+    )
+    socket.addEventListener('message', handleFundedControlMessage)
+    socket.addEventListener('close', handleFundedControlClose)
+    return answerSdp
+  }
+
+  const beginVoiceSession = async (
+    voiceProvider: IState['voiceProvider'],
+  ): Promise<void> => {
+    const { sessionModel, uid } = state
+    const registeredTools =
+      await VoiceFunctionCallingWorker.getRegisteredTools()
+    const sessionConfig = createSessionConfig(sessionModel, registeredTools)
+    const ephemeralKey =
+      voiceProvider === 'byok'
+        ? await getEphemeralKey(await getStoredApiKey(), sessionConfig)
+        : ''
+    const { port1, port2 } = new MessageChannel()
+    // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types
+    port2.onmessage = (event: MessageEvent): void => {
+      const portData =
+        typeof event.data === 'string' ? event.data : JSON.stringify(event.data)
+      if (typeof portData === 'string') {
+        instance.handleData(portData)
+      }
+    }
+    port2.start()
+    dataChannelPort = port2
+    state = {
+      ...state,
+      inProgress: true,
+    }
+    const offerSdp = await startWebRtcAudioStream({
+      elementLocator: `.${ClassNames.GptVoiceAudio}`,
+      ephemeralKey,
+      port: port1,
+      trackAudioData: true,
+      uid,
+    })
+    if (!offerSdp) {
+      throw new Error('offer sdp is required')
+    }
+    const answerSdp = await getAnswerSdp(
+      voiceProvider,
+      offerSdp,
+      ephemeralKey,
+      sessionConfig.session,
+    )
+    await setRemoteDescription({ sdp: answerSdp, type: 'answer', uid })
+    const { isTest: isCurrentlyTest } = state
+    if (!isCurrentlyTest) {
+      state = {
+        ...state,
+        animationEnabled: true,
+      }
+      instance.doAnimate()
+    }
+    state = {
+      ...state,
+      isCreatingToken: false,
+    }
+    requestRerender()
+  }
+
+  const handleVoiceStartError = async (
+    error: unknown,
+    voiceProvider: IState['voiceProvider'],
+  ): Promise<void> => {
+    const {
+      fundedError,
+      hasOpenAiApiKey: currentHasOpenAiApiKey,
+      inProgress,
+      isTest,
+      uid,
+    } = state
+    const nextApiKeyStatus =
+      error instanceof Error && error.message === 'NO_API_KEY'
+        ? false
+        : currentHasOpenAiApiKey
+    if (dataChannelPort) {
+      dataChannelPort.close()
+      dataChannelPort = undefined
+    }
+    if (fundedControlSocket) {
+      fundedSocketIntentionalClose = true
+      fundedControlSocket.close()
+      fundedControlSocket = undefined
+    }
+    if (!isTest && inProgress) {
+      try {
+        await stopWebRtcAudioStream(uid)
+      } catch {
+        // The original startup failure remains the actionable error.
+      }
+    }
+    const message = createTokenErrorMessage(error)
+    state = {
+      ...state,
+      fundedError: voiceProvider === 'funded' ? message : fundedError,
+      hasOpenAiApiKey: nextApiKeyStatus,
+      inProgress: false,
+      isCreatingToken: false,
+      tokenError: message,
+    }
+    hasOpenAiApiKey = nextApiKeyStatus
+    console.error(error)
+    requestRerender()
   }
 
   const instance: ActiveGptVoiceViewInstance = {
@@ -466,6 +689,7 @@ export const createInstance = async (
         isCreatingToken,
         isSavingApiKey,
         isTest,
+        voiceProvider,
       } = state
       if (isCreatingToken || isSavingApiKey) {
         return
@@ -479,7 +703,7 @@ export const createInstance = async (
         return
       }
       if (isTest || isInTestMode()) {
-        hasOpenAiApiKey = true
+        hasOpenAiApiKey = voiceProvider === 'byok'
         state = {
           ...state,
           hasOpenAiApiKey,
@@ -490,7 +714,7 @@ export const createInstance = async (
         requestRerender()
         return
       }
-      if (!hasApiKey) {
+      if (voiceProvider === 'byok' && !hasApiKey) {
         state = {
           ...state,
           apiKeyError: '',
@@ -506,84 +730,9 @@ export const createInstance = async (
       }
       requestRerender()
       try {
-        const apiKey = await getStoredApiKey()
-        const { sessionModel } = state
-        const registeredTools =
-          await VoiceFunctionCallingWorker.getRegisteredTools()
-
-        const ephemeralKey = await getEphemeralKey(
-          apiKey,
-          createSessionConfig(sessionModel, registeredTools),
-        )
-        const { port1, port2 } = new MessageChannel()
-        // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types
-        port2.onmessage = (event: MessageEvent): void => {
-          const portData =
-            typeof event.data === 'string'
-              ? event.data
-              : JSON.stringify(event.data)
-          if (typeof portData === 'string') {
-            instance.handleData(portData)
-          }
-        }
-        port2.start()
-        dataChannelPort = port2
-        state = {
-          ...state,
-          inProgress: true,
-        }
-        const { uid } = state
-        const offerSdp = await startWebRtcAudioStream({
-          elementLocator: `.${ClassNames.GptVoiceAudio}`,
-          ephemeralKey,
-          port: port1,
-          trackAudioData: true,
-          uid,
-        })
-        if (!offerSdp) {
-          throw new Error('offer sdp is required')
-        }
-        const answerSdp = await getSdp(offerSdp, ephemeralKey)
-        await setRemoteDescription({
-          sdp: answerSdp,
-          type: 'answer',
-          uid,
-        })
-
-        const { isTest: isCurrentlyTest } = state
-        if (!isCurrentlyTest) {
-          state = {
-            ...state,
-            animationEnabled: true,
-          }
-          instance.doAnimate()
-        }
-
-        state = {
-          ...state,
-          isCreatingToken: false,
-        }
-        requestRerender()
+        await beginVoiceSession(voiceProvider)
       } catch (error) {
-        const { hasOpenAiApiKey: currentHasOpenAiApiKey } = state
-        const nextApiKeyStatus =
-          error instanceof Error && error.message === 'NO_API_KEY'
-            ? false
-            : currentHasOpenAiApiKey
-        if (dataChannelPort) {
-          dataChannelPort.close()
-          dataChannelPort = undefined
-        }
-        state = {
-          ...state,
-          hasOpenAiApiKey: nextApiKeyStatus,
-          inProgress: false,
-          isCreatingToken: false,
-          tokenError: createTokenErrorMessage(error),
-        }
-        hasOpenAiApiKey = nextApiKeyStatus
-        console.error(error)
-        requestRerender()
+        await handleVoiceStartError(error, voiceProvider)
       }
     },
     handleData(data: string): void {
@@ -654,6 +803,20 @@ export const createInstance = async (
           apiKeyError: GptVoiceStrings.failedToSaveOpenAiApiKey(),
           isSavingApiKey: false,
         }
+      }
+      requestRerender()
+    },
+    handleUseOwnApiKey(): void {
+      const { inProgress, isCreatingToken } = state
+      if (inProgress || isCreatingToken) {
+        return
+      }
+      state = {
+        ...state,
+        allowanceExceeded: false,
+        fundedError: '',
+        tokenError: '',
+        voiceProvider: 'byok',
       }
       requestRerender()
     },
@@ -749,6 +912,11 @@ export const createInstance = async (
         inProgress: false,
       }
       try {
+        if (fundedControlSocket) {
+          fundedSocketIntentionalClose = true
+          fundedControlSocket.close()
+          fundedControlSocket = undefined
+        }
         const { isTest, uid } = state
         if (!isTest) {
           await stopWebRtcAudioStream(uid)
