@@ -15,7 +15,7 @@ const welcomeContainerNode: VirtualDomNode = {
 }
 
 const welcomeNode: VirtualDomNode = {
-  childCount: 6,
+  childCount: 5,
   className: ClassNames.GptVoiceWelcome,
   type: VirtualDomElements.Div,
 }
@@ -27,13 +27,13 @@ const welcomeTitleNode: VirtualDomNode = {
 }
 
 const welcomeDescriptionNode: VirtualDomNode = {
-  childCount: 0,
+  childCount: 1,
   className: ClassNames.GptVoiceWelcomeDescription,
   type: VirtualDomElements.Div,
 }
 
 const statusNode: VirtualDomNode = {
-  childCount: 0,
+  childCount: 1,
   className: ClassNames.GptVoiceStatus,
   type: VirtualDomElements.Div,
 }

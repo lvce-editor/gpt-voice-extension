@@ -108,7 +108,7 @@ test('render - returns welcome form when API key is missing', () => {
       type: VirtualDomElements.Div,
     },
     {
-      childCount: 6,
+      childCount: 5,
       className: 'GptVoiceWelcome',
       type: VirtualDomElements.Div,
     },
@@ -119,7 +119,7 @@ test('render - returns welcome form when API key is missing', () => {
     },
     text('Set up your OpenAI API key'),
     {
-      childCount: 0,
+      childCount: 1,
       className: 'GptVoiceWelcomeDescription',
       type: VirtualDomElements.Div,
     },
@@ -146,7 +146,7 @@ test('render - returns welcome form when API key is missing', () => {
     },
     text('Save API key'),
     {
-      childCount: 0,
+      childCount: 1,
       className: 'GptVoiceStatus',
       type: VirtualDomElements.Div,
     },

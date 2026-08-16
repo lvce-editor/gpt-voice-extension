@@ -280,6 +280,67 @@ test('createInstance - initializes from present, empty, and failed storage', asy
   )
 })
 
+test('instance - switches to funded voice when editor login completes after creation', async () => {
+  getSecret.mockResolvedValue(undefined)
+  executeCommand.mockResolvedValue('https://lvce.example')
+  getAccessToken
+    .mockResolvedValueOnce('')
+    .mockResolvedValue('editor-access-token')
+  const { context, requestRerender } = createContext()
+  const instance = await createInstance(context)
+
+  expect(instance.render()).toContainEqual(
+    text('OpenAI API key required to start a live voice session.'),
+  )
+
+  await jest.advanceTimersByTimeAsync(1000)
+
+  expect(getAccessToken).toHaveBeenCalledTimes(2)
+  expect(instance.render()).toContainEqual(text('Start talking'))
+  expect(instance.render()).not.toContainEqual(
+    text('OpenAI API key required to start a live voice session.'),
+  )
+  expect(requestRerender).toHaveBeenCalled()
+  instance.dispose?.()
+})
+
+test('instance - stops checking editor login after disposal', async () => {
+  getSecret.mockResolvedValue(undefined)
+  executeCommand.mockResolvedValue('https://lvce.example')
+  getAccessToken.mockResolvedValue('')
+  const { context } = createContext()
+  const instance = await createInstance(context)
+
+  await instance.dispose?.()
+  await jest.advanceTimersByTimeAsync(2000)
+
+  expect(getAccessToken).toHaveBeenCalledTimes(1)
+})
+
+test('instance - ignores an editor login check that finishes after disposal', async () => {
+  getSecret.mockResolvedValue(undefined)
+  executeCommand.mockResolvedValue('https://lvce.example')
+  const pendingAccessToken = Promise.withResolvers<unknown>()
+  getAccessToken
+    .mockResolvedValueOnce('')
+    .mockReturnValueOnce(pendingAccessToken.promise)
+  const { context, requestRerender } = createContext()
+  const instance = await createInstance(context)
+
+  await jest.advanceTimersByTimeAsync(1000)
+  expect(getAccessToken).toHaveBeenCalledTimes(2)
+  await instance.dispose?.()
+  requestRerender.mockClear()
+
+  pendingAccessToken.resolve('editor-access-token')
+  await flushAnimation()
+
+  expect(instance.render()).toContainEqual(
+    text('OpenAI API key required to start a live voice session.'),
+  )
+  expect(requestRerender).not.toHaveBeenCalled()
+})
+
 test('instance - exposes view helpers and transcript operations', async () => {
   const { context, requestRerender } = createContext()
   const instance = await createInstance(context)
