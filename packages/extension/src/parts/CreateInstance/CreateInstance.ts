@@ -55,6 +55,7 @@ import {
 const focusSelector = `.${ClassNames.Main}`
 const transcriptSelector = `.${ClassNames.GptVoiceTranscript}`
 const maxScrollTop = 9_999_999
+const fundedConfigurationRefreshInterval = 1000
 
 export interface ActiveGptVoiceViewInstance extends VirtualDomViewInstance {
   readonly addTranscript: (
@@ -218,6 +219,45 @@ export const createInstance = async (
   let fixtureRecording: FixtureRecording | undefined
   let fixtureReplay: FixtureReplay | undefined
   let transcriptScrollPending = false
+  let fundedConfigurationRefreshTimeout:
+    | ReturnType<typeof setTimeout>
+    | undefined
+  let disposed = false
+
+  const scheduleFundedConfigurationRefresh = (): void => {
+    if (
+      disposed ||
+      hasTestMode ||
+      fundedVoiceConfiguration ||
+      !context ||
+      fundedConfigurationRefreshTimeout
+    ) {
+      return
+    }
+    fundedConfigurationRefreshTimeout = setTimeout(() => {
+      fundedConfigurationRefreshTimeout = undefined
+      void refreshFundedConfiguration()
+    }, fundedConfigurationRefreshInterval)
+  }
+
+  const refreshFundedConfiguration = async (): Promise<void> => {
+    const configuration = await resolveBackendVoiceConfiguration()
+    if (disposed) {
+      return
+    }
+    if (!configuration) {
+      scheduleFundedConfigurationRefresh()
+      return
+    }
+    fundedVoiceConfiguration = configuration
+    state = {
+      ...state,
+      fundedAvailable: true,
+      fundedError: '',
+      voiceProvider: 'funded',
+    }
+    void context?.requestRerender()
+  }
 
   const requestTranscriptRerender = (): void => {
     transcriptScrollPending = true
@@ -606,6 +646,14 @@ export const createInstance = async (
         instance.addTranscript(item_id, delta, type)
       }
     },
+    async dispose(): Promise<void> {
+      disposed = true
+      if (fundedConfigurationRefreshTimeout) {
+        clearTimeout(fundedConfigurationRefreshTimeout)
+        fundedConfigurationRefreshTimeout = undefined
+      }
+      await instance.stop()
+    },
     async doAnimate() {
       while (true) {
         const { animationEnabled, uid } = state
@@ -964,5 +1012,6 @@ export const createInstance = async (
     },
   }
 
+  scheduleFundedConfigurationRefresh()
   return instance
 }
