@@ -126,6 +126,36 @@ export const createSessionConfig = (
 
 export const defaultSessionConfig = createSessionConfig(defaultSessionModel)
 
+export const getOpenAiErrorMessage = (
+  errorData: unknown,
+  fallbackMessage: string,
+): string => {
+  if (
+    !errorData ||
+    typeof errorData !== 'object' ||
+    !('error' in errorData) ||
+    !errorData.error ||
+    typeof errorData.error !== 'object'
+  ) {
+    return fallbackMessage
+  }
+  const { error } = errorData
+  const code =
+    'code' in error && typeof error.code === 'string' ? error.code : ''
+  const message =
+    'message' in error && typeof error.message === 'string' ? error.message : ''
+  if (code && message) {
+    return `${code}: ${message}`
+  }
+  if (message) {
+    return message
+  }
+  if (code) {
+    return `${code}: ${fallbackMessage}`
+  }
+  return fallbackMessage
+}
+
 export const getEphemeralKey = async (
   apiKey: string,
   sessionConfig: unknown = defaultSessionConfig,
@@ -148,16 +178,10 @@ export const getEphemeralKey = async (
     } catch {
       tokenErrorData = null
     }
-    const tokenErrorMessage =
-      tokenErrorData &&
-      typeof tokenErrorData === 'object' &&
-      'error' in tokenErrorData &&
-      typeof tokenErrorData.error === 'object' &&
-      tokenErrorData.error &&
-      'message' in tokenErrorData.error &&
-      typeof tokenErrorData.error.message === 'string'
-        ? tokenErrorData.error.message
-        : `Failed to create ephemeral token (${tokenRes.status})`
+    const tokenErrorMessage = getOpenAiErrorMessage(
+      tokenErrorData,
+      `Failed to create ephemeral token (${tokenRes.status})`,
+    )
     throw new Error(tokenErrorMessage)
   }
   const tokenData = await tokenRes.json()
@@ -181,5 +205,19 @@ export const getSdp = async (
     method: 'POST',
   })
   const answerSdp = await sdpResponse.text()
+  if (!sdpResponse.ok) {
+    let errorData: unknown
+    try {
+      errorData = JSON.parse(answerSdp)
+    } catch {
+      errorData = null
+    }
+    throw new Error(
+      getOpenAiErrorMessage(
+        errorData,
+        `Failed to create realtime session (${sdpResponse.status})`,
+      ),
+    )
+  }
   return answerSdp
 }

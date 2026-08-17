@@ -48,6 +48,7 @@ import {
   createSessionConfig,
   defaultSessionModel,
   getEphemeralKey,
+  getOpenAiErrorMessage,
   RealtimeModelPreset,
   getSdp,
 } from '../WebRtc/WebRtc.ts'
@@ -394,6 +395,19 @@ export const createInstance = async (
     state = {
       ...state,
       parsedData: [...parsedData, parsed],
+    }
+
+    if (parsed?.type === 'error') {
+      state = {
+        ...state,
+        tokenError: getOpenAiErrorMessage(
+          parsed,
+          GptVoiceStrings.failedToCreateToken(),
+        ),
+      }
+      requestRerender()
+      await instance.stop()
+      return
     }
 
     if (parsed && parsed.type === 'response.output_audio_transcript.delta') {
