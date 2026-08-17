@@ -16,6 +16,7 @@ test('renderEventListeners - returns all listeners', () => {
     {
       name: DomEventListenerFunctions.HandleSaveOpenAiApiKey,
       params: ['handleSaveOpenAiApiKey'],
+      preventDefault: true,
     },
     {
       name: DomEventListenerFunctions.HandleClickStart,
