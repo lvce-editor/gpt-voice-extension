@@ -77,10 +77,12 @@ test('createSessionConfig - selects transcription model for each realtime model'
   expect(standard.session.model).toBe(RealtimeModelPreset.Standard)
 })
 
-test('createSessionConfig - does not add context to the user transcript', () => {
+test('createSessionConfig - provides minimal English transcription guidance', () => {
   const config = createSessionConfig(RealtimeModelPreset.Mini)
 
-  expect(config.session.audio.input.transcription).not.toHaveProperty('prompt')
+  expect(config.session.audio.input.transcription.prompt).toBe(
+    'English speech.',
+  )
 })
 
 test('createSessionConfig - provides developer vocabulary to the realtime model', () => {
