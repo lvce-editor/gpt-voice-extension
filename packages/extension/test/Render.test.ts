@@ -110,7 +110,8 @@ test('render - returns welcome form when API key is missing', () => {
     {
       childCount: 5,
       className: 'GptVoiceWelcome',
-      type: VirtualDomElements.Div,
+      onSubmit: DomEventListenerFunctions.HandleSaveOpenAiApiKey,
+      type: VirtualDomElements.Form,
     },
     {
       childCount: 1,
@@ -141,7 +142,7 @@ test('render - returns welcome form when API key is missing', () => {
       childCount: 1,
       className: 'GptVoiceButton',
       disabled: false,
-      onClick: DomEventListenerFunctions.HandleSaveOpenAiApiKey,
+      inputType: 'submit',
       type: VirtualDomElements.Button,
     },
     text('Save API key'),

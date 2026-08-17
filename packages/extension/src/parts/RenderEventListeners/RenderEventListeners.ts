@@ -20,6 +20,7 @@ export const renderEventListeners = (): readonly DomEventListener[] => {
     {
       name: DomEventListenerFunctions.HandleSaveOpenAiApiKey,
       params: ['handleSaveOpenAiApiKey'],
+      preventDefault: true,
     },
     {
       name: DomEventListenerFunctions.HandleClickStart,

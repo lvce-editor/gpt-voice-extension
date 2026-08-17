@@ -17,7 +17,8 @@ const welcomeContainerNode: VirtualDomNode = {
 const welcomeNode: VirtualDomNode = {
   childCount: 5,
   className: ClassNames.GptVoiceWelcome,
-  type: VirtualDomElements.Div,
+  onSubmit: DomEventListenerFunctions.HandleSaveOpenAiApiKey,
+  type: VirtualDomElements.Form,
 }
 
 const welcomeTitleNode: VirtualDomNode = {
@@ -68,7 +69,7 @@ export const renderWelcome = (state: {
       childCount: 1,
       className: ClassNames.GptVoiceButton,
       disabled: isSavingApiKey,
-      onClick: DomEventListenerFunctions.HandleSaveOpenAiApiKey,
+      inputType: 'submit',
       type: VirtualDomElements.Button,
     },
     text(
