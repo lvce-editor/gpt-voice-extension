@@ -528,6 +528,7 @@ test('instance - starts, receives data, animates, and stops session', async () =
       ok: true,
     } as Response)
     .mockResolvedValueOnce({
+      ok: true,
       text: async () => 'answer-sdp',
     } as Response)
 
@@ -579,6 +580,62 @@ test('instance - starts, receives data, animates, and stops session', async () =
   await instance.handleClickStart()
   expect(stopWebRtcAudioStream).toHaveBeenCalledWith(-1)
   expect(latestPort2?.close).toHaveBeenCalled()
+})
+
+test('instance - displays realtime session error code and message', async () => {
+  const instance = await createInstance()
+  jest
+    .spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce({
+      json: async () => ({ value: 'ephemeral-key' }),
+      ok: true,
+    } as Response)
+    .mockResolvedValueOnce({
+      ok: false,
+      status: 429,
+      text: async () =>
+        JSON.stringify({
+          error: {
+            code: 'credit_balance_exhausted',
+            message:
+              'You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.',
+            type: 'insufficient_quota',
+          },
+        }),
+    } as Response)
+  jest.spyOn(console, 'error').mockImplementation(() => undefined)
+
+  await instance.handleClickStart()
+
+  expect(instance.render()).toContainEqual(
+    text(
+      'credit_balance_exhausted: You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.',
+    ),
+  )
+  expect(setRemoteDescription).not.toHaveBeenCalled()
+})
+
+test('instance - displays realtime data channel error code and message', async () => {
+  const instance = await createInstance()
+
+  instance.handleData(
+    JSON.stringify({
+      error: {
+        code: 'credit_balance_exhausted',
+        message:
+          'You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.',
+        type: 'insufficient_quota',
+      },
+      type: 'error',
+    }),
+  )
+  await flushAnimation()
+
+  expect(instance.render()).toContainEqual(
+    text(
+      'credit_balance_exhausted: You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.',
+    ),
+  )
 })
 
 test('instance - starts funded voice without an API key and routes tool control events through the backend', async () => {
@@ -781,7 +838,10 @@ test('instance - recovers from one animation read failure', async () => {
       json: async () => ({ value: 'ephemeral-key' }),
       ok: true,
     } as Response)
-    .mockResolvedValueOnce({ text: async () => 'answer-sdp' } as Response)
+    .mockResolvedValueOnce({
+      ok: true,
+      text: async () => 'answer-sdp',
+    } as Response)
   const consoleError = jest
     .spyOn(console, 'error')
     .mockImplementation(() => undefined)
@@ -1095,7 +1155,10 @@ test('instance - records a live fixture and writes it after completion', async (
       json: async () => ({ value: 'ephemeral-key' }),
       ok: true,
     } as Response)
-    .mockResolvedValueOnce({ text: async () => 'answer-sdp' } as Response)
+    .mockResolvedValueOnce({
+      ok: true,
+      text: async () => 'answer-sdp',
+    } as Response)
 
   const capture = instance.captureFixture({
     outputUri: 'file:///tmp/raw-recording.json',

@@ -2,6 +2,7 @@ import { afterEach, expect, jest, test } from '@jest/globals'
 import {
   createSessionConfig,
   getEphemeralKey,
+  getOpenAiErrorMessage,
   getSdp,
   RealtimeModelPreset,
 } from '../src/parts/WebRtc/WebRtc.ts'
@@ -124,6 +125,10 @@ test('getEphemeralKey - posts session and returns token', async () => {
 
 test.each([
   [{ error: { message: 'invalid key' } }, 'invalid key'],
+  [
+    { error: { code: 'invalid_api_key', message: 'invalid key' } },
+    'invalid_api_key: invalid key',
+  ],
   [{}, 'Failed to create ephemeral token (400)'],
   [{ error: 'invalid' }, 'Failed to create ephemeral token (400)'],
   [{ error: null }, 'Failed to create ephemeral token (400)'],
@@ -170,6 +175,7 @@ test.each([undefined, '', 1])(
 
 test('getSdp - posts offer and returns answer', async () => {
   const fetch = jest.spyOn(globalThis, 'fetch').mockResolvedValue({
+    ok: true,
     text: async () => 'answer-sdp',
   } as Response)
 
@@ -186,3 +192,55 @@ test('getSdp - posts offer and returns answer', async () => {
     },
   )
 })
+
+test('getSdp - reports the OpenAI error code and message', async () => {
+  jest.spyOn(globalThis, 'fetch').mockResolvedValue({
+    ok: false,
+    status: 429,
+    text: async () =>
+      JSON.stringify({
+        error: {
+          code: 'credit_balance_exhausted',
+          message:
+            'You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.',
+          type: 'insufficient_quota',
+        },
+      }),
+  } as Response)
+
+  await expect(getSdp('offer-sdp', 'ephemeral-key')).rejects.toThrow(
+    'credit_balance_exhausted: You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.',
+  )
+})
+
+test('getSdp - reports status when the error response is not json', async () => {
+  jest.spyOn(globalThis, 'fetch').mockResolvedValue({
+    ok: false,
+    status: 502,
+    text: async () => 'Bad Gateway',
+  } as Response)
+
+  await expect(getSdp('offer-sdp', 'ephemeral-key')).rejects.toThrow(
+    'Failed to create realtime session (502)',
+  )
+})
+
+test.each([
+  [
+    { error: { code: 'credit_balance_exhausted', message: 'No credits' } },
+    'credit_balance_exhausted: No credits',
+  ],
+  [{ error: { message: 'Invalid request' } }, 'Invalid request'],
+  [
+    { error: { code: 'invalid_request_error' } },
+    'invalid_request_error: Realtime request failed',
+  ],
+  [{ error: null }, 'Realtime request failed'],
+] as const)(
+  'getOpenAiErrorMessage - formats error %#',
+  (errorData, expected) => {
+    expect(getOpenAiErrorMessage(errorData, 'Realtime request failed')).toBe(
+      expected,
+    )
+  },
+)
