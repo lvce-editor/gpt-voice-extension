@@ -133,12 +133,22 @@ const ignoredSearchDirectoryNames = new Set(['.git', 'node_modules'])
 const maximumConcurrentDirectoryReads = 16
 const maximumSearchDirectoryCount = 5000
 const maximumSearchMatchCount = 50
-const noSearchMatchesHint =
+const baseNoSearchMatchesHint =
   'No files matched. Double-check whether the filename was heard or read correctly, then search again with a likely correction or a shorter distinctive part of the filename before giving up.'
 const searchTermRegex = /[\p{L}\p{N}]+/gu
 const yamlExtensionAliases: Readonly<Record<string, string>> = {
   yaml: 'yml',
   yml: 'yaml',
+}
+
+const getNoSearchMatchesHint = (query: string): string => {
+  const compactQuery = (
+    query.toLocaleLowerCase().match(searchTermRegex) || []
+  ).join('')
+  if (compactQuery.startsWith('eslintrc')) {
+    return `${baseNoSearchMatchesHint} If the user asked for the ESLint config, search for "eslint.config.js", the modern flat-config filename.`
+  }
+  return baseNoSearchMatchesHint
 }
 
 const getErrorMessage = (error: unknown): string => {
@@ -403,7 +413,7 @@ export const searchWorkspaceFiles = async (
 
   const sortedMatches = matches.toSorted((a, b) => a.localeCompare(b))
   return {
-    ...(sortedMatches.length === 0 && { hint: noSearchMatchesHint }),
+    ...(sortedMatches.length === 0 && { hint: getNoSearchMatchesHint(query) }),
     matches: sortedMatches,
     query,
     truncated:

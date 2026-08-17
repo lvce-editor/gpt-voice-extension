@@ -185,6 +185,21 @@ test.each([
   },
 )
 
+test.each(['eslintrc', '.eslintrc.js', 'eslint rc'])(
+  'searchWorkspaceFiles - suggests the modern ESLint config for %s',
+  async (query) => {
+    const api = createApi()
+    jest.mocked(api.readDirWithFileTypes).mockResolvedValue([])
+
+    await expect(searchWorkspaceFiles(query, api)).resolves.toEqual({
+      hint: 'No files matched. Double-check whether the filename was heard or read correctly, then search again with a likely correction or a shorter distinctive part of the filename before giving up. If the user asked for the ESLint config, search for "eslint.config.js", the modern flat-config filename.',
+      matches: [],
+      query,
+      truncated: false,
+    })
+  },
+)
+
 test('searchWorkspaceFiles - excludes gitignored build output', async () => {
   const api = createApi()
   jest.mocked(api.readDirWithFileTypes).mockImplementation(async (uri) => {
