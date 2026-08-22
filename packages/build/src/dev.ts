@@ -31,9 +31,12 @@ const browserContext = await esbuild.context({
 })
 
 const nodeContext = await esbuild.context({
+  banner: {
+    js: "import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);",
+  },
   bundle: true,
   entryPoints: [path.join(node, 'src', 'terminalNodeMain.ts')],
-  external: ['node:*'],
+  external: ['electron', 'node:*'],
   format: 'esm',
   outfile: path.join(outdir, 'terminalNodeMain.js'),
   platform: 'node',

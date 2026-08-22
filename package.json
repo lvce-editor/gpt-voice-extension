@@ -18,7 +18,7 @@
     "format": "prettier --write .",
     "install:extension": "node packages/build/src/install-extension.ts",
     "lint": "eslint . && prettier --check .",
-    "test": "npm test --workspaces --if-present",
+    "test": "npm run build:extension && npm test --workspaces --if-present",
     "test:watch": "node --unhandled-rejections=warn --experimental-vm-modules ./node_modules/jest/bin/jest.js --watch",
     "type-check": "tsc -b"
   },
