@@ -119,7 +119,7 @@
   "rpc": [
     {
       "id": "builtin.gpt-voice.terminal-node",
-      "type": "node",
+      "type": "node-process",
       "name": "Gpt Voice Terminal",
       "url": "dist/terminalNodeMain.js"
     },

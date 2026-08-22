@@ -34,9 +34,12 @@ await esbuild.build({
 })
 
 await esbuild.build({
+  banner: {
+    js: "import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);",
+  },
   bundle: true,
   entryPoints: [path.join(node, 'src', 'terminalNodeMain.ts')],
-  external: ['node:*'],
+  external: ['electron', 'node:*'],
   format: 'esm',
   outfile: path.join(outdir, 'terminalNodeMain.js'),
   platform: 'node',

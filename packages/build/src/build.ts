@@ -78,9 +78,12 @@ await Promise.all([
     join(root, 'dist', 'dist', 'voiceFunctionCallingWorkerMain.js'),
   ),
   esbuildBuild({
+    banner: {
+      js: "import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);",
+    },
     bundle: true,
     entryPoints: [join(node, 'src', 'terminalNodeMain.ts')],
-    external: ['node:*'],
+    external: ['electron', 'node:*'],
     format: 'esm',
     outfile: join(root, 'dist', 'dist', 'terminalNodeMain.js'),
     platform: 'node',

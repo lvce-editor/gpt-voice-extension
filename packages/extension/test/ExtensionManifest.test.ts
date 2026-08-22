@@ -46,7 +46,7 @@ test('declares the opt-in terminal tool and node process', () => {
   expect(extensionManifest.rpc).toContainEqual({
     id: 'builtin.gpt-voice.terminal-node',
     name: 'Gpt Voice Terminal',
-    type: 'node',
+    type: 'node-process',
     url: 'dist/terminalNodeMain.js',
   })
 })
