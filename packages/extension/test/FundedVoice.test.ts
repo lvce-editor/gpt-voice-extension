@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals'
 import {
   formatFundedVoiceError,
+  FundedVoiceError,
   fundedVoiceProtocol,
   getFundedVoiceError,
   getFundedVoiceUrl,
