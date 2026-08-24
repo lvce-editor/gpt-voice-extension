@@ -13,6 +13,11 @@
   ],
   "categories": ["Other"],
   "configuration": {
+    "gptvoice.audioDebug.enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Record the microphone audio sent during Gpt Voice messages and keep the recordings in cache storage for playback and transcription debugging."
+    },
     "gptvoice.tools.terminal.enabled": {
       "type": "boolean",
       "default": false,
@@ -22,6 +27,8 @@
   "activation": [
     "onCommand:gpt-voice.show",
     "onView:gpt-voice.views.default",
+    "onView:gpt-voice-audio.views.recordings",
+    "onFileSystem:gpt-voice-audio",
     "onCommand:GptVoice.handleClickStart",
     "onCommand:GptVoice.captureFixture",
     "onCommand:GptVoice.handleData",
@@ -110,6 +117,11 @@
     }
   ],
   "keybindings": [],
+  "fileSystemProviders": [
+    {
+      "id": "gpt-voice-audio"
+    }
+  ],
   "views": [
     {
       "css": "media/gpt-voice.css",
@@ -119,6 +131,20 @@
       "icon": "media/voice-chat.svg",
       "kind": "virtualDom",
       "preferredLocation": "secondaryPreview"
+    },
+    {
+      "css": "media/audio-debug.css",
+      "displayName": "Voice Audio Recordings",
+      "eventListeners": [
+        {
+          "name": "handleClick",
+          "params": ["handleClick", "event.currentTarget.name"]
+        }
+      ],
+      "id": "gpt-voice-audio.views.recordings",
+      "title": "Voice Audio Recordings",
+      "icon": "media/voice-chat.svg",
+      "kind": "virtualDom"
     }
   ],
   "rpc": [

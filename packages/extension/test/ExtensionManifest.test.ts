@@ -32,10 +32,22 @@ test('uses the voice chat view icon', () => {
   expect(
     readFileSync(new URL('../media/voice-chat.svg', import.meta.url), 'utf8'),
   ).toContain('aria-label="Voice chat"')
+  expect(extensionManifest.views).toContainEqual(
+    expect.objectContaining({
+      id: 'gpt-voice-audio.views.recordings',
+      title: 'Voice Audio Recordings',
+    }),
+  )
 })
 
 test('declares the opt-in terminal tool and node process', () => {
   expect(extensionManifest.configuration).toEqual({
+    'gptvoice.audioDebug.enabled': {
+      default: false,
+      description:
+        'Record the microphone audio sent during Gpt Voice messages and keep the recordings in cache storage for playback and transcription debugging.',
+      type: 'boolean',
+    },
     'gptvoice.tools.terminal.enabled': {
       default: false,
       description:
@@ -49,4 +61,8 @@ test('declares the opt-in terminal tool and node process', () => {
     type: 'node-process',
     url: 'dist/terminalNodeMain.js',
   })
+  expect(extensionManifest.fileSystemProviders).toContainEqual({
+    id: 'gpt-voice-audio',
+  })
+  expect(extensionManifest.activation).toContain('onFileSystem:gpt-voice-audio')
 })

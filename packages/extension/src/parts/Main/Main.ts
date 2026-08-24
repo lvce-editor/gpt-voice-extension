@@ -2,8 +2,11 @@ import {
   activate as activateExtensionApi,
   executeCommand,
   registerCommand,
+  registerFileSystemProvider,
   registerView,
 } from '@lvce-editor/api'
+import { createAudioDebugFileSystemProvider } from '../AudioDebugFileSystemProvider/AudioDebugFileSystemProvider.ts'
+import { audioDebugView } from '../AudioDebugView/AudioDebugView.ts'
 import { enableTestMode } from '../TestMode/TestMode.ts'
 import { view } from '../View/View.ts'
 
@@ -21,6 +24,8 @@ export const activate = async (): Promise<void> => {
   }
   state.isActivated = true
   await activateExtensionApi()
+  registerFileSystemProvider(createAudioDebugFileSystemProvider())
+  registerView(audioDebugView)
   registerView(view)
   registerCommand({
     async execute() {
