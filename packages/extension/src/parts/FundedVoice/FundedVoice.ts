@@ -10,6 +10,18 @@ export interface FundedSessionCreatedEvent {
   readonly usedVirtualTokens: number
 }
 
+export class FundedVoiceError extends Error {
+  readonly code: string
+  readonly statusCode: number | undefined
+
+  constructor(message: string, code: string, statusCode?: number) {
+    super(message)
+    this.name = 'FundedVoiceError'
+    this.code = code
+    this.statusCode = statusCode
+  }
+}
+
 interface WebSocketFactory {
   // The DOM WebSocket constructor accepts a mutable protocol array.
   // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types
@@ -18,6 +30,48 @@ interface WebSocketFactory {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+
+const getStatusCode = (
+  event: Readonly<Record<string, unknown>>,
+  error: Readonly<Record<string, unknown>>,
+): number | undefined => {
+  for (const value of [
+    error.statusCode,
+    error.status,
+    event.statusCode,
+    event.status,
+  ]) {
+    if (typeof value === 'number' && Number.isSafeInteger(value)) {
+      return value
+    }
+  }
+  return undefined
+}
+
+export const getFundedVoiceError = (
+  event: unknown,
+  fallbackMessage: string,
+  fallbackCode: string,
+): FundedVoiceError => {
+  const value = isRecord(event) ? event : {}
+  const error = isRecord(value.error) ? value.error : {}
+  const message =
+    (typeof error.message === 'string' && error.message) ||
+    (typeof value.message === 'string' && value.message) ||
+    fallbackMessage
+  const code =
+    (typeof error.code === 'string' && error.code) ||
+    (typeof value.code === 'string' && value.code) ||
+    fallbackCode
+  return new FundedVoiceError(message, code, getStatusCode(value, error))
+}
+
+export const formatFundedVoiceError = (
+  error: Readonly<FundedVoiceError>,
+): string => {
+  const status = error.statusCode ? `; HTTP status: ${error.statusCode}` : ''
+  return `${error.message} (Error code: ${error.code}${status})`
+}
 
 export const getFundedVoiceUrl = (baseUrl: string): string => {
   const url = new URL(baseUrl)
@@ -43,12 +97,24 @@ export const openFundedVoiceSocket = async (
     socket.addEventListener('open', () => resolve(), { once: true })
     socket.addEventListener(
       'error',
-      () => reject(new Error('Backend-funded voice is unavailable.')),
+      () =>
+        reject(
+          new FundedVoiceError(
+            'Backend-funded voice is unavailable.',
+            'connection_error',
+          ),
+        ),
       { once: true },
     )
     socket.addEventListener(
       'close',
-      () => reject(new Error('Backend-funded voice closed while connecting.')),
+      () =>
+        reject(
+          new FundedVoiceError(
+            'Backend-funded voice closed while connecting.',
+            'connection_closed',
+          ),
+        ),
       { once: true },
     )
   })
@@ -67,19 +133,23 @@ export const waitForFundedSessionCreated = async (
     try {
       parsed = JSON.parse(String(event.data))
     } catch {
-      reject(new Error('Backend-funded voice returned invalid JSON.'))
+      reject(
+        new FundedVoiceError(
+          'Backend-funded voice returned invalid JSON.',
+          'invalid_server_response',
+        ),
+      )
       return
     }
     if (!isRecord(parsed)) {
       return
     }
     if (parsed.type === 'error') {
-      const error = isRecord(parsed.error) ? parsed.error : undefined
       reject(
-        new Error(
-          typeof error?.message === 'string'
-            ? error.message
-            : 'Backend-funded voice session failed.',
+        getFundedVoiceError(
+          parsed,
+          'Backend-funded voice session failed.',
+          'unknown_server_error',
         ),
       )
       return
@@ -92,7 +162,12 @@ export const waitForFundedSessionCreated = async (
     }
   }
   const handleClose = (): void => {
-    reject(new Error('Backend-funded voice closed while creating a session.'))
+    reject(
+      new FundedVoiceError(
+        'Backend-funded voice closed while creating a session.',
+        'connection_closed',
+      ),
+    )
   }
   socket.addEventListener('message', handleMessage)
   socket.addEventListener('close', handleClose, { once: true })
