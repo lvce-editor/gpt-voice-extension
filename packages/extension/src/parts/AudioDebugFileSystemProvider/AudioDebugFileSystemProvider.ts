@@ -13,5 +13,5 @@ export const createAudioDebugFileSystemProvider = (
     isReadonly: () => true,
     pathSeparator: '/',
     readFile: (uri: string) => storage.read(uri),
-  } as unknown as FileSystemProvider
+  }
 }
