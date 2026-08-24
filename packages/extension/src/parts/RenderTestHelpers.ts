@@ -17,6 +17,7 @@ export const createRenderState = (state: Partial<IState> = {}): IState => {
     isSavingApiKey: false,
     isTest: false,
     messages: [],
+    offlineError: false,
     parsedData: [],
     sessionModel: RealtimeModelPreset.Mini,
     tokenError: '',

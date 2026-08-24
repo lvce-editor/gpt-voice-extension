@@ -36,6 +36,7 @@ import {
 import { getCss } from '../GetCss/GetCss.ts'
 import { getTitle } from '../GetTitle/GetTitle.ts'
 import * as GptVoiceStrings from '../GptVoiceStrings/GptVoiceStrings.ts'
+import { isOfflineConnectionError } from '../OfflineError/OfflineError.ts'
 import { createOpenAiApiKeyStorage } from '../OpenAiApiKeyStorage/OpenAiApiKeyStorage.ts'
 import { readLevel } from '../ReadLevel/ReadLevel.ts'
 import { render } from '../Render/Render.ts'
@@ -89,6 +90,7 @@ export interface ActiveGptVoiceViewInstance extends VirtualDomViewInstance {
   readonly renderTitle: () => string
   readonly replayFixture: (fixture: unknown) => Promise<void>
   readonly setAnimation: (enabled: boolean, scale: number) => void
+  readonly setOfflineError: (error: unknown) => void
   readonly setRealtimeModelMini: () => void
   readonly setRealtimeModelStandard: () => void
   readonly stop: () => Promise<void>
@@ -134,6 +136,7 @@ export interface IState {
   readonly isSavingApiKey: boolean
   readonly isTest: boolean
   readonly messages: readonly IMessage[]
+  readonly offlineError: boolean
   readonly parsedData: readonly any[]
   readonly sessionModel: RealtimeModelPreset
   readonly tokenError: string
@@ -212,6 +215,7 @@ export const createInstance = async (
     isSavingApiKey: false,
     isTest: hasTestMode,
     messages: [],
+    offlineError: false,
     parsedData: [],
     sessionModel: defaultSessionModel,
     tokenError: '',
@@ -261,6 +265,7 @@ export const createInstance = async (
       ...state,
       fundedAvailable: true,
       fundedError: '',
+      offlineError: false,
       voiceProvider: 'funded',
     }
     void context?.requestRerender()
@@ -376,6 +381,19 @@ export const createInstance = async (
     }, 100)
   }
 
+  const setOfflineErrorState = (error: unknown): void => {
+    state = {
+      ...state,
+      allowanceExceeded: false,
+      fundedError: '',
+      inProgress: false,
+      isCreatingToken: false,
+      offlineError: true,
+      tokenError: createTokenErrorMessage(error),
+    }
+    requestRerender()
+  }
+
   const getStoredApiKey = async (): Promise<string> => {
     const apiKey = await openAiApiKeyStorage.read()
     if (typeof apiKey !== 'string' || apiKey.trim().length === 0) {
@@ -462,11 +480,15 @@ export const createInstance = async (
         GptVoiceStrings.fundedVoiceUnavailable(),
         'unknown_server_error',
       )
-      state = {
-        ...state,
-        fundedError: formatFundedVoiceError(error),
+      if (isOfflineConnectionError(error)) {
+        setOfflineErrorState(error)
+      } else {
+        state = {
+          ...state,
+          fundedError: formatFundedVoiceError(error),
+        }
+        requestRerender()
       }
-      requestRerender()
       void instance.stop()
     }
   }
@@ -482,11 +504,15 @@ export const createInstance = async (
         GptVoiceStrings.fundedVoiceClosed(),
         'connection_closed',
       )
-      state = {
-        ...state,
-        fundedError: fundedError || formatFundedVoiceError(error),
+      if (isOfflineConnectionError(error)) {
+        setOfflineErrorState(error)
+      } else {
+        state = {
+          ...state,
+          fundedError: fundedError || formatFundedVoiceError(error),
+        }
+        requestRerender()
       }
-      requestRerender()
       void instance.stop()
     }
   }
@@ -609,13 +635,16 @@ export const createInstance = async (
       }
     }
     const message = createTokenErrorMessage(error)
+    const offlineError = isOfflineConnectionError(error)
     state = {
       ...state,
-      fundedError: voiceProvider === 'funded' ? message : fundedError,
+      fundedError:
+        voiceProvider === 'funded' && !offlineError ? message : fundedError,
       hasOpenAiApiKey: nextApiKeyStatus,
       inProgress: false,
       isCreatingToken: false,
-      tokenError: message,
+      offlineError,
+      tokenError: offlineError ? '' : message,
     }
     hasOpenAiApiKey = nextApiKeyStatus
     console.error(error)
@@ -763,6 +792,7 @@ export const createInstance = async (
     },
     async handleClickStart(): Promise<void> {
       const {
+        fundedError,
         hasOpenAiApiKey: hasApiKey,
         inProgress,
         isCreatingToken,
@@ -788,6 +818,7 @@ export const createInstance = async (
           hasOpenAiApiKey,
           inProgress: true,
           isTest: true,
+          offlineError: false,
           tokenError: '',
         }
         requestRerender()
@@ -804,7 +835,9 @@ export const createInstance = async (
       }
       state = {
         ...state,
+        fundedError: voiceProvider === 'funded' ? '' : fundedError,
         isCreatingToken: true,
+        offlineError: false,
         tokenError: '',
       }
       requestRerender()
@@ -894,6 +927,7 @@ export const createInstance = async (
         ...state,
         allowanceExceeded: false,
         fundedError: '',
+        offlineError: false,
         tokenError: '',
         voiceProvider: 'byok',
       }
@@ -954,6 +988,9 @@ export const createInstance = async (
         animationScale: scale,
       }
       context?.requestRerender()
+    },
+    setOfflineError(error): void {
+      setOfflineErrorState(error)
     },
     setRealtimeModelMini() {
       const { inProgress, sessionModel } = state
