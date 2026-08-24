@@ -176,7 +176,7 @@ class AuthenticationErrorFundedWebSocket extends FakeFundedWebSocket {
           new MessageEvent('message', {
             data: JSON.stringify({
               error: {
-                code: 'invalid_access_token',
+                code: 'lvce_access_token_invalid',
                 message: 'The access token is invalid or expired',
                 statusCode: 401,
               },
@@ -812,7 +812,7 @@ test('instance - displays structured funded startup errors', async () => {
 
   expect(instance.render()).toContainEqual(
     text(
-      'The access token is invalid or expired (Error code: invalid_access_token; HTTP status: 401)',
+      'Your LVCE sign-in session is no longer valid. Sign out and sign in again. (Error code: lvce_access_token_invalid; HTTP status: 401)',
     ),
   )
   consoleError.mockRestore()

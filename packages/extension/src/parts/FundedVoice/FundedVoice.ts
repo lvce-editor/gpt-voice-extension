@@ -69,8 +69,16 @@ export const getFundedVoiceError = (
 export const formatFundedVoiceError = (
   error: Readonly<FundedVoiceError>,
 ): string => {
+  const message =
+    error.code === 'lvce_access_token_invalid'
+      ? 'Your LVCE sign-in session is no longer valid. Sign out and sign in again.'
+      : error.code === 'server_openai_authentication_failed'
+        ? 'You are signed in to LVCE, but the voice backend could not authenticate with OpenAI. This is a server configuration problem; please try again later.'
+        : error.code === 'invalid_access_token'
+          ? 'Authentication failed, but the server did not identify whether your LVCE session or its OpenAI credential was rejected. Please try signing in again; if the error remains, the voice backend needs attention.'
+          : error.message
   const status = error.statusCode ? `; HTTP status: ${error.statusCode}` : ''
-  return `${error.message} (Error code: ${error.code}${status})`
+  return `${message} (Error code: ${error.code}${status})`
 }
 
 export const getFundedVoiceUrl = (baseUrl: string): string => {

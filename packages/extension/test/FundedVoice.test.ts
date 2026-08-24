@@ -82,11 +82,11 @@ describe('FundedVoice', () => {
     expect(socket.protocols).toEqual([fundedVoiceProtocol, 'token-1'])
   })
 
-  it('formats backend error codes and status codes alongside messages', () => {
+  it('explains when the LVCE sign-in session is invalid', () => {
     const error = getFundedVoiceError(
       {
         error: {
-          code: 'invalid_access_token',
+          code: 'lvce_access_token_invalid',
           message: 'The access token is invalid or expired',
           statusCode: 401,
         },
@@ -98,7 +98,39 @@ describe('FundedVoice', () => {
     )
 
     expect(formatFundedVoiceError(error)).toBe(
-      'The access token is invalid or expired (Error code: invalid_access_token; HTTP status: 401)',
+      'Your LVCE sign-in session is no longer valid. Sign out and sign in again. (Error code: lvce_access_token_invalid; HTTP status: 401)',
+    )
+  })
+
+  it('explains when the voice backend cannot authenticate with OpenAI', () => {
+    const error = getFundedVoiceError(
+      {
+        error: {
+          code: 'server_openai_authentication_failed',
+          message: 'The LVCE voice backend could not authenticate with OpenAI',
+          statusCode: 502,
+        },
+        status: 502,
+        type: 'error',
+      },
+      'Backend-funded voice failed.',
+      'unknown_server_error',
+    )
+
+    expect(formatFundedVoiceError(error)).toBe(
+      'You are signed in to LVCE, but the voice backend could not authenticate with OpenAI. This is a server configuration problem; please try again later. (Error code: server_openai_authentication_failed; HTTP status: 502)',
+    )
+  })
+
+  it('explains that the legacy access-token error is ambiguous', () => {
+    const error = new FundedVoiceError(
+      'The access token is invalid, expired, or belongs to a deleted account',
+      'invalid_access_token',
+      401,
+    )
+
+    expect(formatFundedVoiceError(error)).toBe(
+      'Authentication failed, but the server did not identify whether your LVCE session or its OpenAI credential was rejected. Please try signing in again; if the error remains, the voice backend needs attention. (Error code: invalid_access_token; HTTP status: 401)',
     )
   })
 
