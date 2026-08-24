@@ -16,6 +16,7 @@ const executeCommand =
 const getAccessToken =
   jest.fn<(...args: readonly unknown[]) => Promise<unknown>>()
 const getSecret = jest.fn<(key: string) => Promise<string | undefined>>()
+const getPreference = jest.fn<(key: string) => Promise<unknown>>()
 const readMicLevels = jest.fn(async () => ({
   micAnalyzerData: new Uint8Array([128]),
   remoteAnalyzerData: new Uint8Array([128]),
@@ -31,6 +32,15 @@ const stopWebRtcAudioStream = jest.fn<(uid: number) => Promise<void>>(
 )
 const storeSecret = jest.fn<(key: string, value: string) => Promise<void>>()
 const writeFile = jest.fn<(uri: string, content: string) => Promise<void>>()
+const saveAudioDebugRecording = jest.fn<(blob: Blob) => Promise<unknown>>(
+  async () => ({
+    createdAt: 1,
+    mimeType: 'audio/webm',
+    name: 'recording.webm',
+    size: 5,
+    uri: 'gpt-voice-audio:///recording.webm',
+  }),
+)
 const getRegisteredTools = jest.fn(async () => [
   {
     description: 'Get weather for a location.',
@@ -73,6 +83,7 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
     deleteSecret,
     executeCommand,
     getAccessToken,
+    getPreference,
     getSecret,
     readMicLevels,
     setRemoteDescription,
@@ -82,6 +93,18 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
     writeFile,
   }
 })
+
+// eslint-disable-next-line jest/no-restricted-jest-methods
+jest.unstable_mockModule(
+  '../src/parts/AudioDebugStorage/AudioDebugStorage.ts',
+  () => ({
+    audioDebugStorage: {
+      list: jest.fn(async () => []),
+      read: jest.fn(),
+      save: saveAudioDebugRecording,
+    },
+  }),
+)
 
 // eslint-disable-next-line jest/no-restricted-jest-methods
 jest.unstable_mockModule(
@@ -262,6 +285,7 @@ beforeEach(() => {
   deleteSecret.mockReset().mockResolvedValue(undefined)
   executeCommand.mockReset().mockResolvedValue('')
   getAccessToken.mockReset().mockResolvedValue('')
+  getPreference.mockReset().mockResolvedValue(false)
   getSecret.mockReset().mockResolvedValue('sk-abcdefghijk')
   readMicLevels.mockClear()
   setRemoteDescription.mockClear()
@@ -269,6 +293,7 @@ beforeEach(() => {
   stopWebRtcAudioStream.mockReset().mockResolvedValue(undefined)
   storeSecret.mockReset().mockResolvedValue(undefined)
   writeFile.mockReset().mockResolvedValue(undefined)
+  saveAudioDebugRecording.mockClear()
   executeFunctionToolCall.mockClear()
   getRegisteredTools.mockClear()
   FakeFundedWebSocket.instances.length = 0
@@ -637,6 +662,37 @@ test('instance - starts, receives data, animates, and stops session', async () =
 
   await instance.handleClickStart()
   expect(stopWebRtcAudioStream).toHaveBeenCalledWith(-1)
+  expect(latestPort2?.close).toHaveBeenCalled()
+})
+
+test('instance - captures audio chunks only when audio debugging is enabled', async () => {
+  getPreference.mockResolvedValue(true)
+  const instance = await createInstance()
+  jest
+    .spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce({
+      json: async () => ({ value: 'ephemeral-key' }),
+      ok: true,
+    } as Response)
+    .mockResolvedValueOnce({
+      ok: true,
+      text: async () => 'answer-sdp',
+    } as Response)
+
+  await instance.handleClickStart()
+
+  expect(getPreference).toHaveBeenCalledWith('gptvoice.audioDebug.enabled')
+  expect(startWebRtcAudioStream).toHaveBeenCalledWith(
+    expect.objectContaining({
+      audioDebugPort: expect.any(FakeMessagePort),
+    }),
+  )
+  const audio = new Blob(['audio'], { type: 'audio/webm' })
+  latestPort2?.onmessage?.({ data: audio })
+  await flushAnimation()
+
+  expect(saveAudioDebugRecording).toHaveBeenCalledWith(audio)
+  await instance.stop()
   expect(latestPort2?.close).toHaveBeenCalled()
 })
 

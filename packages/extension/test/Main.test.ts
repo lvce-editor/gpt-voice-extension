@@ -18,6 +18,11 @@ const registerCommand = jest.fn(
     dispose: jest.fn(),
   }),
 )
+const registerFileSystemProvider = jest.fn<(provider: unknown) => unknown>(
+  () => ({
+    dispose: jest.fn(),
+  }),
+)
 const registerView = jest.fn(() => ({
   dispose: jest.fn(),
 }))
@@ -33,6 +38,7 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
     getSecret: jest.fn(),
     readMicLevels,
     registerCommand,
+    registerFileSystemProvider,
     registerView,
     setRemoteDescription: jest.fn(),
     startWebRtcAudioStream: jest.fn(),
@@ -63,7 +69,10 @@ test('gpt-voice.show command opens floating extension window url', async () => {
     'Open.openUrl',
     'lvce-oss://-/?floatingWindowMode=extensionView&floatingExtensionViewId=gpt-voice.views.default',
   )
-  expect(registerView).toHaveBeenCalledTimes(1)
+  expect(registerView).toHaveBeenCalledTimes(2)
+  expect(registerFileSystemProvider).toHaveBeenCalledWith(
+    expect.objectContaining({ id: 'gpt-voice-audio' }),
+  )
   expect(activateExtensionApi).toHaveBeenCalledTimes(1)
 })
 

@@ -1,0 +1,66 @@
+.GptVoiceAudioDebugView {
+  box-sizing: border-box;
+  contain: strict;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px;
+}
+
+.GptVoiceAudioDebugMessage {
+  color: var(--WorkbenchSecondaryForeground, currentColor);
+  padding: 16px 8px;
+}
+
+.GptVoiceAudioDebugList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.GptVoiceAudioDebugListItem {
+  margin: 0;
+  min-width: 0;
+}
+
+.GptVoiceAudioDebugRecording {
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: var(--WorkbenchForeground, currentColor);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  font: inherit;
+  gap: 4px;
+  min-width: 0;
+  padding: 7px 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.GptVoiceAudioDebugRecording:hover {
+  background: var(--ListHoverBackground, rgba(127, 127, 127, 0.12));
+}
+
+.GptVoiceAudioDebugRecording:focus-visible {
+  outline: 1px solid var(--FocusBorder, currentColor);
+  outline-offset: -1px;
+}
+
+.GptVoiceAudioDebugRecordingName,
+.GptVoiceAudioDebugRecordingDetails {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.GptVoiceAudioDebugRecordingDetails {
+  color: var(--WorkbenchSecondaryForeground, currentColor);
+  font-size: 11px;
+}

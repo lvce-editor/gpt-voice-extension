@@ -13,6 +13,9 @@ import {
 } from '@lvce-editor/api'
 import type { MenuEntry } from '../MenuEntries/MenuEntries.ts'
 import { animateBubble } from '../AnimateBubble/AnimateBubble.ts'
+import { audioDebugPreference } from '../AudioDebugConstants/AudioDebugConstants.ts'
+import { audioDebugStorage } from '../AudioDebugStorage/AudioDebugStorage.ts'
+import { refreshActiveAudioDebugViewInstances } from '../AudioDebugView/AudioDebugView.ts'
 import {
   resolveBackendVoiceConfiguration,
   type BackendVoiceConfiguration,
@@ -224,6 +227,7 @@ export const createInstance = async (
     voiceProvider: fundedVoiceConfiguration ? 'funded' : 'byok',
   }
   let dataChannelPort: MessagePort | undefined
+  let audioDebugMessagePort: MessagePort | undefined
   let fundedControlSocket: WebSocket | undefined
   let fundedSocketIntentionalClose = false
   const handledToolCallIds = new Set<string>()
@@ -567,17 +571,38 @@ export const createInstance = async (
     }
     port2.start()
     dataChannelPort = port2
+    let audioDebugPort: MessagePort | undefined
+    const audioDebugEnabled =
+      (await ExtensionApi.getPreference(audioDebugPreference)) === true
+    if (audioDebugEnabled) {
+      const audioDebugChannel = new MessageChannel()
+      audioDebugPort = audioDebugChannel.port1
+      audioDebugMessagePort = audioDebugChannel.port2
+      // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types
+      audioDebugMessagePort.onmessage = (event: MessageEvent): void => {
+        if (!(event.data instanceof Blob)) {
+          return
+        }
+        void audioDebugStorage
+          .save(event.data)
+          .then(refreshActiveAudioDebugViewInstances)
+          .catch(console.error)
+      }
+      audioDebugMessagePort.start()
+    }
     state = {
       ...state,
       inProgress: true,
     }
-    const offerSdp = await startWebRtcAudioStream({
+    const webRtcOptions = {
+      ...(audioDebugPort && { audioDebugPort }),
       elementLocator: `.${ClassNames.GptVoiceAudio}`,
       ephemeralKey,
       port: port1,
       trackAudioData: true,
       uid,
-    })
+    }
+    const offerSdp = await startWebRtcAudioStream(webRtcOptions)
     if (!offerSdp) {
       throw new Error('offer sdp is required')
     }
@@ -621,6 +646,10 @@ export const createInstance = async (
     if (dataChannelPort) {
       dataChannelPort.close()
       dataChannelPort = undefined
+    }
+    if (audioDebugMessagePort) {
+      audioDebugMessagePort.close()
+      audioDebugMessagePort = undefined
     }
     if (fundedControlSocket) {
       fundedSocketIntentionalClose = true
@@ -1041,6 +1070,10 @@ export const createInstance = async (
         if (dataChannelPort) {
           dataChannelPort.close()
           dataChannelPort = undefined
+        }
+        if (audioDebugMessagePort) {
+          audioDebugMessagePort.close()
+          audioDebugMessagePort = undefined
         }
       }
       await context?.requestRerender()
