@@ -107,6 +107,10 @@ const originalMessageChannel = Object.getOwnPropertyDescriptor(
   globalThis,
   'MessageChannel',
 )
+const originalNavigator = Object.getOwnPropertyDescriptor(
+  globalThis,
+  'navigator',
+)
 const originalRequestAnimationFrame = Object.getOwnPropertyDescriptor(
   globalThis,
   'requestAnimationFrame',
@@ -187,6 +191,24 @@ class AuthenticationErrorFundedWebSocket extends FakeFundedWebSocket {
   }
 }
 
+class ConnectionErrorFundedWebSocket extends EventTarget {
+  static readonly OPEN = 1
+
+  readonly readyState = 0
+
+  constructor(
+    readonly url: string,
+    readonly protocols: readonly string[],
+  ) {
+    super()
+    queueMicrotask(() => this.dispatchEvent(new Event('error')))
+  }
+
+  close(): void {}
+
+  send(): void {}
+}
+
 beforeAll(() => {
   Object.defineProperties(globalThis, {
     MessageChannel: {
@@ -231,6 +253,9 @@ afterAll(() => {
   if (originalWebSocket) {
     Object.defineProperty(globalThis, 'WebSocket', originalWebSocket)
   }
+  if (originalNavigator) {
+    Object.defineProperty(globalThis, 'navigator', originalNavigator)
+  }
 })
 
 beforeEach(() => {
@@ -259,6 +284,14 @@ afterEach(() => {
     Object.defineProperty(globalThis, 'WebSocket', originalWebSocket)
   } else {
     Object.defineProperty(globalThis, 'WebSocket', {
+      configurable: true,
+      value: undefined,
+    })
+  }
+  if (originalNavigator) {
+    Object.defineProperty(globalThis, 'navigator', originalNavigator)
+  } else {
+    Object.defineProperty(globalThis, 'navigator', {
       configurable: true,
       value: undefined,
     })
@@ -781,6 +814,37 @@ test('instance - displays structured funded startup errors', async () => {
     text(
       'The access token is invalid or expired (Error code: invalid_access_token; HTTP status: 401)',
     ),
+  )
+  consoleError.mockRestore()
+})
+
+test('instance - replaces a funded connection failure with the offline experience when navigator is offline', async () => {
+  jest.useRealTimers()
+  executeCommand.mockResolvedValue('https://lvce.example')
+  getAccessToken.mockResolvedValue('editor-access-token')
+  Object.defineProperties(globalThis, {
+    navigator: {
+      configurable: true,
+      value: { onLine: false },
+    },
+    WebSocket: {
+      configurable: true,
+      value: ConnectionErrorFundedWebSocket,
+    },
+  })
+  const consoleError = jest
+    .spyOn(console, 'error')
+    .mockImplementation(() => undefined)
+  const instance = await createInstance()
+
+  await instance.handleClickStart()
+
+  expect(instance.render()).toContainEqual(text("You're offline."))
+  expect(instance.render()).toContainEqual(
+    text('Error code: ERR_INTERNET_DISCONNECTED'),
+  )
+  expect(instance.render()).not.toContainEqual(
+    text('Backend-funded voice is unavailable.'),
   )
   consoleError.mockRestore()
 })

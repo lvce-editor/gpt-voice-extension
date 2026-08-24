@@ -23,6 +23,10 @@ export const NetworkFailure =
 export const OpenAiApiKeyRequired = 'OpenAI API key is required.'
 export const OpenAiApiKeyRequiredForVoice =
   'OpenAI API key required to start a live voice session.'
+export const OfflineDescription =
+  'Voice needs an internet connection. Reconnect, then try again.'
+export const OfflineErrorCode = 'Error code: ERR_INTERNET_DISCONNECTED'
+export const OfflineTitle = "You're offline."
 export const RealtimeMiniModel = 'Model: Realtime 2.1 mini (cheaper)'
 export const RealtimeStandardModel = 'Model: Realtime 2.1 (better quality)'
 export const SaveApiKey = 'Save API key'
@@ -31,6 +35,7 @@ export const SavingKey = 'Saving key'
 export const SetUpOpenAiApiKey = 'Set up your OpenAI API key'
 export const StartTalking = 'Start talking'
 export const StopTalking = 'Stop talking'
+export const TryAgain = 'Try again'
 export const MonthlyAllowanceExceeded =
   'Your monthly AI allowance has been used.'
 export const UseOwnApiKey = 'Use your own API key'

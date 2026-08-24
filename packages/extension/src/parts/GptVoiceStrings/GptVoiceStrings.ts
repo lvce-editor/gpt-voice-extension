@@ -40,6 +40,11 @@ export const openAiApiKeyRequired = (): string =>
   getString(UiStrings.OpenAiApiKeyRequired)
 export const openAiApiKeyRequiredForVoice = (): string =>
   getString(UiStrings.OpenAiApiKeyRequiredForVoice)
+export const offlineDescription = (): string =>
+  getString(UiStrings.OfflineDescription)
+export const offlineErrorCode = (): string =>
+  getString(UiStrings.OfflineErrorCode)
+export const offlineTitle = (): string => getString(UiStrings.OfflineTitle)
 export const realtimeMiniModel = (): string =>
   getString(UiStrings.RealtimeMiniModel)
 export const realtimeStandardModel = (): string =>
@@ -51,6 +56,7 @@ export const setUpOpenAiApiKey = (): string =>
   getString(UiStrings.SetUpOpenAiApiKey)
 export const startTalking = (): string => getString(UiStrings.StartTalking)
 export const stopTalking = (): string => getString(UiStrings.StopTalking)
+export const tryAgain = (): string => getString(UiStrings.TryAgain)
 export const useBetter = (): string => getString(UiStrings.UseBetter)
 export const useCheap = (): string => getString(UiStrings.UseCheap)
 export const useOwnApiKey = (): string => getString(UiStrings.UseOwnApiKey)

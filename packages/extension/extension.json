@@ -33,6 +33,7 @@
     "onCommand:GptVoice.replayFixture",
     "onCommand:GptVoice.setIsTest",
     "onCommand:GptVoice.setAnimation",
+    "onCommand:GptVoice.setOfflineError",
     "onCommand:GptVoice.setRealtimeModelMini",
     "onCommand:GptVoice.setRealtimeModelStandard",
     "onCommand:GptVoice.addTranscript",
@@ -86,6 +87,10 @@
     {
       "id": "GptVoice.setAnimation",
       "label": "gpt-voice: setAnimation"
+    },
+    {
+      "id": "GptVoice.setOfflineError",
+      "label": "gpt-voice: set offline error"
     },
     {
       "id": "GptVoice.setRealtimeModelMini",

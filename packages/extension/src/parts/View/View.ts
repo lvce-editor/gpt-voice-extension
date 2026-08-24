@@ -62,6 +62,10 @@ export const view: GptVoiceView = {
       context.setAnimation(enabled, scale)
       return context
     },
+    async 'GptVoice.setOfflineError'(context, error: unknown) {
+      context.setOfflineError(error)
+      return context
+    },
     async 'GptVoice.setRealtimeModelMini'(context) {
       context.setRealtimeModelMini()
       return context

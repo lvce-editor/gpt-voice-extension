@@ -55,6 +55,14 @@ test('API key messages', () => {
   expect(GptVoiceStrings.openAiApiKeyRequiredForVoice()).toBe(
     'OpenAI API key required to start a live voice session.',
   )
+  expect(GptVoiceStrings.offlineDescription()).toBe(
+    'Voice needs an internet connection. Reconnect, then try again.',
+  )
+  expect(GptVoiceStrings.offlineErrorCode()).toBe(
+    'Error code: ERR_INTERNET_DISCONNECTED',
+  )
+  expect(GptVoiceStrings.offlineTitle()).toBe("You're offline.")
+  expect(GptVoiceStrings.tryAgain()).toBe('Try again')
   expect(GptVoiceStrings.welcomeDescription()).toBe(
     'Your key is stored in extension secret storage. Press Save to continue.',
   )

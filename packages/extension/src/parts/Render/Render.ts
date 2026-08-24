@@ -11,6 +11,7 @@ import { renderAudio } from '../RenderAudio/RenderAudio.ts'
 import { renderButton } from '../RenderButton/RenderButton.ts'
 import { renderFundedError } from '../RenderFundedError/RenderFundedError.ts'
 import { renderModelSettings } from '../RenderModelSettings/RenderModelSettings.ts'
+import { renderOfflineError } from '../RenderOfflineError/RenderOfflineError.ts'
 import { renderStage } from '../RenderStage/RenderStage.ts'
 import { renderStatus } from '../RenderStatus/RenderStatus.ts'
 import { renderTranscript } from '../RenderTranscript/RenderTranscript.ts'
@@ -65,8 +66,12 @@ export const render = (state: IState): readonly VirtualDomNode[] => {
     fundedError,
     hasOpenAiApiKey,
     inProgress,
+    offlineError,
     voiceProvider,
   } = state
+  if (offlineError) {
+    return renderOfflineError()
+  }
   if (voiceProvider === 'funded' && fundedError) {
     return renderFundedError(
       allowanceExceeded

@@ -222,6 +222,27 @@ test('render - distinguishes a funded backend failure from allowance exhaustion'
   expect(result).toContainEqual(text('Connection unavailable'))
 })
 
+test('render - displays a clear retryable offline experience', () => {
+  const result = render(
+    createRenderState({
+      fundedError: 'Backend-funded voice is unavailable.',
+      offlineError: true,
+      voiceProvider: 'funded',
+    }),
+  )
+
+  expect(result).toContainEqual(
+    expect.objectContaining({ className: 'GptVoiceOfflineIllustration' }),
+  )
+  expect(result).toContainEqual(text("You're offline."))
+  expect(result).toContainEqual(
+    text('Voice needs an internet connection. Reconnect, then try again.'),
+  )
+  expect(result).toContainEqual(text('Error code: ERR_INTERNET_DISCONNECTED'))
+  expect(result).toContainEqual(text('Try again'))
+  expect(result).not.toContainEqual(text('Use your own API key'))
+})
+
 test('render - returns in-progress standard state for active conversation', () => {
   const transcript: ITranscript = {
     id: 'id-1',
