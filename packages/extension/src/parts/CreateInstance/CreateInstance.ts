@@ -27,6 +27,9 @@ import {
   type FixtureReplay,
 } from '../FixtureReplay/FixtureReplay.ts'
 import {
+  formatFundedVoiceError,
+  FundedVoiceError,
+  getFundedVoiceError,
   openFundedVoiceSocket,
   waitForFundedSessionCreated,
 } from '../FundedVoice/FundedVoice.ts'
@@ -140,6 +143,9 @@ export interface IState {
 }
 
 const createTokenErrorMessage = (error: unknown): string => {
+  if (error instanceof FundedVoiceError) {
+    return formatFundedVoiceError(error)
+  }
   if (!(error instanceof Error)) {
     return GptVoiceStrings.failedToCreateTokenWithDetails()
   }
@@ -436,25 +442,29 @@ export const createInstance = async (
       return
     }
     if (parsed?.type === 'lvce.usage.exceeded') {
+      const error = getFundedVoiceError(
+        parsed,
+        GptVoiceStrings.monthlyAllowanceExceeded(),
+        'E_LVCE_USAGE_EXCEEDED',
+      )
       state = {
         ...state,
         allowanceExceeded: true,
-        fundedError:
-          typeof parsed.message === 'string'
-            ? parsed.message
-            : GptVoiceStrings.monthlyAllowanceExceeded(),
+        fundedError: formatFundedVoiceError(error),
       }
       requestRerender()
       void instance.stop()
       return
     }
     if (parsed?.type === 'error') {
+      const error = getFundedVoiceError(
+        parsed,
+        GptVoiceStrings.fundedVoiceUnavailable(),
+        'unknown_server_error',
+      )
       state = {
         ...state,
-        fundedError:
-          typeof parsed.error?.message === 'string'
-            ? parsed.error.message
-            : GptVoiceStrings.fundedVoiceUnavailable(),
+        fundedError: formatFundedVoiceError(error),
       }
       requestRerender()
       void instance.stop()
@@ -468,9 +478,13 @@ export const createInstance = async (
     fundedControlSocket = undefined
     const { fundedError, inProgress } = state
     if (inProgress) {
+      const error = new FundedVoiceError(
+        GptVoiceStrings.fundedVoiceClosed(),
+        'connection_closed',
+      )
       state = {
         ...state,
-        fundedError: fundedError || GptVoiceStrings.fundedVoiceClosed(),
+        fundedError: fundedError || formatFundedVoiceError(error),
       }
       requestRerender()
       void instance.stop()
@@ -487,7 +501,10 @@ export const createInstance = async (
       return getSdp(offerSdp, ephemeralKey)
     }
     if (!fundedVoiceConfiguration) {
-      throw new Error('Backend-funded voice is unavailable.')
+      throw new FundedVoiceError(
+        'Backend-funded voice is unavailable.',
+        'configuration_unavailable',
+      )
     }
     fundedSocketIntentionalClose = false
     const socket = await openFundedVoiceSocket(fundedVoiceConfiguration)

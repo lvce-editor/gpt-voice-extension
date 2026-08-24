@@ -162,6 +162,31 @@ class FakeFundedWebSocket extends EventTarget {
   }
 }
 
+class AuthenticationErrorFundedWebSocket extends FakeFundedWebSocket {
+  override send(data: string): void {
+    this.sent.push(data)
+    const parsed = JSON.parse(data)
+    if (parsed.type === 'lvce.session.create') {
+      queueMicrotask(() => {
+        this.dispatchEvent(
+          new MessageEvent('message', {
+            data: JSON.stringify({
+              error: {
+                code: 'invalid_access_token',
+                message: 'The access token is invalid or expired',
+                statusCode: 401,
+              },
+              status: 401,
+              statusCode: 401,
+              type: 'error',
+            }),
+          }),
+        )
+      })
+    }
+  }
+}
+
 beforeAll(() => {
   Object.defineProperties(globalThis, {
     MessageChannel: {
@@ -714,7 +739,9 @@ test('instance - starts funded voice without an API key and routes tool control 
   FakeFundedWebSocket.latest?.dispatchEvent(
     new MessageEvent('message', {
       data: JSON.stringify({
+        code: 'E_LVCE_USAGE_EXCEEDED',
         message: 'Monthly allowance exceeded',
+        statusCode: 402,
         type: 'lvce.usage.exceeded',
       }),
     }),
@@ -723,11 +750,39 @@ test('instance - starts funded voice without an API key and routes tool control 
   expect(instance.render()).toContainEqual(
     text('Your monthly AI allowance has been used.'),
   )
+  expect(instance.render()).toContainEqual(
+    text(
+      'Monthly allowance exceeded (Error code: E_LVCE_USAGE_EXCEEDED; HTTP status: 402)',
+    ),
+  )
   expect(instance.render()).toContainEqual(text('Use your own API key'))
   instance.handleUseOwnApiKey()
   expect(instance.render()).toContainEqual(
     text('OpenAI API key required to start a live voice session.'),
   )
+})
+
+test('instance - displays structured funded startup errors', async () => {
+  jest.useRealTimers()
+  executeCommand.mockResolvedValue('https://lvce.example')
+  getAccessToken.mockResolvedValue('editor-access-token')
+  Object.defineProperty(globalThis, 'WebSocket', {
+    configurable: true,
+    value: AuthenticationErrorFundedWebSocket,
+  })
+  const consoleError = jest
+    .spyOn(console, 'error')
+    .mockImplementation(() => undefined)
+  const instance = await createInstance()
+
+  await instance.handleClickStart()
+
+  expect(instance.render()).toContainEqual(
+    text(
+      'The access token is invalid or expired (Error code: invalid_access_token; HTTP status: 401)',
+    ),
+  )
+  consoleError.mockRestore()
 })
 
 test('instance - stops WebRTC when a funded backend reports an error', async () => {
@@ -769,14 +824,22 @@ test('instance - displays a funded backend error message', async () => {
   FakeFundedWebSocket.latest?.dispatchEvent(
     new MessageEvent('message', {
       data: JSON.stringify({
-        error: { message: 'Upstream voice failed' },
+        error: {
+          code: 'insufficient_quota',
+          message: 'Upstream voice failed',
+          statusCode: 429,
+        },
         type: 'error',
       }),
     }),
   )
   await flushAnimation()
 
-  expect(instance.render()).toContainEqual(text('Upstream voice failed'))
+  expect(instance.render()).toContainEqual(
+    text(
+      'Upstream voice failed (Error code: insufficient_quota; HTTP status: 429)',
+    ),
+  )
 })
 
 test('instance - shows the default allowance message when the funded backend omits details', async () => {
@@ -819,7 +882,7 @@ test('instance - stops WebRTC when the funded control socket closes unexpectedly
   expect(stopWebRtcAudioStream).toHaveBeenCalledWith(-1)
   expect(instance.render()).toContainEqual(
     text(
-      'The backend-funded voice connection closed. Start again to reconnect.',
+      'The backend-funded voice connection closed. Start again to reconnect. (Error code: connection_closed)',
     ),
   )
 })

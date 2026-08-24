@@ -1,6 +1,8 @@
 import { describe, expect, it } from '@jest/globals'
 import {
+  formatFundedVoiceError,
   fundedVoiceProtocol,
+  getFundedVoiceError,
   getFundedVoiceUrl,
   openFundedVoiceSocket,
   waitForFundedSessionCreated,
@@ -78,6 +80,26 @@ describe('FundedVoice', () => {
 
     expect(socket.url).toBe('wss://lvce.example/v1/realtime/voice')
     expect(socket.protocols).toEqual([fundedVoiceProtocol, 'token-1'])
+  })
+
+  it('formats backend error codes and status codes alongside messages', () => {
+    const error = getFundedVoiceError(
+      {
+        error: {
+          code: 'invalid_access_token',
+          message: 'The access token is invalid or expired',
+          statusCode: 401,
+        },
+        status: 401,
+        type: 'error',
+      },
+      'Backend-funded voice failed.',
+      'unknown_server_error',
+    )
+
+    expect(formatFundedVoiceError(error)).toBe(
+      'The access token is invalid or expired (Error code: invalid_access_token; HTTP status: 401)',
+    )
   })
 
   it('reports backend connection errors and early closes', async () => {
@@ -180,12 +202,20 @@ describe('FundedVoice', () => {
     errorSocket.dispatchEvent(
       new MessageEvent('message', {
         data: JSON.stringify({
-          error: { message: 'allowance unavailable' },
+          error: {
+            code: 'E_LVCE_USAGE_EXCEEDED',
+            message: 'allowance unavailable',
+            statusCode: 402,
+          },
           type: 'error',
         }),
       }),
     )
-    await expect(backendError).rejects.toThrow('allowance unavailable')
+    await expect(backendError).rejects.toMatchObject({
+      code: 'E_LVCE_USAGE_EXCEEDED',
+      message: 'allowance unavailable',
+      statusCode: 402,
+    })
 
     const genericErrorSocket = new FakeWebSocket('ws://localhost')
     const genericError = waitForFundedSessionCreated(
