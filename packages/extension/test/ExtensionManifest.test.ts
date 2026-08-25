@@ -40,6 +40,21 @@ test('uses the voice chat view icon', () => {
   )
 })
 
+test('uses a distinct audio recordings view icon', () => {
+  expect(extensionManifest.views).toContainEqual(
+    expect.objectContaining({
+      icon: 'media/audio-recordings.svg',
+      id: 'gpt-voice-audio.views.recordings',
+    }),
+  )
+  expect(
+    readFileSync(
+      new URL('../media/audio-recordings.svg', import.meta.url),
+      'utf8',
+    ),
+  ).toContain('aria-label="Audio recordings"')
+})
+
 test('declares the opt-in terminal tool and node process', () => {
   expect(extensionManifest.configuration).toEqual({
     'gptvoice.audioDebug.enabled': {
