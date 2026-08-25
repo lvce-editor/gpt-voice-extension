@@ -6,9 +6,8 @@ import { dirname, join } from 'node:path'
 const require = createRequire(import.meta.url)
 
 const getRendererBundle = (): string => {
-  const packageJsonPath = require.resolve(
-    '@lvce-editor/static-server/package.json',
-  )
+  const packageJsonPath =
+    require.resolve('@lvce-editor/static-server/package.json')
   const staticDirectory = join(dirname(packageJsonPath), 'static')
   const rendererRelativePath = join(
     'packages',
