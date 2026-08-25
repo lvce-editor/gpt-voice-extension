@@ -5,6 +5,8 @@ import {
 } from '@lvce-editor/virtual-dom-worker'
 import type { AudioDebugRecording } from '../AudioDebugStorage/AudioDebugStorage.ts'
 
+const handleClick = 'handleClick'
+
 export interface AudioDebugViewState {
   readonly enabled: boolean
   readonly error: string
@@ -62,6 +64,7 @@ const renderRecording = (
       childCount: 2,
       className: 'GptVoiceAudioDebugRecording',
       name: recording.uri,
+      onClick: handleClick,
       title: `Open ${recording.name}`,
       type: VirtualDomElements.Button,
     },
