@@ -170,6 +170,33 @@ test('continues numbering after legacy recordings', async () => {
   ])
 })
 
+test('sorts equal timestamps and sequence numbers deterministically', async () => {
+  const cache = new FakeCache()
+  const addRecording = (name: string, createdAt: number): void => {
+    cache.entries.set(
+      `https://gpt-voice-audio.invalid/${name}`,
+      new Response(new Blob([name], { type: 'audio/webm' }), {
+        headers: {
+          'x-gpt-voice-created-at': String(createdAt),
+        },
+      }),
+    )
+  }
+  addRecording('legacy-b.webm', 1)
+  addRecording('legacy-a.webm', 1)
+  addRecording('voice-message-4.webm', 1)
+  addRecording('voice-message-4.ogg', 2)
+
+  const recordings = await createStorage(cache).list()
+
+  expect(recordings.map((recording) => recording.name)).toEqual([
+    'voice-message-4.ogg',
+    'voice-message-4.webm',
+    'legacy-b.webm',
+    'legacy-a.webm',
+  ])
+})
+
 test('ignores unrelated and disappeared cache entries', async () => {
   const cache = new FakeCache()
   cache.entries.set(
