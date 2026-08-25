@@ -76,7 +76,15 @@ beforeEach(() => {
   } as never)
   deleteSecret.mockReset().mockResolvedValue(undefined)
   disposeRpc.mockReset().mockResolvedValue(undefined)
-  getPreference.mockReset().mockResolvedValue(false)
+  getPreference.mockReset().mockImplementation(async (key) => {
+    switch (key) {
+      case 'gptvoice.audio.echoCancellation':
+      case 'gptvoice.audio.noiseSuppression':
+        return true
+      default:
+        return false
+    }
+  })
   getSecret.mockReset().mockResolvedValue('')
   invoke.mockReset().mockImplementation(async (method) => {
     switch (method) {
@@ -145,6 +153,11 @@ test('adapts WebRTC data channels and worker state updates', async () => {
   await commandMap['VoiceHost.startWebRtc']?.(1, -1, 'ephemeral-key')
   expect(startWebRtcAudioStream).toHaveBeenCalledWith(
     expect.objectContaining({
+      audioConstraints: {
+        autoGainControl: false,
+        echoCancellation: true,
+        noiseSuppression: true,
+      },
       elementLocator: '.GptVoiceAudio',
       ephemeralKey: 'ephemeral-key',
       trackAudioData: true,
@@ -181,6 +194,34 @@ test('adapts WebRTC data channels and worker state updates', async () => {
   await expect(
     commandMap['VoiceHost.sendWebRtcMessage']?.(1, 'late-event'),
   ).rejects.toThrow('Voice WebRTC data channel is not connected')
+})
+
+test('uses configured microphone audio processing constraints', async () => {
+  getPreference.mockImplementation(async (key) => {
+    switch (key) {
+      case 'gptvoice.audio.autoGainControl':
+        return true
+      case 'gptvoice.audio.echoCancellation':
+      case 'gptvoice.audio.noiseSuppression':
+        return false
+      default:
+        return false
+    }
+  })
+  await VoiceSessionWorker.create(false, 'byok', jest.fn())
+  const commandMap = getCommandMap()
+
+  await commandMap['VoiceHost.startWebRtc']?.(1, -1, 'ephemeral-key')
+
+  expect(startWebRtcAudioStream).toHaveBeenCalledWith(
+    expect.objectContaining({
+      audioConstraints: {
+        autoGainControl: true,
+        echoCancellation: false,
+        noiseSuppression: false,
+      },
+    }),
+  )
 })
 
 test('routes audio-debug capture and storage through the worker', async () => {

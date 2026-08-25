@@ -9,6 +9,21 @@
   "contentSecurityPolicy": ["default-src 'none'", "script-src 'self'"],
   "categories": ["Other"],
   "configuration": {
+    "gptvoice.audio.autoGainControl": {
+      "type": "boolean",
+      "default": false,
+      "description": "Allow the browser to automatically adjust microphone volume. Disable this if your voice becomes quieter during a message. Changes apply to new voice sessions."
+    },
+    "gptvoice.audio.echoCancellation": {
+      "type": "boolean",
+      "default": true,
+      "description": "Remove audio playing through speakers from microphone input. Changes apply to new voice sessions."
+    },
+    "gptvoice.audio.noiseSuppression": {
+      "type": "boolean",
+      "default": true,
+      "description": "Reduce steady background noise. Disable this if quiet speech is being removed. Changes apply to new voice sessions."
+    },
     "gptvoice.audioDebug.enabled": {
       "type": "boolean",
       "default": false,
