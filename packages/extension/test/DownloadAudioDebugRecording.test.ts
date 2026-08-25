@@ -1,5 +1,5 @@
+import type { AudioDebugStorage } from 'voice-shared'
 import { expect, jest, test } from '@jest/globals'
-import type { AudioDebugStorage } from '../src/parts/AudioDebugStorage/AudioDebugStorage.ts'
 import { downloadAudioDebugRecordingWithDependencies } from '../src/parts/DownloadAudioDebugRecording/DownloadAudioDebugRecording.ts'
 
 const blob = new Blob(['recorded audio'], { type: 'audio/webm' })

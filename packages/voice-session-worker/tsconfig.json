@@ -16,10 +16,11 @@
     "strict": true,
     "noImplicitAny": true,
     "forceConsistentCasingInFileNames": true,
-    "rootDir": "../..",
+    "rootDir": ".",
     "composite": true,
     "allowImportingTsExtensions": true,
     "noUnusedLocals": true
   },
-  "include": ["src", "test", "../extension/src"]
+  "include": ["src", "test"],
+  "references": [{ "path": "../shared" }]
 }

@@ -1,3 +1,4 @@
+import type { AudioDebugStorage } from 'voice-shared'
 import {
   createRpc,
   deleteSecret,
@@ -9,7 +10,6 @@ import {
   storeSecret,
   writeFile,
 } from '@lvce-editor/api'
-import type { AudioDebugStorage } from '../AudioDebugStorage/AudioDebugStorage.ts'
 import type { IState } from '../CreateInstance/CreateInstance.ts'
 import { audioDebugPreference } from '../AudioDebugConstants/AudioDebugConstants.ts'
 import { resolveBackendVoiceConfiguration } from '../BackendConfiguration/BackendConfiguration.ts'

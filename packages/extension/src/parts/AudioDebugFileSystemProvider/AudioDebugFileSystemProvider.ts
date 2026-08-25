@@ -1,5 +1,5 @@
 import type { FileSystemProvider } from '@lvce-editor/api'
-import type { AudioDebugStorage } from '../AudioDebugStorage/AudioDebugStorage.ts'
+import type { AudioDebugStorage } from 'voice-shared'
 import { audioDebugScheme } from '../AudioDebugConstants/AudioDebugConstants.ts'
 import { audioDebugStorage } from '../VoiceSessionWorker/VoiceSessionWorker.ts'
 
