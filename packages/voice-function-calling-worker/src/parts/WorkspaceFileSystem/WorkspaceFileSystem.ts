@@ -86,16 +86,15 @@ const resolveWorkspaceUri = (
   const workspaceRoot = workspaceUri.endsWith('/')
     ? workspaceUri
     : `${workspaceUri}/`
-  try {
-    return new URL(
-      segments.map((segment) => encodeURIComponent(segment)).join('/'),
-      workspaceRoot,
-    ).href
-  } catch {
+  const encodedPath = segments
+    .map((segment) => encodeURIComponent(segment))
+    .join('/')
+  if (!URL.canParse(encodedPath, workspaceRoot)) {
     throw new Error(
       'The opened workspace does not provide a valid filesystem URI.',
     )
   }
+  return new URL(encodedPath, workspaceRoot).href
 }
 
 export const resolveWorkspaceFileUri = (

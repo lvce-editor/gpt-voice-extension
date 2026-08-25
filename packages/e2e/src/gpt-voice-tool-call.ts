@@ -29,18 +29,12 @@ export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
 
   const toolCall = Locator('.GptVoiceToolCall')
   const toggle = toolCall.locator('.GptVoiceToolCallButton')
-  await new Promise((resolve) => {
-    setTimeout(resolve, 1000)
-  })
   await expect(toolCall).toHaveText('✓Ran getweather⌄')
   await expect(toggle).toHaveAttribute('aria-expanded', 'false')
   await expect(toggle).toHaveAttribute('name', 'weather-call')
 
   // eslint-disable-next-line e2e/no-direct-click -- verifies the rendered tool disclosure is wired to the view command
   await toggle.click()
-  await new Promise((resolve) => {
-    setTimeout(resolve, 200)
-  })
 
   await expect(toggle).toHaveAttribute('aria-expanded', 'true')
   await expect(toolCall).toHaveCSS('flex-shrink', '0')

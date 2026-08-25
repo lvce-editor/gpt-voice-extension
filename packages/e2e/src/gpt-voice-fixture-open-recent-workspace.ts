@@ -104,24 +104,6 @@ const createFixture = (aboutViewUri: string) =>
     ],
   }) as const
 
-const waitForWorkspaceUri = async (
-  getWorkspaceUri: () => Promise<unknown>,
-  expectedUri: string,
-): Promise<void> => {
-  for (let attempt = 0; attempt < 100; attempt++) {
-    const actualUri = await getWorkspaceUri()
-    if (actualUri === expectedUri) {
-      return
-    }
-    if (attempt === 99) {
-      throw new Error(
-        `Expected workspace ${expectedUri}, received ${String(actualUri)}`,
-      )
-    }
-    await new Promise((resolve) => setTimeout(resolve, 50))
-  }
-}
-
 export const name = 'gpt-voice.fixture-open-recent-workspace'
 
 export const test: Test = async ({
@@ -146,15 +128,17 @@ export const test: Test = async ({
   await SideBar.open('gpt-voice.views.default')
   await Command.executeExtensionCommand('GptVoice.replayFixture', fixture)
 
-  await waitForWorkspaceUri(
-    () => Command.execute('Workspace.getUri'),
-    aboutViewUri,
-  )
   const voice = Locator('.GptVoice')
   const userTranscript = Locator('.GptVoiceTranscriptItemUser')
   const assistantTranscript = Locator('.GptVoiceTranscriptItemAi')
   await expect(voice).toContainText('Ran get_recently_opened_folders')
   await expect(voice).toContainText('Ran open_workspace_folder')
+  const actualWorkspaceUri = await Command.execute('Workspace.getUri')
+  if (actualWorkspaceUri !== aboutViewUri) {
+    throw new Error(
+      `Expected workspace ${aboutViewUri}, received ${String(actualWorkspaceUri)}`,
+    )
+  }
   await expect(userTranscript).toHaveText(fixture.expect.userText)
   await expect(assistantTranscript).toHaveText(fixture.expect.assistantText)
 }

@@ -10,10 +10,6 @@ export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
   await expect(button).toBeVisible()
   await Command.executeExtensionCommand('GptVoice.handleClickStart')
   await Command.executeExtensionCommand('GptVoice.setAnimation', true, 2.1)
-  // TODO avoid timeout
-  await new Promise((r) => {
-    setTimeout(r, 500)
-  })
 
   // act
   await Command.executeExtensionCommand('GptVoice.setAnimation', false, 1)
@@ -21,9 +17,5 @@ export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
   // assert
   const bubble = Locator('.GptVoiceBubble')
   await expect(bubble).toBeVisible()
-  // TODO avoid timeout
-  await new Promise((r) => {
-    setTimeout(r, 500)
-  })
   await expect(bubble).toHaveCSS(`transform`, `matrix(1, 0, 0, 1, 0, 0)`)
 }
