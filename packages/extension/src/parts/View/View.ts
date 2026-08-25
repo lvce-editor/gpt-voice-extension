@@ -19,7 +19,7 @@ export const view: GptVoiceView = {
       value: string,
       type: 'user' | 'ai' = 'ai',
     ) {
-      context.addTranscript(id, value, type)
+      await context.addTranscript(id, value, type)
       return context
     },
     async 'GptVoice.captureFixture'(context, options) {
@@ -27,7 +27,7 @@ export const view: GptVoiceView = {
       return context
     },
     async 'GptVoice.handleClearChat'(context) {
-      context.handleClearChat()
+      await context.handleClearChat()
       return context
     },
     async 'GptVoice.handleClearOpenAiApiKey'(context) {
@@ -39,11 +39,11 @@ export const view: GptVoiceView = {
       return context
     },
     async 'GptVoice.handleData'(context, data: string) {
-      context.handleData(data)
+      await context.handleData(data)
       return context
     },
-    'GptVoice.handleOpenAiApiKeyInput'(context, value: string) {
-      context.handleOpenAiApiKeyInput(value)
+    async 'GptVoice.handleOpenAiApiKeyInput'(context, value: string) {
+      await context.handleOpenAiApiKeyInput(value)
       return context
     },
     async 'GptVoice.handleSaveOpenAiApiKey'(context) {
@@ -51,7 +51,7 @@ export const view: GptVoiceView = {
       return context
     },
     async 'GptVoice.handleUseOwnApiKey'(context) {
-      context.handleUseOwnApiKey()
+      await context.handleUseOwnApiKey()
       return context
     },
     async 'GptVoice.replayFixture'(context, fixture: unknown) {
@@ -63,15 +63,15 @@ export const view: GptVoiceView = {
       return context
     },
     async 'GptVoice.setOfflineError'(context, error: unknown) {
-      context.setOfflineError(error)
+      await context.setOfflineError(error)
       return context
     },
     async 'GptVoice.setRealtimeModelMini'(context) {
-      context.setRealtimeModelMini()
+      await context.setRealtimeModelMini()
       return context
     },
     async 'GptVoice.setRealtimeModelStandard'(context) {
-      context.setRealtimeModelStandard()
+      await context.setRealtimeModelStandard()
       return context
     },
     async 'GptVoice.stop'(context) {
@@ -79,7 +79,7 @@ export const view: GptVoiceView = {
       return context
     },
     async 'GptVoice.toggleToolCall'(context, callId: string) {
-      context.toggleToolCall(callId)
+      await context.toggleToolCall(callId)
       return context
     },
   },

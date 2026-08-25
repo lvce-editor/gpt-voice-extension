@@ -5,10 +5,22 @@ const extensionManifest = JSON.parse(
   readFileSync(new URL('../extension.json', import.meta.url), 'utf8'),
 )
 
-test('allows the production funded voice websocket', () => {
-  expect(extensionManifest.contentSecurityPolicy).toContain(
-    "connect-src 'self' https://api.openai.com wss://lvce-editor.dev",
-  )
+test('isolates network access in the voice session worker', () => {
+  expect(extensionManifest.contentSecurityPolicy).toEqual([
+    "default-src 'none'",
+    "script-src 'self'",
+  ])
+  expect(extensionManifest.rpc).toContainEqual({
+    contentSecurityPolicy: [
+      "default-src 'none'",
+      "script-src 'self'",
+      "connect-src 'self' https://api.openai.com wss://lvce-editor.dev",
+    ],
+    id: 'builtin.gpt-voice.voice-session-worker',
+    name: 'Voice Session Worker',
+    type: 'web-worker',
+    url: 'dist/voiceSessionWorkerMain.js',
+  })
 })
 
 test('declares the voice function calling web worker', () => {

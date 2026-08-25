@@ -6,9 +6,13 @@ import {
   registerView,
 } from '@lvce-editor/api'
 import { createAudioDebugFileSystemProvider } from '../AudioDebugFileSystemProvider/AudioDebugFileSystemProvider.ts'
-import { audioDebugView } from '../AudioDebugView/AudioDebugView.ts'
+import {
+  audioDebugView,
+  refreshActiveAudioDebugViewInstances,
+} from '../AudioDebugView/AudioDebugView.ts'
 import { enableTestMode } from '../TestMode/TestMode.ts'
 import { view } from '../View/View.ts'
+import { setRefreshAudioDebugViews } from '../VoiceSessionWorker/VoiceSessionWorker.ts'
 
 const floatingWindowUrl =
   'lvce-oss://-/?floatingWindowMode=extensionView&floatingExtensionViewId=gpt-voice.views.default'
@@ -24,6 +28,7 @@ export const activate = async (): Promise<void> => {
   }
   state.isActivated = true
   await activateExtensionApi()
+  setRefreshAudioDebugViews(refreshActiveAudioDebugViewInstances)
   registerFileSystemProvider(createAudioDebugFileSystemProvider())
   registerView(audioDebugView)
   registerView(view)

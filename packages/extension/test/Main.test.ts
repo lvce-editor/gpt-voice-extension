@@ -1,6 +1,7 @@
 import type * as Api from '@lvce-editor/api'
 import { expect, jest, test } from '@jest/globals'
 import { text } from '@lvce-editor/virtual-dom-worker'
+import type { IState } from '../src/parts/CreateInstance/CreateInstance.ts'
 
 const activateExtensionApi = jest.fn(async () => {})
 const executeCommand = jest.fn(async (commandId: string, url: string) => {})
@@ -27,6 +28,57 @@ const registerView = jest.fn(() => ({
   dispose: jest.fn(),
 }))
 
+const voiceState = {
+  allowanceExceeded: false,
+  animationEnabled: false,
+  animationFrame: -1,
+  animationScale: 1,
+  apiKeyError: '',
+  apiKeyInput: '',
+  fundedAvailable: false,
+  fundedError: '',
+  hasOpenAiApiKey: true,
+  inProgress: false,
+  isCreatingToken: false,
+  isSavingApiKey: false,
+  isTest: true,
+  messages: [],
+  offlineError: false,
+  parsedData: [],
+  sessionModel: 'gpt-realtime-2.1-mini',
+  tokenError: '',
+  transcribedText: '',
+  uid: -1,
+  voiceProvider: 'byok',
+} as unknown as IState
+const setRefreshAudioDebugViews = jest.fn()
+const createVoiceSession = jest.fn(
+  async (
+    _isTest: boolean,
+    provider: 'byok' | 'funded',
+    listener: (state: unknown, scroll: boolean) => void,
+  ) => {
+    let currentState: IState = {
+      ...voiceState,
+      fundedAvailable: provider === 'funded',
+      voiceProvider: provider,
+    }
+    return {
+      session: {
+        async dispatch(action: string): Promise<IState> {
+          if (action === 'start') {
+            currentState = { ...currentState, inProgress: true }
+            listener(currentState, false)
+          }
+          return currentState
+        },
+        async dispose(): Promise<void> {},
+      },
+      voiceState: currentState,
+    }
+  },
+)
+
 // eslint-disable-next-line jest/no-restricted-jest-methods
 jest.unstable_mockModule('@lvce-editor/api', () => {
   const actual = jest.requireActual<typeof Api>('@lvce-editor/api')
@@ -46,6 +98,20 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
     storeSecret: jest.fn(),
   }
 })
+
+// eslint-disable-next-line jest/no-restricted-jest-methods
+jest.unstable_mockModule(
+  '../src/parts/VoiceSessionWorker/VoiceSessionWorker.ts',
+  () => ({
+    audioDebugStorage: {
+      list: jest.fn(async () => []),
+      read: jest.fn(),
+      save: jest.fn(),
+    },
+    create: createVoiceSession,
+    setRefreshAudioDebugViews,
+  }),
+)
 
 const Main = await import('../src/parts/Main/Main.ts')
 const { view } = await import('../src/parts/View/View.ts')

@@ -7,19 +7,17 @@ import {
   type ViewEvent,
   type VirtualDomViewInstance,
 } from '@lvce-editor/api'
+import type { AudioDebugStorage } from '../AudioDebugStorage/AudioDebugStorage.ts'
 import {
   audioDebugPreference,
   audioDebugScheme,
   audioDebugViewId,
 } from '../AudioDebugConstants/AudioDebugConstants.ts'
 import {
-  audioDebugStorage,
-  type AudioDebugStorage,
-} from '../AudioDebugStorage/AudioDebugStorage.ts'
-import {
   renderAudioDebugView,
   type AudioDebugViewState,
 } from '../RenderAudioDebugView/RenderAudioDebugView.ts'
+import { audioDebugStorage } from '../VoiceSessionWorker/VoiceSessionWorker.ts'
 
 interface AudioDebugViewDependencies {
   readonly getPreference: typeof getPreference
