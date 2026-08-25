@@ -11,9 +11,10 @@ import {
 const recording = {
   createdAt: 1_777_072_496_000,
   mimeType: 'audio/webm',
-  name: 'recording.webm',
+  name: 'voice-message-7.webm',
+  sequence: 7,
   size: 2048,
-  uri: 'gpt-voice-audio:///recording.webm',
+  uri: 'gpt-voice-audio:///voice-message-7.webm',
 }
 
 const createStorage = (
@@ -71,7 +72,7 @@ test('lists cached recordings and opens a clicked provider uri', async () => {
     },
   )
 
-  expect(instance.render()).toContainEqual(text('Voice message 1'))
+  expect(instance.render()).toContainEqual(text('Voice message 7'))
   expect(instance.render()).toContainEqual(
     text('2026-04-24T23:14:56.000Z · 2.0 KB'),
   )
