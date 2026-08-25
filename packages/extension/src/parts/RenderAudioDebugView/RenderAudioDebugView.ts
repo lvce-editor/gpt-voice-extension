@@ -57,7 +57,6 @@ const formatSize = (size: number): string => {
 
 const renderRecording = (
   recording: AudioDebugRecording,
-  index: number,
 ): readonly VirtualDomNode[] => {
   return [
     listItemNode,
@@ -71,7 +70,7 @@ const renderRecording = (
       type: VirtualDomElements.Button,
     },
     recordingNameNode,
-    text(`Voice message ${index + 1}`),
+    text(`Voice message ${recording.sequence}`),
     recordingDetailsNode,
     text(
       `${new Date(recording.createdAt).toISOString()} · ${formatSize(recording.size)}`,

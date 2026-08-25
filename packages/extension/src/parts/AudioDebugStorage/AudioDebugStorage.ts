@@ -3,11 +3,13 @@ import { audioDebugScheme } from '../AudioDebugConstants/AudioDebugConstants.ts'
 const cacheName = 'gpt-voice-audio-debug-v1'
 const cacheUrlPrefix = 'https://gpt-voice-audio.invalid/'
 const createdAtHeader = 'x-gpt-voice-created-at'
+const recordingNamePattern = /^voice-message-(\d+)\.[^.]+$/
 
 export interface AudioDebugRecording {
   readonly createdAt: number
   readonly mimeType: string
   readonly name: string
+  readonly sequence: number
   readonly size: number
   readonly uri: string
 }
@@ -21,13 +23,11 @@ export interface AudioDebugStorage {
 
 interface AudioDebugStorageDependencies {
   readonly cacheStorage: Pick<CacheStorage, 'open'> | undefined
-  readonly createId: () => string
   readonly now: () => number
 }
 
 const defaultDependencies: AudioDebugStorageDependencies = {
   cacheStorage: globalThis.caches,
-  createId: () => crypto.randomUUID(),
   now: Date.now,
 }
 
@@ -65,6 +65,75 @@ const getNameFromUri = (uri: string): string => {
   return name
 }
 
+const getSequenceFromName = (name: string): number | undefined => {
+  const match = recordingNamePattern.exec(name)
+  const sequence = Number(match?.[1])
+  if (!Number.isSafeInteger(sequence) || sequence < 1) {
+    return undefined
+  }
+  return sequence
+}
+
+type StoredAudioDebugRecording = Omit<AudioDebugRecording, 'sequence'> & {
+  readonly sequence: number | undefined
+}
+
+const assignSequences = (
+  recordings: readonly StoredAudioDebugRecording[],
+): readonly AudioDebugRecording[] => {
+  let nextSequence = 1
+  return recordings
+    .toSorted(
+      (a, b) => a.createdAt - b.createdAt || a.name.localeCompare(b.name),
+    )
+    .map((recording) => {
+      const sequence = recording.sequence ?? nextSequence
+      nextSequence = Math.max(nextSequence, sequence + 1)
+      return {
+        ...recording,
+        sequence,
+      }
+    })
+}
+
+const listRecordings = async (
+  // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types
+  cache: Cache,
+): Promise<readonly AudioDebugRecording[]> => {
+  const requests = await cache.keys()
+  const recordings = await Promise.all(
+    requests.map(
+      async (
+        // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types
+        request: Readonly<Request>,
+      ): Promise<StoredAudioDebugRecording | undefined> => {
+        const name = getNameFromCacheUrl(request.url)
+        if (!name) {
+          return undefined
+        }
+        const response = await cache.match(request)
+        if (!response) {
+          return undefined
+        }
+        const blob = await response.blob()
+        return {
+          createdAt: Number(response.headers.get(createdAtHeader)) || 0,
+          mimeType: blob.type,
+          name,
+          sequence: getSequenceFromName(name),
+          size: blob.size,
+          uri: `${audioDebugScheme}:///${name}`,
+        }
+      },
+    ),
+  )
+  return assignSequences(
+    recordings.filter((recording): recording is StoredAudioDebugRecording =>
+      Boolean(recording),
+    ),
+  ).toSorted((a, b) => b.sequence - a.sequence || b.createdAt - a.createdAt)
+}
+
 // CacheStorage and Blob are mutable DOM types, but this module only uses their
 // read-only APIs and never mutates callers' values.
 export const createAudioDebugStorage = (
@@ -82,37 +151,7 @@ export const createAudioDebugStorage = (
   return {
     async list(): Promise<readonly AudioDebugRecording[]> {
       const cache = await getCache()
-      const requests = await cache.keys()
-      const recordings = await Promise.all(
-        requests.map(
-          async (
-            // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types
-            request: Readonly<Request>,
-          ): Promise<AudioDebugRecording | undefined> => {
-            const name = getNameFromCacheUrl(request.url)
-            if (!name) {
-              return undefined
-            }
-            const response = await cache.match(request)
-            if (!response) {
-              return undefined
-            }
-            const blob = await response.blob()
-            return {
-              createdAt: Number(response.headers.get(createdAtHeader)) || 0,
-              mimeType: blob.type,
-              name,
-              size: blob.size,
-              uri: `${audioDebugScheme}:///${name}`,
-            }
-          },
-        ),
-      )
-      return recordings
-        .filter((recording): recording is AudioDebugRecording =>
-          Boolean(recording),
-        )
-        .toSorted((a, b) => b.createdAt - a.createdAt)
+      return listRecordings(cache)
     },
     async read(uri: string): Promise<Blob> {
       const cache = await getCache()
@@ -130,8 +169,13 @@ export const createAudioDebugStorage = (
     },
     async save(blob: Blob): Promise<AudioDebugRecording> {
       const cache = await getCache()
+      const recordings = await listRecordings(cache)
+      let sequence = 1
+      for (const recording of recordings) {
+        sequence = Math.max(sequence, recording.sequence + 1)
+      }
       const createdAt = dependencies.now()
-      const name = `${createdAt}-${dependencies.createId()}.${getExtension(blob.type)}`
+      const name = `voice-message-${sequence}.${getExtension(blob.type)}`
       await cache.put(
         getCacheUrl(name),
         new Response(blob, {
@@ -147,6 +191,7 @@ export const createAudioDebugStorage = (
         createdAt,
         mimeType: blob.type,
         name,
+        sequence,
         size: blob.size,
         uri: `${audioDebugScheme}:///${name}`,
       }

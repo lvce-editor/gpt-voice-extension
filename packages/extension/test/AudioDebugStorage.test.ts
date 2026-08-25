@@ -59,7 +59,6 @@ const createStorage = (
     cacheStorage: {
       open: jest.fn(async () => cache as unknown as Cache),
     },
-    createId: () => 'recording-id',
     now: () => now,
   })
 }
@@ -72,12 +71,13 @@ test('saves, lists, and reads a WebM recording', async () => {
   await expect(storage.save(audio)).resolves.toEqual({
     createdAt: 123,
     mimeType: 'audio/webm',
-    name: '123-recording-id.webm',
+    name: 'voice-message-1.webm',
+    sequence: 1,
     size: 14,
-    uri: 'gpt-voice-audio:///123-recording-id.webm',
+    uri: 'gpt-voice-audio:///voice-message-1.webm',
   })
   const cachedResponse = cache.entries.get(
-    'https://gpt-voice-audio.invalid/123-recording-id.webm',
+    'https://gpt-voice-audio.invalid/voice-message-1.webm',
   )
   expect(cachedResponse?.headers.get('content-length')).toBe('14')
   expect(cachedResponse?.headers.get('content-type')).toBe('audio/webm')
@@ -89,12 +89,13 @@ test('saves, lists, and reads a WebM recording', async () => {
     {
       createdAt: 123,
       mimeType: 'audio/webm',
-      name: '123-recording-id.webm',
+      name: 'voice-message-1.webm',
+      sequence: 1,
       size: 14,
-      uri: 'gpt-voice-audio:///123-recording-id.webm',
+      uri: 'gpt-voice-audio:///voice-message-1.webm',
     },
   ])
-  const result = await storage.read('gpt-voice-audio:///123-recording-id.webm')
+  const result = await storage.read('gpt-voice-audio:///voice-message-1.webm')
   expect(result.type).toBe('audio/webm')
   await expect(result.text()).resolves.toBe('recorded audio')
 })
@@ -105,10 +106,10 @@ test('uses playable audio extensions for supported recorder mime types', async (
 
   await expect(
     mp3Storage.save(new Blob(['mp3'], { type: 'audio/mpeg' })),
-  ).resolves.toEqual(expect.objectContaining({ name: '1-recording-id.mp3' }))
+  ).resolves.toEqual(expect.objectContaining({ name: 'voice-message-1.mp3' }))
   await expect(
     oggStorage.save(new Blob(['ogg'], { type: 'audio/ogg' })),
-  ).resolves.toEqual(expect.objectContaining({ name: '2-recording-id.ogg' }))
+  ).resolves.toEqual(expect.objectContaining({ name: 'voice-message-1.ogg' }))
 })
 
 test('removes a recording', async () => {
@@ -123,18 +124,77 @@ test('removes a recording', async () => {
   await expect(storage.list()).resolves.toEqual([])
 })
 
-test('lists newest recordings first', async () => {
+test('keeps stable sequential names and lists the highest number first', async () => {
   const cache = new FakeCache()
-  await createStorage(cache, 1).save(
+  const first = await createStorage(cache, 20).save(
     new Blob(['first'], { type: 'audio/webm' }),
   )
-  await createStorage(cache, 2).save(
+  const second = await createStorage(cache, 10).save(
     new Blob(['second'], { type: 'audio/webm' }),
   )
 
   const recordings = await createStorage(cache).list()
 
-  expect(recordings.map((recording) => recording.createdAt)).toEqual([2, 1])
+  expect(first.name).toBe('voice-message-1.webm')
+  expect(second.name).toBe('voice-message-2.webm')
+  expect(recordings.map((recording) => recording.name)).toEqual([
+    'voice-message-2.webm',
+    'voice-message-1.webm',
+  ])
+  expect(recordings.map((recording) => recording.sequence)).toEqual([2, 1])
+})
+
+test('continues numbering after legacy recordings', async () => {
+  const cache = new FakeCache()
+  cache.entries.set(
+    'https://gpt-voice-audio.invalid/123-recording-id.webm',
+    new Response(new Blob(['legacy'], { type: 'audio/webm' }), {
+      headers: {
+        'x-gpt-voice-created-at': '1',
+      },
+    }),
+  )
+  const storage = createStorage(cache, 2)
+
+  await expect(
+    storage.save(new Blob(['new'], { type: 'audio/webm' })),
+  ).resolves.toEqual(
+    expect.objectContaining({
+      name: 'voice-message-2.webm',
+      sequence: 2,
+    }),
+  )
+  await expect(storage.list()).resolves.toEqual([
+    expect.objectContaining({ name: 'voice-message-2.webm', sequence: 2 }),
+    expect.objectContaining({ name: '123-recording-id.webm', sequence: 1 }),
+  ])
+})
+
+test('sorts equal timestamps and sequence numbers deterministically', async () => {
+  const cache = new FakeCache()
+  const addRecording = (name: string, createdAt: number): void => {
+    cache.entries.set(
+      `https://gpt-voice-audio.invalid/${name}`,
+      new Response(new Blob([name], { type: 'audio/webm' }), {
+        headers: {
+          'x-gpt-voice-created-at': String(createdAt),
+        },
+      }),
+    )
+  }
+  addRecording('legacy-b.webm', 1)
+  addRecording('legacy-a.webm', 1)
+  addRecording('voice-message-4.webm', 1)
+  addRecording('voice-message-4.ogg', 2)
+
+  const recordings = await createStorage(cache).list()
+
+  expect(recordings.map((recording) => recording.name)).toEqual([
+    'voice-message-4.ogg',
+    'voice-message-4.webm',
+    'legacy-b.webm',
+    'legacy-a.webm',
+  ])
 })
 
 test('ignores unrelated and disappeared cache entries', async () => {
@@ -181,7 +241,6 @@ test('rejects missing recordings and invalid uris', async () => {
 test('reports unavailable cache storage', async () => {
   const storage = createAudioDebugStorage({
     cacheStorage: undefined,
-    createId: () => 'id',
     now: () => 1,
   })
 
