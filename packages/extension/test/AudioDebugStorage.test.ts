@@ -69,6 +69,15 @@ test('saves, lists, and reads a WebM recording', async () => {
     size: 14,
     uri: 'gpt-voice-audio:///123-recording-id.webm',
   })
+  const cachedResponse = cache.entries.get(
+    'https://gpt-voice-audio.invalid/123-recording-id.webm',
+  )
+  expect(cachedResponse?.headers.get('content-length')).toBe('14')
+  expect(cachedResponse?.headers.get('content-type')).toBe('audio/webm')
+  expect(cachedResponse?.headers.get('last-modified')).toBe(
+    'Thu, 01 Jan 1970 00:00:00 GMT',
+  )
+  expect(cachedResponse?.headers.get('x-gpt-voice-created-at')).toBe('123')
   await expect(storage.list()).resolves.toEqual([
     {
       createdAt: 123,
