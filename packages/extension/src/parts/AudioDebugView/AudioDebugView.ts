@@ -39,8 +39,8 @@ export interface ActiveAudioDebugViewInstance extends VirtualDomViewInstance {
   readonly download: (uri: string, name: string) => Promise<void>
   readonly getMenuEntries: (menuId: string) => readonly MenuEntry[]
   readonly handleClick: (uri: string) => Promise<void>
-  readonly remove: (uri: string) => Promise<void>
   readonly refresh: () => Promise<void>
+  readonly remove: (uri: string) => Promise<void>
 }
 
 const activeInstances = new Set<ActiveAudioDebugViewInstance>()
@@ -92,9 +92,8 @@ export const createAudioDebugViewInstance = async (
       )
     },
     getMenuEntries(menuId: string): readonly MenuEntry[] {
-      const recording = state.recordings.find(
-        (candidate) => candidate.uri === menuId,
-      )
+      const { recordings } = state
+      const recording = recordings.find((candidate) => candidate.uri === menuId)
       if (!recording) {
         return []
       }
@@ -119,12 +118,13 @@ export const createAudioDebugViewInstance = async (
       }
     },
     async handleEvent(event: Readonly<ViewEvent>): Promise<void> {
+      const { recordings } = state
       if (event.type === 'click' && event.name) {
         await instance.handleClick(event.name)
       } else if (
         event.type === 'contextmenu' &&
         event.name &&
-        state.recordings.some((recording) => recording.uri === event.name)
+        recordings.some((recording) => recording.uri === event.name)
       ) {
         await context?.showContextMenu(
           event.name,
@@ -133,12 +133,12 @@ export const createAudioDebugViewInstance = async (
         )
       }
     },
+    async refresh(): Promise<void> {
+      await refresh()
+    },
     async remove(uri: string): Promise<void> {
       await dependencies.storage.remove(uri)
       await refreshActiveAudioDebugViewInstances()
-    },
-    async refresh(): Promise<void> {
-      await refresh()
     },
     render(): readonly VirtualDomNode[] {
       return renderAudioDebugView(state)
