@@ -23,6 +23,13 @@ class FakeCache {
     return Array.from(this.entries.keys(), (url) => new Request(url))
   }
 
+  async delete(
+    // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types
+    request: FakeRequest,
+  ): Promise<boolean> {
+    return this.entries.delete(getRequestUrl(request))
+  }
+
   async match(
     // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types
     request: FakeRequest,
@@ -95,6 +102,18 @@ test('uses playable audio extensions for supported recorder mime types', async (
   ).resolves.toEqual(expect.objectContaining({ name: '2-recording-id.ogg' }))
 })
 
+test('removes a recording', async () => {
+  const cache = new FakeCache()
+  const storage = createStorage(cache)
+  const recording = await storage.save(
+    new Blob(['recorded audio'], { type: 'audio/webm' }),
+  )
+
+  await storage.remove(recording.uri)
+
+  await expect(storage.list()).resolves.toEqual([])
+})
+
 test('lists newest recordings first', async () => {
   const cache = new FakeCache()
   await createStorage(cache, 1).save(
@@ -137,6 +156,9 @@ test('rejects missing recordings and invalid uris', async () => {
     'Gpt Voice audio recording not found: missing.webm',
   )
   await expect(storage.read('file:///recording.webm')).rejects.toThrow(
+    'Invalid Gpt Voice audio URI',
+  )
+  await expect(storage.remove('file:///recording.webm')).rejects.toThrow(
     'Invalid Gpt Voice audio URI',
   )
   await expect(

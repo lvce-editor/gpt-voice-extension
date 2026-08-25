@@ -15,6 +15,7 @@ export interface AudioDebugRecording {
 export interface AudioDebugStorage {
   readonly list: () => Promise<readonly AudioDebugRecording[]>
   readonly read: (uri: string) => Promise<Blob>
+  readonly remove: (uri: string) => Promise<void>
   readonly save: (blob: Blob) => Promise<AudioDebugRecording>
 }
 
@@ -121,6 +122,11 @@ export const createAudioDebugStorage = (
         throw new Error(`Gpt Voice audio recording not found: ${name}`)
       }
       return response.blob()
+    },
+    async remove(uri: string): Promise<void> {
+      const cache = await getCache()
+      const name = getNameFromUri(uri)
+      await cache.delete(getCacheUrl(name))
     },
     async save(blob: Blob): Promise<AudioDebugRecording> {
       const cache = await getCache()
