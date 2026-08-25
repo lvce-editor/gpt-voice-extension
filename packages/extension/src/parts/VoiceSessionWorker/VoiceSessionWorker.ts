@@ -241,6 +241,12 @@ export const audioDebugStorage: AudioDebugStorage = {
       AudioDebugStorage['read']
     >
   },
+  async remove(uri) {
+    const rpc = await getRpc()
+    return rpc.invoke('AudioDebug.remove', uri) as ReturnType<
+      AudioDebugStorage['remove']
+    >
+  },
   async save(blob) {
     const rpc = await getRpc()
     return rpc.invoke('AudioDebug.save', blob) as ReturnType<

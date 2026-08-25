@@ -6,6 +6,7 @@ import {
 import type { AudioDebugRecording } from '../AudioDebugStorage/AudioDebugStorage.ts'
 
 const handleClick = 'handleClick'
+const handleContextMenu = 'handleContextMenu'
 
 export interface AudioDebugViewState {
   readonly enabled: boolean
@@ -65,6 +66,7 @@ const renderRecording = (
       className: 'GptVoiceAudioDebugRecording',
       name: recording.uri,
       onClick: handleClick,
+      onContextMenu: handleContextMenu,
       title: `Open ${recording.name}`,
       type: VirtualDomElements.Button,
     },

@@ -3,6 +3,7 @@ import {
   executeCommand,
   getPreference,
   openUri,
+  type MenuEntry,
   type View,
   type ViewContext,
   type ViewEvent,
@@ -14,6 +15,7 @@ import {
   audioDebugScheme,
   audioDebugViewId,
 } from '../AudioDebugConstants/AudioDebugConstants.ts'
+import { downloadAudioDebugRecording } from '../DownloadAudioDebugRecording/DownloadAudioDebugRecording.ts'
 import { renderAudioDebugActionsDom } from '../RenderAudioDebugActionsDom/RenderAudioDebugActionsDom.ts'
 import {
   renderAudioDebugView,
@@ -22,6 +24,7 @@ import {
 import { audioDebugStorage } from '../VoiceSessionWorker/VoiceSessionWorker.ts'
 
 interface AudioDebugViewDependencies {
+  readonly downloadRecording?: typeof downloadAudioDebugRecording
   readonly executeCommand: typeof executeCommand
   readonly getPreference: typeof getPreference
   readonly openUri: typeof openUri
@@ -29,6 +32,7 @@ interface AudioDebugViewDependencies {
 }
 
 const defaultDependencies: AudioDebugViewDependencies = {
+  downloadRecording: downloadAudioDebugRecording,
   executeCommand,
   getPreference,
   openUri,
@@ -36,9 +40,12 @@ const defaultDependencies: AudioDebugViewDependencies = {
 }
 
 export interface ActiveAudioDebugViewInstance extends VirtualDomViewInstance {
+  readonly download: (uri: string, name: string) => Promise<void>
+  readonly getMenuEntries: (menuId: string) => readonly MenuEntry[]
   readonly handleClick: (uri: string) => Promise<void>
   readonly openSettings: () => Promise<void>
   readonly refresh: () => Promise<void>
+  readonly remove: (uri: string) => Promise<void>
   readonly renderActionsDom: () => readonly VirtualDomNode[]
 }
 
@@ -83,14 +90,53 @@ export const createAudioDebugViewInstance = async (
     dispose(): void {
       activeInstances.delete(instance)
     },
+    async download(uri: string, name: string): Promise<void> {
+      await (dependencies.downloadRecording ?? downloadAudioDebugRecording)(
+        dependencies.storage,
+        uri,
+        name,
+      )
+    },
+    getMenuEntries(menuId: string): readonly MenuEntry[] {
+      const { recordings } = state
+      const recording = recordings.find((candidate) => candidate.uri === menuId)
+      if (!recording) {
+        return []
+      }
+      return [
+        {
+          args: [recording.uri, recording.name],
+          command: 'GptVoice.downloadAudioDebugRecording',
+          id: 'downloadAudioDebugRecording',
+          label: 'Download',
+        },
+        {
+          args: [recording.uri],
+          command: 'GptVoice.removeAudioDebugRecording',
+          id: 'removeAudioDebugRecording',
+          label: 'Remove',
+        },
+      ]
+    },
     async handleClick(uri: string): Promise<void> {
       if (uri.startsWith(`${audioDebugScheme}:///`)) {
         await dependencies.openUri(uri)
       }
     },
     async handleEvent(event: Readonly<ViewEvent>): Promise<void> {
+      const { recordings } = state
       if (event.type === 'click' && event.name) {
         await instance.handleClick(event.name)
+      } else if (
+        event.type === 'contextmenu' &&
+        event.name &&
+        recordings.some((recording) => recording.uri === event.name)
+      ) {
+        await context?.showContextMenu(
+          event.name,
+          typeof event.x === 'number' ? event.x : 0,
+          typeof event.y === 'number' ? event.y : 0,
+        )
       }
     },
     async openSettings(): Promise<void> {
@@ -98,6 +144,10 @@ export const createAudioDebugViewInstance = async (
     },
     async refresh(): Promise<void> {
       await refresh()
+    },
+    async remove(uri: string): Promise<void> {
+      await dependencies.storage.remove(uri)
+      await refreshActiveAudioDebugViewInstances()
     },
     render(): readonly VirtualDomNode[] {
       return renderAudioDebugView(state)
@@ -117,6 +167,18 @@ type AudioDebugView = Omit<View<ActiveAudioDebugViewInstance>, 'commands'> & {
 
 export const audioDebugView: AudioDebugView = {
   commands: {
+    async 'GptVoice.downloadAudioDebugRecording'(instance, uri, name) {
+      if (typeof uri === 'string' && typeof name === 'string') {
+        await instance.download(uri, name)
+      }
+      return instance
+    },
+    async 'GptVoice.removeAudioDebugRecording'(instance, uri) {
+      if (typeof uri === 'string') {
+        await instance.remove(uri)
+      }
+      return instance
+    },
     async 'GptVoiceAudioDebug.openSettings'(instance) {
       await instance.openSettings()
       return instance
