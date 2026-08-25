@@ -20,7 +20,7 @@
   flex: 0 0 calc(var(--SecondaryPreviewWidth) - 22px);
 }
 
-.ContentArea > .GptVoice + .Actions {
+.PreviewArea > .GptVoice + .Actions {
   background: #0a0c14;
 }
 

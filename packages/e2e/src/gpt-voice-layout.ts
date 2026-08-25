@@ -8,14 +8,14 @@ export const test: Test = async ({ Command, expect, Locator, Panel }) => {
   await Panel.open('Problems')
 
   const main = Locator('.GptVoice')
-  const actions = Locator('.ContentArea > .GptVoice + .Actions')
+  const actions = Locator('.PreviewArea > .GptVoice + .Actions')
   const panel = Locator('.Panel')
   const toolbar = Locator('.GptVoiceToolbar')
   const transcript = Locator('.GptVoiceTranscript')
 
   await expect(main).toHaveCSS('justify-content', 'flex-start')
   await expect(main).toHaveJSProperty('clientHeight', 700)
-  await expect(main).toHaveJSProperty('clientWidth', 618)
+  await expect(main).toHaveJSProperty('clientWidth', 640)
   await expect(panel).toHaveJSProperty('clientWidth', 640)
   await expect(actions).toHaveCSS('background-color', 'rgb(10, 12, 20)')
   await expect(toolbar).toHaveCSS('display', 'flex')

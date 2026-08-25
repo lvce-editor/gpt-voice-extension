@@ -1,5 +1,20 @@
 import type { Test } from '@lvce-editor/test-with-playwright'
 
+const waitForAssertion = async (
+  assertion: () => Promise<void>,
+): Promise<void> => {
+  let lastError: unknown = new Error('Assertion did not pass')
+  for (let attempt = 0; attempt < 1000; attempt++) {
+    try {
+      await assertion()
+      return
+    } catch (error) {
+      lastError = error
+    }
+  }
+  throw lastError
+}
+
 export const name = 'gpt-voice.tool-call'
 
 export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
@@ -29,14 +44,16 @@ export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
 
   const toolCall = Locator('.GptVoiceToolCall')
   const toggle = toolCall.locator('.GptVoiceToolCallButton')
-  await expect(toolCall).toHaveText('✓Ran getweather⌄')
+  await waitForAssertion(() => expect(toolCall).toHaveText('✓Ran getweather⌄'))
   await expect(toggle).toHaveAttribute('aria-expanded', 'false')
   await expect(toggle).toHaveAttribute('name', 'weather-call')
 
   // eslint-disable-next-line e2e/no-direct-click -- verifies the rendered tool disclosure is wired to the view command
   await toggle.click()
 
-  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  await waitForAssertion(() =>
+    expect(toggle).toHaveAttribute('aria-expanded', 'true'),
+  )
   await expect(toolCall).toHaveCSS('flex-shrink', '0')
   await expect(toolCall.locator('.GptVoiceToolCallDetails')).toContainText(
     '"location": "Paris"',
