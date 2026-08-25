@@ -143,7 +143,7 @@
       ],
       "id": "gpt-voice-audio.views.recordings",
       "title": "Voice Audio Recordings",
-      "icon": "media/voice-chat.svg",
+      "icon": "media/audio-recordings.svg",
       "kind": "virtualDom"
     }
   ],
