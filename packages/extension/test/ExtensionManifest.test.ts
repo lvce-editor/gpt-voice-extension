@@ -67,8 +67,26 @@ test('uses a distinct audio recordings view icon', () => {
   ).toContain('aria-label="Audio recordings"')
 })
 
-test('declares the opt-in terminal tool and node process', () => {
+test('declares audio processing settings and the opt-in terminal tool', () => {
   expect(extensionManifest.configuration).toEqual({
+    'gptvoice.audio.autoGainControl': {
+      default: false,
+      description:
+        'Allow the browser to automatically adjust microphone volume. Disable this if your voice becomes quieter during a message. Changes apply to new voice sessions.',
+      type: 'boolean',
+    },
+    'gptvoice.audio.echoCancellation': {
+      default: true,
+      description:
+        'Remove audio playing through speakers from microphone input. Changes apply to new voice sessions.',
+      type: 'boolean',
+    },
+    'gptvoice.audio.noiseSuppression': {
+      default: true,
+      description:
+        'Reduce steady background noise. Disable this if quiet speech is being removed. Changes apply to new voice sessions.',
+      type: 'boolean',
+    },
     'gptvoice.audioDebug.enabled': {
       default: false,
       description:

@@ -14,6 +14,7 @@ import type { IState } from '../CreateInstance/CreateInstance.ts'
 import { audioDebugPreference } from '../AudioDebugConstants/AudioDebugConstants.ts'
 import { resolveBackendVoiceConfiguration } from '../BackendConfiguration/BackendConfiguration.ts'
 import * as ClassNames from '../ClassNames/ClassNames.ts'
+import { getMicrophoneAudioConstraints } from '../MicrophoneAudioConstraints/MicrophoneAudioConstraints.ts'
 import * as VoiceFunctionCallingWorker from '../VoiceFunctionCallingWorker/VoiceFunctionCallingWorker.ts'
 
 interface Rpc {
@@ -133,7 +134,9 @@ const commandMap = {
       dataChannelPort: dataChannel.port2,
     })
     try {
+      const audioConstraints = await getMicrophoneAudioConstraints()
       return await startWebRtcAudioStream({
+        audioConstraints,
         ...(audioDebugPort && { audioDebugPort }),
         elementLocator: `.${ClassNames.GptVoiceAudio}`,
         ephemeralKey,
