@@ -59,6 +59,13 @@ test('lists cached recordings and opens a clicked provider uri', async () => {
   expect(instance.render()).toContainEqual(
     text('2026-04-24T23:14:56.000Z · 2.0 KB'),
   )
+  expect(instance.render()).toContainEqual(
+    expect.objectContaining({
+      className: 'GptVoiceAudioDebugRecording',
+      name: recording.uri,
+      onClick: 'handleClick',
+    }),
+  )
   await instance.handleClick(recording.uri)
   await instance.handleClick('file:///tmp/not-a-recording.webm')
   await instance.handleEvent?.({ name: recording.uri, type: 'click' })
