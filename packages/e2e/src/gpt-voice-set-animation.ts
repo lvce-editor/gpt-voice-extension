@@ -1,5 +1,20 @@
 import type { Test } from '@lvce-editor/test-with-playwright'
 
+const waitForAssertion = async (
+  assertion: () => Promise<void>,
+): Promise<void> => {
+  let lastError: unknown = new Error('Assertion did not pass')
+  for (let attempt = 0; attempt < 1000; attempt++) {
+    try {
+      await assertion()
+      return
+    } catch (error) {
+      lastError = error
+    }
+  }
+  throw lastError
+}
+
 export const name = 'gpt-voice.set-animation'
 
 export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
@@ -16,9 +31,7 @@ export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
   // assert
   const bubble = Locator('.GptVoiceBubble')
   await expect(bubble).toBeVisible()
-  // TODO avoid timeout
-  await new Promise((r) => {
-    setTimeout(r, 500)
-  })
-  await expect(bubble).toHaveCSS(`transform`, `matrix(2.1, 0, 0, 2.1, 0, 0)`)
+  await waitForAssertion(() =>
+    expect(bubble).toHaveCSS(`transform`, `matrix(2.1, 0, 0, 2.1, 0, 0)`),
+  )
 }

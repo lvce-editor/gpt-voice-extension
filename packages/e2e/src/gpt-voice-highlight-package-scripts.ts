@@ -166,7 +166,7 @@ export const test: Test = async ({
   Workspace,
 }) => {
   await Main.closeAllEditors()
-  const workspaceUri = await FileSystem.getTmpDir()
+  const workspaceUri = await FileSystem.getTmpDir({ scheme: 'file' })
   await FileSystem.writeFile(`${workspaceUri}/package.json`, packageJson)
   await Workspace.setPath(workspaceUri)
 

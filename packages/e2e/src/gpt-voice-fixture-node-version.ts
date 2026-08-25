@@ -130,7 +130,7 @@ export const test: Test = async ({
   SideBar,
   Workspace,
 }) => {
-  const workspaceUri = await FileSystem.getTmpDir()
+  const workspaceUri = await FileSystem.getTmpDir({ scheme: 'file' })
   await FileSystem.writeFile(workspaceUri + '/.nvmrc', '24.19.0\n')
   await Workspace.setPath(workspaceUri)
 
