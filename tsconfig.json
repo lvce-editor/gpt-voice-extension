@@ -8,6 +8,7 @@
     { "path": "./packages/extension" },
     { "path": "./packages/node" },
     { "path": "./packages/voice-function-calling-worker" },
+    { "path": "./packages/voice-session-worker" },
     { "path": "./packages/build" }
   ]
 }

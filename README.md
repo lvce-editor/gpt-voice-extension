@@ -24,6 +24,19 @@ OpenAI.
 
 To remove/re-enter a key, use **Change API key** in the extension view.
 
+## Architecture
+
+The extension entry point is a view adapter. It renders worker-owned state,
+forwards user events, and exposes the editor-only capabilities that cannot run
+inside a Web Worker, including secret storage and renderer WebRTC commands.
+
+The `voice-session-worker` owns the voice session state machine: provider and
+authentication handling, OpenAI token and SDP exchange, the funded control
+socket, Realtime event and tool-response processing, fixture recording and
+replay, and audio-debug persistence. It asks the extension adapter to start or
+stop WebRTC through the extension `createRpc` command map. Network permissions
+are therefore scoped to the voice-session worker rather than the view worker.
+
 ## Development
 
 ```sh

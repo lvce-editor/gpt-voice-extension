@@ -10,6 +10,7 @@ const voiceFunctionCallingWorker = path.join(
   'packages',
   'voice-function-calling-worker',
 )
+const voiceSessionWorker = path.join(root, 'packages', 'voice-session-worker')
 const outdir = path.join(extension, 'dist')
 
 fs.rmSync(outdir, { recursive: true, force: true })
@@ -23,6 +24,11 @@ await esbuild.build({
       voiceFunctionCallingWorker,
       'src',
       'voiceFunctionCallingWorkerMain.ts',
+    ),
+    voiceSessionWorkerMain: path.join(
+      voiceSessionWorker,
+      'src',
+      'voiceSessionWorkerMain.ts',
     ),
   },
   external: ['electron', 'node:*'],

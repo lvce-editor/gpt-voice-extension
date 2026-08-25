@@ -6,11 +6,7 @@
   "repository": "https://github.com/lvce-editor/gpt-voice-extension",
   "browser": "dist/gptVoiceMain.js",
   "isolated": true,
-  "contentSecurityPolicy": [
-    "default-src 'none'",
-    "script-src 'self'",
-    "connect-src 'self' https://api.openai.com wss://lvce-editor.dev"
-  ],
+  "contentSecurityPolicy": ["default-src 'none'", "script-src 'self'"],
   "categories": ["Other"],
   "configuration": {
     "gptvoice.audioDebug.enabled": {
@@ -160,6 +156,17 @@
       "name": "Voice Function Calling Worker",
       "url": "dist/voiceFunctionCallingWorkerMain.js",
       "contentSecurityPolicy": ["default-src 'none'", "script-src 'self'"]
+    },
+    {
+      "id": "builtin.gpt-voice.voice-session-worker",
+      "type": "web-worker",
+      "name": "Voice Session Worker",
+      "url": "dist/voiceSessionWorkerMain.js",
+      "contentSecurityPolicy": [
+        "default-src 'none'",
+        "script-src 'self'",
+        "connect-src 'self' https://api.openai.com wss://lvce-editor.dev"
+      ]
     }
   ]
 }

@@ -1,1413 +1,261 @@
 import type * as Api from '@lvce-editor/api'
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  expect,
-  jest,
-  test,
-} from '@jest/globals'
+import { beforeEach, expect, jest, test } from '@jest/globals'
 import { text } from '@lvce-editor/virtual-dom-worker'
+import type { IState } from '../src/parts/CreateInstance/CreateInstance.ts'
+import { createRenderState } from '../src/parts/RenderTestHelpers.ts'
 
-const deleteSecret = jest.fn<(key: string) => Promise<void>>()
-const executeCommand =
-  jest.fn<(...args: readonly unknown[]) => Promise<unknown>>()
-const getAccessToken =
-  jest.fn<(...args: readonly unknown[]) => Promise<unknown>>()
-const getSecret = jest.fn<(key: string) => Promise<string | undefined>>()
-const getPreference = jest.fn<(key: string) => Promise<unknown>>()
-const readMicLevels = jest.fn(async () => ({
+const dispatch =
+  jest.fn<(action: string, ...params: readonly unknown[]) => Promise<IState>>()
+const dispose = jest.fn<() => Promise<void>>()
+const readMicLevels = jest.fn<
+  (options: Readonly<{ uid: number }>) => Promise<
+    Readonly<{
+      micAnalyzerData: Uint8Array
+      remoteAnalyzerData: Uint8Array
+    }>
+  >
+>(async () => ({
   micAnalyzerData: new Uint8Array([128]),
   remoteAnalyzerData: new Uint8Array([128]),
 }))
-const setRemoteDescription = jest.fn<(options: unknown) => Promise<void>>(
-  async () => undefined,
-)
-const startWebRtcAudioStream = jest.fn<(options: unknown) => Promise<string>>(
-  async () => 'offer-sdp',
-)
-const stopWebRtcAudioStream = jest.fn<(uid: number) => Promise<void>>(
-  async () => undefined,
-)
-const storeSecret = jest.fn<(key: string, value: string) => Promise<void>>()
-const writeFile = jest.fn<(uri: string, content: string) => Promise<void>>()
-const saveAudioDebugRecording = jest.fn<(blob: Blob) => Promise<unknown>>(
-  async () => ({
-    createdAt: 1,
-    mimeType: 'audio/webm',
-    name: 'recording.webm',
-    size: 5,
-    uri: 'gpt-voice-audio:///recording.webm',
-  }),
-)
-const getRegisteredTools = jest.fn(async () => [
-  {
-    description: 'Get weather for a location.',
-    name: 'getweather',
-    parameters: { type: 'object' },
-    type: 'function' as const,
-  },
-])
-const createToolOutput = (callId: string, output: string): string =>
-  JSON.stringify({
-    item: {
-      call_id: callId,
-      output,
-      type: 'function_call_output',
-    },
-    type: 'conversation.item.create',
-  })
-const executeFunctionToolCall = jest.fn(
-  async (event: unknown): Promise<readonly string[]> => {
-    if (
-      !event ||
-      typeof event !== 'object' ||
-      !('type' in event) ||
-      event.type !== 'response.function_call_arguments.done'
-    ) {
-      return []
+const testState: {
+  current: IState
+  listener: ((state: IState, transcriptScroll: boolean) => void) | undefined
+} = {
+  current: createRenderState(),
+  listener: undefined,
+}
+
+const createVoiceSession = jest.fn(
+  async (
+    _isTest: boolean,
+    _provider: 'byok' | 'funded',
+    update: (state: IState, transcriptScroll: boolean) => void,
+  ) => {
+    testState.listener = update
+    return {
+      session: { dispatch, dispose },
+      voiceState: testState.current,
     }
-    return [
-      createToolOutput('call', JSON.stringify({ temperature: 21 })),
-      JSON.stringify({ type: 'response.create' }),
-    ]
   },
 )
 
 // eslint-disable-next-line jest/no-restricted-jest-methods
 jest.unstable_mockModule('@lvce-editor/api', () => {
   const actual = jest.requireActual<typeof Api>('@lvce-editor/api')
-  return {
-    ...actual,
-    deleteSecret,
-    executeCommand,
-    getAccessToken,
-    getPreference,
-    getSecret,
-    readMicLevels,
-    setRemoteDescription,
-    startWebRtcAudioStream,
-    stopWebRtcAudioStream,
-    storeSecret,
-    writeFile,
-  }
+  return { ...actual, readMicLevels }
 })
 
 // eslint-disable-next-line jest/no-restricted-jest-methods
 jest.unstable_mockModule(
-  '../src/parts/AudioDebugStorage/AudioDebugStorage.ts',
-  () => ({
-    audioDebugStorage: {
-      list: jest.fn(async () => []),
-      read: jest.fn(),
-      save: saveAudioDebugRecording,
-    },
-  }),
-)
-
-// eslint-disable-next-line jest/no-restricted-jest-methods
-jest.unstable_mockModule(
-  '../src/parts/VoiceFunctionCallingWorker/VoiceFunctionCallingWorker.ts',
-  () => ({ executeFunctionToolCall, getRegisteredTools }),
+  '../src/parts/VoiceSessionWorker/VoiceSessionWorker.ts',
+  () => ({ create: createVoiceSession }),
 )
 
 const { createInstance } =
   await import('../src/parts/CreateInstance/CreateInstance.ts')
-const { enableTestMode } = await import('../src/parts/TestMode/TestMode.ts')
 
-type PortListener = (event: Readonly<{ readonly data: unknown }>) => void
-
-class FakeMessagePort {
-  onmessage: PortListener | null = null
-  readonly close = jest.fn()
-  readonly postMessage = jest.fn()
-  readonly start = jest.fn()
-}
-
-let latestPort2: FakeMessagePort | undefined
-const originalMessageChannel = Object.getOwnPropertyDescriptor(
-  globalThis,
-  'MessageChannel',
-)
-const originalNavigator = Object.getOwnPropertyDescriptor(
-  globalThis,
-  'navigator',
-)
-const originalRequestAnimationFrame = Object.getOwnPropertyDescriptor(
-  globalThis,
-  'requestAnimationFrame',
-)
-const originalWebSocket = Object.getOwnPropertyDescriptor(
-  globalThis,
-  'WebSocket',
-)
-
-class FakeFundedWebSocket extends EventTarget {
-  static readonly OPEN = 1
-  static readonly instances: FakeFundedWebSocket[] = []
-
-  static get latest(): FakeFundedWebSocket | undefined {
-    return this.instances.at(-1)
-  }
-
-  readonly sent: string[] = []
-  readyState = FakeFundedWebSocket.OPEN
-
-  constructor(
-    readonly url: string,
-    readonly protocols: readonly string[],
-  ) {
-    super()
-    FakeFundedWebSocket.instances.push(this)
-    queueMicrotask(() => this.dispatchEvent(new Event('open')))
-  }
-
-  close(): void {
-    this.readyState = 3
-    this.dispatchEvent(new Event('close'))
-  }
-
-  send(data: string): void {
-    this.sent.push(data)
-    const parsed = JSON.parse(data)
-    if (parsed.type === 'lvce.session.create') {
-      queueMicrotask(() => {
-        this.dispatchEvent(
-          new MessageEvent('message', {
-            data: JSON.stringify({
-              answerSdp: 'funded-answer-sdp',
-              limitVirtualTokens: 100,
-              remainingVirtualTokens: 100,
-              type: 'lvce.session.created',
-              usedVirtualTokens: 0,
-            }),
-          }),
-        )
-      })
-    }
-  }
-}
-
-class AuthenticationErrorFundedWebSocket extends FakeFundedWebSocket {
-  override send(data: string): void {
-    this.sent.push(data)
-    const parsed = JSON.parse(data)
-    if (parsed.type === 'lvce.session.create') {
-      queueMicrotask(() => {
-        this.dispatchEvent(
-          new MessageEvent('message', {
-            data: JSON.stringify({
-              error: {
-                code: 'lvce_access_token_invalid',
-                message: 'The access token is invalid or expired',
-                statusCode: 401,
-              },
-              status: 401,
-              statusCode: 401,
-              type: 'error',
-            }),
-          }),
-        )
-      })
-    }
-  }
-}
-
-class ConnectionErrorFundedWebSocket extends EventTarget {
-  static readonly OPEN = 1
-
-  readonly readyState = 0
-
-  constructor(
-    readonly url: string,
-    readonly protocols: readonly string[],
-  ) {
-    super()
-    queueMicrotask(() => this.dispatchEvent(new Event('error')))
-  }
-
-  close(): void {}
-
-  send(): void {}
-}
-
-beforeAll(() => {
-  Object.defineProperties(globalThis, {
-    MessageChannel: {
-      configurable: true,
-      value: class {
-        readonly port1 = new FakeMessagePort() as unknown as MessagePort
-        readonly port2: MessagePort
-
-        constructor() {
-          // eslint-disable-next-line unicorn/no-top-level-assignment-in-function
-          latestPort2 = new FakeMessagePort()
-          this.port2 = latestPort2 as unknown as MessagePort
+beforeEach(() => {
+  testState.current = createRenderState()
+  testState.listener = undefined
+  createVoiceSession.mockClear()
+  dispatch.mockReset().mockImplementation(async (action, ...params) => {
+    switch (action) {
+      case 'addTranscript': {
+        testState.current = {
+          ...testState.current,
+          messages: [
+            ...testState.current.messages,
+            {
+              id: String(params[0]),
+              text: String(params[1]),
+              type: params[2] === 'user' ? 'user' : 'ai',
+            },
+          ],
         }
-      },
-    },
-    requestAnimationFrame: {
-      configurable: true,
-      value(callback: FrameRequestCallback): number {
-        callback(0)
-        return 1
-      },
-    },
+        testState.listener?.(testState.current, true)
+        break
+      }
+      case 'clearChat': {
+        testState.current = { ...testState.current, messages: [] }
+        testState.listener?.(testState.current, false)
+        break
+      }
+      case 'start': {
+        testState.current = { ...testState.current, inProgress: true }
+        testState.listener?.(testState.current, false)
+        break
+      }
+    }
+    return testState.current
+  })
+  dispose.mockReset().mockResolvedValue(undefined)
+  readMicLevels.mockReset().mockResolvedValue({
+    micAnalyzerData: new Uint8Array([128]),
+    remoteAnalyzerData: new Uint8Array([128]),
   })
 })
 
-afterAll(() => {
-  if (originalMessageChannel) {
-    Object.defineProperty(globalThis, 'MessageChannel', originalMessageChannel)
-  }
-  if (originalRequestAnimationFrame) {
-    Object.defineProperty(
-      globalThis,
-      'requestAnimationFrame',
-      originalRequestAnimationFrame,
-    )
-  } else {
-    Object.defineProperty(globalThis, 'requestAnimationFrame', {
-      configurable: true,
-      value: undefined,
-    })
-  }
-  if (originalWebSocket) {
-    Object.defineProperty(globalThis, 'WebSocket', originalWebSocket)
-  }
-  if (originalNavigator) {
-    Object.defineProperty(globalThis, 'navigator', originalNavigator)
-  }
-})
-
-beforeEach(() => {
-  deleteSecret.mockReset().mockResolvedValue(undefined)
-  executeCommand.mockReset().mockResolvedValue('')
-  getAccessToken.mockReset().mockResolvedValue('')
-  getPreference.mockReset().mockResolvedValue(false)
-  getSecret.mockReset().mockResolvedValue('sk-abcdefghijk')
-  readMicLevels.mockClear()
-  setRemoteDescription.mockClear()
-  startWebRtcAudioStream.mockReset().mockResolvedValue('offer-sdp')
-  stopWebRtcAudioStream.mockReset().mockResolvedValue(undefined)
-  storeSecret.mockReset().mockResolvedValue(undefined)
-  writeFile.mockReset().mockResolvedValue(undefined)
-  saveAudioDebugRecording.mockClear()
-  executeFunctionToolCall.mockClear()
-  getRegisteredTools.mockClear()
-  FakeFundedWebSocket.instances.length = 0
-  // eslint-disable-next-line unicorn/no-top-level-assignment-in-function
-  latestPort2 = undefined
-  jest.useFakeTimers()
-})
-
-afterEach(() => {
-  jest.restoreAllMocks()
-  jest.useRealTimers()
-  if (originalWebSocket) {
-    Object.defineProperty(globalThis, 'WebSocket', originalWebSocket)
-  } else {
-    Object.defineProperty(globalThis, 'WebSocket', {
-      configurable: true,
-      value: undefined,
-    })
-  }
-  if (originalNavigator) {
-    Object.defineProperty(globalThis, 'navigator', originalNavigator)
-  } else {
-    Object.defineProperty(globalThis, 'navigator', {
-      configurable: true,
-      value: undefined,
-    })
-  }
-})
-
-const createContext = (): {
-  readonly context: Api.ViewContext
-  readonly requestRerender: ReturnType<typeof jest.fn>
-} => {
+test('view adapter renders worker state and forwards view events', async () => {
   const requestRerender = jest.fn()
-  return {
-    context: { requestRerender } as unknown as Api.ViewContext,
+  const instance = await createInstance({
     requestRerender,
-  }
-}
+  } as unknown as Api.ViewContext)
 
-const flushAnimation = async (): Promise<void> => {
-  await Promise.resolve()
-  await Promise.resolve()
-  await Promise.resolve()
-}
-
-test('createInstance - initializes from present, empty, and failed storage', async () => {
-  const withKey = await createInstance()
-  expect(withKey.render()).toContainEqual(text('Start talking'))
-
-  getSecret.mockResolvedValueOnce(' '.repeat(3))
-  const withBlankKey = await createInstance()
-  expect(withBlankKey.render()).toContainEqual(
-    text('OpenAI API key required to start a live voice session.'),
+  expect(createVoiceSession).toHaveBeenCalledWith(
+    false,
+    'byok',
+    expect.any(Function),
   )
-
-  getSecret.mockResolvedValueOnce(undefined)
-  const withoutKey = await createInstance()
-  expect(withoutKey.render()).toContainEqual(
-    text('OpenAI API key required to start a live voice session.'),
-  )
-
-  getSecret.mockRejectedValueOnce(new Error('permission denied'))
-  const withStorageFailure = await createInstance()
-  expect(withStorageFailure.render()).toContainEqual(
-    text('OpenAI API key required to start a live voice session.'),
-  )
-})
-
-test('instance - switches to funded voice when editor login completes after creation', async () => {
-  getSecret.mockResolvedValue(undefined)
-  executeCommand.mockResolvedValue('https://lvce.example')
-  getAccessToken
-    .mockResolvedValueOnce('')
-    .mockResolvedValue('editor-access-token')
-  const { context, requestRerender } = createContext()
-  const instance = await createInstance(context)
-
-  expect(instance.render()).toContainEqual(
-    text('OpenAI API key required to start a live voice session.'),
-  )
-
-  await jest.advanceTimersByTimeAsync(1000)
-
-  expect(getAccessToken).toHaveBeenCalledTimes(2)
   expect(instance.render()).toContainEqual(text('Start talking'))
-  expect(instance.render()).not.toContainEqual(
-    text('OpenAI API key required to start a live voice session.'),
-  )
+
+  await instance.handleOpenAiApiKeyInput('sk-test-key')
+  await instance.handleClickStart()
+  expect(dispatch).toHaveBeenCalledWith('inputApiKey', 'sk-test-key')
+  expect(dispatch).toHaveBeenCalledWith('start')
+  expect(instance.render()).toContainEqual(text('Stop talking'))
   expect(requestRerender).toHaveBeenCalled()
-  instance.dispose?.()
 })
 
-test('instance - stops checking editor login after disposal', async () => {
-  getSecret.mockResolvedValue(undefined)
-  executeCommand.mockResolvedValue('https://lvce.example')
-  getAccessToken.mockResolvedValue('')
-  const { context } = createContext()
-  const instance = await createInstance(context)
-
-  await instance.dispose?.()
-  await jest.advanceTimersByTimeAsync(2000)
-
-  expect(getAccessToken).toHaveBeenCalledTimes(1)
-})
-
-test('instance - ignores an editor login check that finishes after disposal', async () => {
-  getSecret.mockResolvedValue(undefined)
-  executeCommand.mockResolvedValue('https://lvce.example')
-  const pendingAccessToken = Promise.withResolvers<unknown>()
-  getAccessToken
-    .mockResolvedValueOnce('')
-    .mockReturnValueOnce(pendingAccessToken.promise)
-  const { context, requestRerender } = createContext()
-  const instance = await createInstance(context)
-
-  await jest.advanceTimersByTimeAsync(1000)
-  expect(getAccessToken).toHaveBeenCalledTimes(2)
-  await instance.dispose?.()
-  requestRerender.mockClear()
-
-  pendingAccessToken.resolve('editor-access-token')
-  await flushAnimation()
-
-  expect(instance.render()).toContainEqual(
-    text('OpenAI API key required to start a live voice session.'),
-  )
-  expect(requestRerender).not.toHaveBeenCalled()
-})
-
-test('instance - exposes view helpers and transcript operations', async () => {
-  const { context, requestRerender } = createContext()
-  const instance = await createInstance(context)
+test('view adapter owns render helpers and transcript scrolling', async () => {
+  const instance = await createInstance()
 
   expect(instance.getContext()).toEqual({})
   expect(instance.getCss()).toContain('scale(1)')
-  expect(instance.getMenuEntries('menu')).toEqual([])
-  expect(instance.renderActionsDom()).toContainEqual(
-    expect.objectContaining({
-      'data-command': 'GptVoice.handleClearChat',
-      title: 'Clear Chat',
-    }),
-  )
+  expect(instance.getMenuEntries('test')).toEqual([])
+  expect(instance.renderActionsDom()).not.toHaveLength(0)
   expect(instance.renderFocus?.({}, {})).toBe('.main')
   expect(instance.renderSelections?.()).toEqual([])
   expect(instance.renderScrollPosition()).toEqual([])
   expect(instance.renderTitle()).toBe('')
   expect(instance.saveState?.()).toEqual({})
 
-  instance.addTranscript('one', 'Hello', 'user')
+  await instance.addTranscript('one', 'Hello', 'user')
+  expect(instance.render()).toContainEqual(text('Hello'))
   expect(instance.renderScrollPosition()).toEqual([
     '.GptVoiceTranscript',
     9_999_999,
   ])
   expect(instance.renderScrollPosition()).toEqual([])
-  instance.createOrUpdateTranscript({ delta: ' world', item_id: 'one' }, 'user')
-  expect(instance.renderScrollPosition()).toEqual([
-    '.GptVoiceTranscript',
-    9_999_999,
+
+  await instance.handleClearChat()
+  expect(instance.render()).not.toContainEqual(text('Hello'))
+})
+
+test('view adapter forwards business commands and disposes worker session', async () => {
+  const instance = await createInstance()
+  const fixture = { schemaVersion: 1, trace: [] }
+  const captureOptions = { outputUri: 'file:///fixture.json', source: {} }
+
+  await instance.captureFixture(captureOptions)
+  await instance.handleClearOpenAiApiKey()
+  await instance.handleData('{}')
+  await instance.handleSaveOpenAiApiKey()
+  await instance.handleUseOwnApiKey()
+  await instance.replayFixture(fixture)
+  await instance.setOfflineError(new Error('offline'))
+  await instance.setRealtimeModelMini()
+  await instance.setRealtimeModelStandard()
+  await instance.stop()
+  await instance.toggleToolCall('call-1')
+  await instance.dispose?.()
+
+  // Jest exposes mutable call tuples, but this assertion only reads them.
+  // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types
+  expect(dispatch.mock.calls.map(([action]) => action)).toEqual([
+    'captureFixture',
+    'clearApiKey',
+    'data',
+    'saveApiKey',
+    'useOwnApiKey',
+    'replayFixture',
+    'setOfflineError',
+    'setModel',
+    'setModel',
+    'stop',
+    'toggleToolCall',
   ])
-  instance.createOrUpdateTranscript({ delta: 'Hi', item_id: 'two' }, 'ai')
-  instance.updateTranscript('missing', 'ignored')
-  instance.handleInputTranscript({ delta: '!', item_id: 'one' })
-  instance.handleOutputTranscript({ delta: ' there', item_id: 'two' })
+  expect(dispose).toHaveBeenCalledTimes(1)
+})
 
-  expect(instance.render()).toContainEqual(text('Hello world!'))
-  expect(instance.render()).toContainEqual(text('Hi there'))
-  requestRerender.mockClear()
-  instance.handleClearChat()
-  expect(instance.render()).not.toContainEqual(text('Hello world!'))
-  expect(instance.render()).not.toContainEqual(text('Hi there'))
-  expect(requestRerender).toHaveBeenCalledTimes(1)
+test('view adapter owns microphone animation and ignores updates after disposal', async () => {
+  const requestRerender = jest.fn()
+  const instance = await createInstance({
+    requestRerender,
+  } as unknown as Api.ViewContext)
+  Object.defineProperty(globalThis, 'requestAnimationFrame', {
+    configurable: true,
+    value(callback: FrameRequestCallback): number {
+      testState.listener?.(
+        createRenderState({ animationEnabled: false }),
+        false,
+      )
+      callback(0)
+      return 1
+    },
+  })
 
-  requestRerender.mockClear()
-  instance.handleClearChat()
-  expect(requestRerender).not.toHaveBeenCalled()
+  testState.listener?.(
+    createRenderState({ animationEnabled: true, uid: 9 }),
+    false,
+  )
+  await Promise.resolve()
+  await Promise.resolve()
+  expect(readMicLevels).toHaveBeenCalledWith({ uid: 9 })
 
   instance.setAnimation(true, 1.5)
   expect(instance.getCss()).toContain('scale(1.5)')
-
-  const withoutContext = await createInstance()
-  withoutContext.addTranscript('three', 'No context', 'user')
-  withoutContext.setAnimation(true, 1.2)
-  jest.runAllTimers()
+  await instance.dispose?.()
+  requestRerender.mockClear()
+  testState.listener?.(createRenderState({ inProgress: true }), false)
+  expect(requestRerender).not.toHaveBeenCalled()
 })
 
-test('instance - validates and saves api key', async () => {
-  const { context } = createContext()
-  getSecret.mockResolvedValueOnce(undefined)
-  const instance = await createInstance(context)
-
-  await instance.handleSaveOpenAiApiKey()
-  expect(instance.render()).toContainEqual(text('OpenAI API key is required.'))
-
-  instance.handleOpenAiApiKeyInput('invalid')
-  await instance.handleSaveOpenAiApiKey()
-  expect(instance.render()).toContainEqual(
-    text('OpenAI API key format looks invalid.'),
-  )
-
-  instance.handleOpenAiApiKeyInput('  sk-abcdefghijk  ')
-  await instance.handleSaveOpenAiApiKey()
-  expect(storeSecret).toHaveBeenCalledWith(
-    'builtin.gpt-voice.openai-api-key',
-    'sk-abcdefghijk',
-  )
-  expect(instance.render()).toContainEqual(text('Start talking'))
-})
-
-test('instance - reports save and clear failures', async () => {
-  const instance = await createInstance()
-  instance.handleOpenAiApiKeyInput('sk-abcdefghijk')
-  storeSecret.mockRejectedValueOnce(new Error('permission denied'))
-
-  await instance.handleSaveOpenAiApiKey()
-  expect(storeSecret).toHaveBeenCalled()
-
-  deleteSecret.mockRejectedValueOnce(new Error('permission denied'))
-  await instance.handleClearOpenAiApiKey()
-  expect(deleteSecret).toHaveBeenCalled()
-
-  await instance.handleClearOpenAiApiKey()
-  expect(instance.render()).toContainEqual(
-    text('OpenAI API key required to start a live voice session.'),
-  )
-})
-
-test('instance - ignores actions while api key save is pending', async () => {
-  const { promise, resolve } = Promise.withResolvers<void>()
-  storeSecret.mockReturnValue(promise)
-  const instance = await createInstance()
-  instance.handleOpenAiApiKeyInput('sk-abcdefghijk')
-  const savePromise = instance.handleSaveOpenAiApiKey()
-  instance.handleOpenAiApiKeyInput('replacement')
-  await instance.handleClickStart()
-  await instance.handleClearOpenAiApiKey()
-
-  expect(instance.render()).toContainEqual(text('Saving key'))
-  resolve()
-  await savePromise
-  expect(instance.render()).toContainEqual(text('Start talking'))
-})
-
-test('instance - handles missing api key before and during token creation', async () => {
-  getSecret.mockResolvedValue(undefined)
-  const missingAtStart = await createInstance()
-  await missingAtStart.handleClickStart()
-  expect(missingAtStart.render()).toContainEqual(
-    text('NO_API_KEY: Add your OpenAI API key above to start.'),
-  )
-
-  getSecret
-    .mockReset()
-    .mockResolvedValueOnce('sk-abcdefghijk')
-    .mockResolvedValueOnce(undefined)
-  const removedBeforeStart = await createInstance()
+test('view adapter keeps animation read errors inside the view', async () => {
+  const error = new Error('analyser unavailable')
   jest.spyOn(console, 'error').mockImplementation(() => undefined)
-  await removedBeforeStart.handleClickStart()
-  expect(removedBeforeStart.render()).toContainEqual(
-    text('NO_API_KEY: OpenAI API key is not set.'),
-  )
-})
-
-test.each([
-  [1, 'Failed to create token. Check your network and API key.'],
-  [
-    new Error('request failed with 401'),
-    'OpenAI API key is invalid (401/403).',
-  ],
-  [
-    new Error('request failed with 403'),
-    'OpenAI API key is invalid (401/403).',
-  ],
-  [
-    new Error('Failed to fetch'),
-    'Network failure while creating token. Retry and check your internet connection.',
-  ],
-  [new Error('service unavailable'), 'service unavailable'],
-  [
-    Object.assign(new Error('placeholder'), { message: '' }),
-    'Failed to create token.',
-  ],
-])('instance - maps token failure %#', async (error, message) => {
-  const instance = await createInstance()
-  jest.spyOn(globalThis, 'fetch').mockRejectedValue(error)
-  jest.spyOn(console, 'error').mockImplementation(() => undefined)
-
-  await instance.handleClickStart()
-
-  expect(instance.render()).toContainEqual(text(message))
-})
-
-test('instance - handles empty offer and closes data channel', async () => {
-  const instance = await createInstance()
-  jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
-    json: async () => ({ value: 'ephemeral-key' }),
-    ok: true,
-  } as Response)
-  startWebRtcAudioStream.mockResolvedValueOnce('')
-  jest.spyOn(console, 'error').mockImplementation(() => undefined)
-
-  await instance.handleClickStart()
-
-  expect(latestPort2?.close).toHaveBeenCalled()
-  expect(instance.render()).toContainEqual(text('offer sdp is required'))
-})
-
-test('instance - starts, receives data, animates, and stops session', async () => {
-  const { context } = createContext()
-  const instance = await createInstance(context)
-  jest
-    .spyOn(globalThis, 'fetch')
-    .mockResolvedValueOnce({
-      json: async () => ({ value: 'ephemeral-key' }),
-      ok: true,
-    } as Response)
-    .mockResolvedValueOnce({
-      ok: true,
-      text: async () => 'answer-sdp',
-    } as Response)
-
-  await instance.handleClickStart()
-  await flushAnimation()
-
-  expect(getRegisteredTools).toHaveBeenCalledTimes(1)
-  expect(startWebRtcAudioStream).toHaveBeenCalled()
-  expect(setRemoteDescription).toHaveBeenCalledWith({
-    sdp: 'answer-sdp',
-    type: 'answer',
-    uid: -1,
+  readMicLevels.mockImplementationOnce(async () => {
+    testState.listener?.(createRenderState({ animationEnabled: false }), false)
+    throw error
   })
-  expect(instance.render()).toContainEqual(text('In Progress'))
-
-  instance.setRealtimeModelMini()
-  instance.setRealtimeModelStandard()
-  await instance.handleClearOpenAiApiKey()
-
-  latestPort2?.onmessage?.({ data: 'null' })
-  latestPort2?.onmessage?.({ data: {} })
-  instance.handleData(
-    JSON.stringify({
-      arguments: JSON.stringify({ location: 'Paris' }),
-      call_id: 'call',
-      name: 'getweather',
-      type: 'response.function_call_arguments.done',
-    }),
-  )
-  await flushAnimation()
-  expect(latestPort2?.postMessage).toHaveBeenCalled()
-  instance.handleData(
-    JSON.stringify({
-      delta: 'Hello',
-      item_id: 'input',
-      type: 'conversation.item.input_audio_transcription.delta',
-    }),
-  )
-  instance.handleData(
-    JSON.stringify({
-      delta: 'Hi',
-      item_id: 'output',
-      type: 'response.output_audio_transcript.delta',
-    }),
-  )
-  expect(instance.render()).toContainEqual(text('Hello'))
-  expect(instance.render()).toContainEqual(text('Hi'))
-
-  await instance.handleClickStart()
-  expect(stopWebRtcAudioStream).toHaveBeenCalledWith(-1)
-  expect(latestPort2?.close).toHaveBeenCalled()
-})
-
-test('instance - captures audio chunks only when audio debugging is enabled', async () => {
-  getPreference.mockResolvedValue(true)
-  const instance = await createInstance()
-  jest
-    .spyOn(globalThis, 'fetch')
-    .mockResolvedValueOnce({
-      json: async () => ({ value: 'ephemeral-key' }),
-      ok: true,
-    } as Response)
-    .mockResolvedValueOnce({
-      ok: true,
-      text: async () => 'answer-sdp',
-    } as Response)
-
-  await instance.handleClickStart()
-
-  expect(getPreference).toHaveBeenCalledWith('gptvoice.audioDebug.enabled')
-  expect(startWebRtcAudioStream).toHaveBeenCalledWith(
-    expect.objectContaining({
-      audioDebugPort: expect.any(FakeMessagePort),
-    }),
-  )
-  const audio = new Blob(['audio'], { type: 'audio/webm' })
-  latestPort2?.onmessage?.({ data: audio })
-  await flushAnimation()
-
-  expect(saveAudioDebugRecording).toHaveBeenCalledWith(audio)
-  await instance.stop()
-  expect(latestPort2?.close).toHaveBeenCalled()
-})
-
-test('instance - displays realtime session error code and message', async () => {
-  const instance = await createInstance()
-  jest
-    .spyOn(globalThis, 'fetch')
-    .mockResolvedValueOnce({
-      json: async () => ({ value: 'ephemeral-key' }),
-      ok: true,
-    } as Response)
-    .mockResolvedValueOnce({
-      ok: false,
-      status: 429,
-      text: async () =>
-        JSON.stringify({
-          error: {
-            code: 'credit_balance_exhausted',
-            message:
-              'You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.',
-            type: 'insufficient_quota',
-          },
-        }),
-    } as Response)
-  jest.spyOn(console, 'error').mockImplementation(() => undefined)
-
-  await instance.handleClickStart()
-
-  expect(instance.render()).toContainEqual(
-    text(
-      'credit_balance_exhausted: You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.',
-    ),
-  )
-  expect(setRemoteDescription).not.toHaveBeenCalled()
-})
-
-test('instance - displays realtime data channel error code and message', async () => {
   const instance = await createInstance()
 
-  instance.handleData(
-    JSON.stringify({
-      error: {
-        code: 'credit_balance_exhausted',
-        message:
-          'You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.',
-        type: 'insufficient_quota',
-      },
-      type: 'error',
-    }),
-  )
-  await flushAnimation()
+  testState.listener?.(createRenderState({ animationEnabled: true }), false)
+  await instance.doAnimate()
 
-  expect(instance.render()).toContainEqual(
-    text(
-      'credit_balance_exhausted: You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.',
-    ),
-  )
+  expect(console.error).toHaveBeenCalledWith(error)
 })
 
-test('instance - starts funded voice without an API key and routes tool control events through the backend', async () => {
-  jest.useRealTimers()
-  getSecret.mockResolvedValue(undefined)
-  executeCommand.mockResolvedValue('https://lvce.example')
-  getAccessToken.mockResolvedValue('editor-access-token')
-  Object.defineProperty(globalThis, 'WebSocket', {
+test('view adapter renders live microphone levels', async () => {
+  Object.defineProperty(globalThis, 'requestAnimationFrame', {
     configurable: true,
-    value: FakeFundedWebSocket,
-  })
-  const fetch = jest.spyOn(globalThis, 'fetch')
-  const instance = await createInstance()
-
-  expect(instance.render()).toContainEqual(text('Start talking'))
-  await instance.handleClickStart()
-
-  expect(fetch).not.toHaveBeenCalled()
-  expect(startWebRtcAudioStream).toHaveBeenCalledWith(
-    expect.objectContaining({ ephemeralKey: '' }),
-  )
-  expect(setRemoteDescription).toHaveBeenCalledWith({
-    sdp: 'funded-answer-sdp',
-    type: 'answer',
-    uid: -1,
-  })
-  expect(FakeFundedWebSocket.latest?.protocols).toEqual([
-    'lvce.realtime.voice.v1',
-    'editor-access-token',
-  ])
-  expect(JSON.parse(FakeFundedWebSocket.latest?.sent[0] || '{}')).toMatchObject(
-    {
-      offerSdp: 'offer-sdp',
-      session: { model: 'gpt-realtime-2.1-mini' },
-      type: 'lvce.session.create',
-    },
-  )
-  instance.handleUseOwnApiKey()
-  expect(instance.render()).toContainEqual(text('In Progress'))
-  FakeFundedWebSocket.latest?.dispatchEvent(
-    new MessageEvent('message', { data: '{' }),
-  )
-  FakeFundedWebSocket.latest?.dispatchEvent(
-    new MessageEvent('message', {
-      data: JSON.stringify({ type: 'lvce.usage.updated' }),
-    }),
-  )
-  FakeFundedWebSocket.latest?.dispatchEvent(
-    new MessageEvent('message', {
-      data: JSON.stringify({ type: 'session.updated' }),
-    }),
-  )
-
-  instance.handleData(
-    JSON.stringify({
-      arguments: JSON.stringify({ location: 'Paris' }),
-      call_id: 'call',
-      name: 'getweather',
-      type: 'response.function_call_arguments.done',
-    }),
-  )
-  await flushAnimation()
-
-  const controlEvents = (FakeFundedWebSocket.latest?.sent || [])
-    .slice(1)
-    .map((value) => JSON.parse(value))
-  expect(controlEvents).toEqual([
-    expect.objectContaining({
-      item: expect.objectContaining({ type: 'function_call_output' }),
-      type: 'conversation.item.create',
-    }),
-    { type: 'response.create' },
-  ])
-  expect(latestPort2?.postMessage).not.toHaveBeenCalled()
-
-  FakeFundedWebSocket.latest?.dispatchEvent(
-    new MessageEvent('message', {
-      data: JSON.stringify({
-        code: 'E_LVCE_USAGE_EXCEEDED',
-        message: 'Monthly allowance exceeded',
-        statusCode: 402,
-        type: 'lvce.usage.exceeded',
-      }),
-    }),
-  )
-  await flushAnimation()
-  expect(instance.render()).toContainEqual(
-    text('Your monthly AI allowance has been used.'),
-  )
-  expect(instance.render()).toContainEqual(
-    text(
-      'Monthly allowance exceeded (Error code: E_LVCE_USAGE_EXCEEDED; HTTP status: 402)',
-    ),
-  )
-  expect(instance.render()).toContainEqual(text('Use your own API key'))
-  instance.handleUseOwnApiKey()
-  expect(instance.render()).toContainEqual(
-    text('OpenAI API key required to start a live voice session.'),
-  )
-})
-
-test('instance - displays structured funded startup errors', async () => {
-  jest.useRealTimers()
-  executeCommand.mockResolvedValue('https://lvce.example')
-  getAccessToken.mockResolvedValue('editor-access-token')
-  Object.defineProperty(globalThis, 'WebSocket', {
-    configurable: true,
-    value: AuthenticationErrorFundedWebSocket,
-  })
-  const consoleError = jest
-    .spyOn(console, 'error')
-    .mockImplementation(() => undefined)
-  const instance = await createInstance()
-
-  await instance.handleClickStart()
-
-  expect(instance.render()).toContainEqual(
-    text(
-      'Your LVCE sign-in session is no longer valid. Sign out and sign in again. (Error code: lvce_access_token_invalid; HTTP status: 401)',
-    ),
-  )
-  consoleError.mockRestore()
-})
-
-test('instance - replaces a funded connection failure with the offline experience when navigator is offline', async () => {
-  jest.useRealTimers()
-  executeCommand.mockResolvedValue('https://lvce.example')
-  getAccessToken.mockResolvedValue('editor-access-token')
-  Object.defineProperties(globalThis, {
-    navigator: {
-      configurable: true,
-      value: { onLine: false },
-    },
-    WebSocket: {
-      configurable: true,
-      value: ConnectionErrorFundedWebSocket,
+    value(callback: FrameRequestCallback): number {
+      callback(0)
+      return 1
     },
   })
-  const consoleError = jest
-    .spyOn(console, 'error')
-    .mockImplementation(() => undefined)
-  const instance = await createInstance()
-
-  await instance.handleClickStart()
-
-  expect(instance.render()).toContainEqual(text("You're offline."))
-  expect(instance.render()).toContainEqual(
-    text('Error code: ERR_INTERNET_DISCONNECTED'),
-  )
-  expect(instance.render()).not.toContainEqual(
-    text('Backend-funded voice is unavailable.'),
-  )
-  consoleError.mockRestore()
-})
-
-test('instance - stops WebRTC when a funded backend reports an error', async () => {
-  jest.useRealTimers()
-  executeCommand.mockResolvedValue('https://lvce.example')
-  getAccessToken.mockResolvedValue('editor-access-token')
-  Object.defineProperty(globalThis, 'WebSocket', {
-    configurable: true,
-    value: FakeFundedWebSocket,
-  })
-  const instance = await createInstance()
-  await instance.handleClickStart()
-
-  FakeFundedWebSocket.latest?.dispatchEvent(
-    new MessageEvent('message', {
-      data: JSON.stringify({ error: {}, type: 'error' }),
-    }),
-  )
-  await flushAnimation()
-
-  expect(stopWebRtcAudioStream).toHaveBeenCalledWith(-1)
-  expect(instance.render()).toContainEqual(
-    text('Backend-funded voice is unavailable.'),
-  )
-  expect(instance.render()).toContainEqual(text('Use your own API key'))
-})
-
-test('instance - displays a funded backend error message', async () => {
-  jest.useRealTimers()
-  executeCommand.mockResolvedValue('https://lvce.example')
-  getAccessToken.mockResolvedValue('editor-access-token')
-  Object.defineProperty(globalThis, 'WebSocket', {
-    configurable: true,
-    value: FakeFundedWebSocket,
-  })
-  const instance = await createInstance()
-  await instance.handleClickStart()
-
-  FakeFundedWebSocket.latest?.dispatchEvent(
-    new MessageEvent('message', {
-      data: JSON.stringify({
-        error: {
-          code: 'insufficient_quota',
-          message: 'Upstream voice failed',
-          statusCode: 429,
-        },
-        type: 'error',
-      }),
-    }),
-  )
-  await flushAnimation()
-
-  expect(instance.render()).toContainEqual(
-    text(
-      'Upstream voice failed (Error code: insufficient_quota; HTTP status: 429)',
-    ),
-  )
-})
-
-test('instance - shows the default allowance message when the funded backend omits details', async () => {
-  jest.useRealTimers()
-  executeCommand.mockResolvedValue('https://lvce.example')
-  getAccessToken.mockResolvedValue('editor-access-token')
-  Object.defineProperty(globalThis, 'WebSocket', {
-    configurable: true,
-    value: FakeFundedWebSocket,
-  })
-  const instance = await createInstance()
-  await instance.handleClickStart()
-
-  FakeFundedWebSocket.latest?.dispatchEvent(
-    new MessageEvent('message', {
-      data: JSON.stringify({ type: 'lvce.usage.exceeded' }),
-    }),
-  )
-  await flushAnimation()
-
-  expect(instance.render()).toContainEqual(
-    text('Your monthly AI allowance has been used.'),
-  )
-})
-
-test('instance - stops WebRTC when the funded control socket closes unexpectedly', async () => {
-  jest.useRealTimers()
-  executeCommand.mockResolvedValue('https://lvce.example')
-  getAccessToken.mockResolvedValue('editor-access-token')
-  Object.defineProperty(globalThis, 'WebSocket', {
-    configurable: true,
-    value: FakeFundedWebSocket,
-  })
-  const instance = await createInstance()
-  await instance.handleClickStart()
-
-  FakeFundedWebSocket.latest?.dispatchEvent(new Event('close'))
-  await flushAnimation()
-
-  expect(stopWebRtcAudioStream).toHaveBeenCalledWith(-1)
-  expect(instance.render()).toContainEqual(
-    text(
-      'The backend-funded voice connection closed. Start again to reconnect. (Error code: connection_closed)',
-    ),
-  )
-})
-
-test('instance - recovers from one animation read failure', async () => {
-  const instance = await createInstance()
   readMicLevels
-    .mockRejectedValueOnce(new Error('read failed'))
     .mockResolvedValueOnce({
-      micAnalyzerData: new Uint8Array([128]),
-      remoteAnalyzerData: new Uint8Array([128]),
+      micAnalyzerData: new Uint8Array([255]),
+      remoteAnalyzerData: new Uint8Array([255]),
     })
-  jest
-    .spyOn(globalThis, 'fetch')
-    .mockResolvedValueOnce({
-      json: async () => ({ value: 'ephemeral-key' }),
-      ok: true,
-    } as Response)
-    .mockResolvedValueOnce({
-      ok: true,
-      text: async () => 'answer-sdp',
-    } as Response)
-  const consoleError = jest
-    .spyOn(console, 'error')
-    .mockImplementation(() => undefined)
+    .mockImplementationOnce(async () => {
+      testState.listener?.(
+        createRenderState({ animationEnabled: false }),
+        false,
+      )
+      return {
+        micAnalyzerData: new Uint8Array([128]),
+        remoteAnalyzerData: new Uint8Array([128]),
+      }
+    })
+  await createInstance()
 
-  await instance.handleClickStart()
-  await flushAnimation()
-
-  expect(consoleError).toHaveBeenCalledWith(expect.any(Error))
-  await instance.stop()
-})
-
-test('instance - keeps updating the bubble scale for microphone and remote audio', async () => {
-  const instance = await createInstance()
-  type AudioLevels = Awaited<ReturnType<typeof readMicLevels>>
-  const firstRead = Promise.withResolvers<AudioLevels>()
-  const secondRead = Promise.withResolvers<AudioLevels>()
-  const thirdRead = Promise.withResolvers<AudioLevels>()
-  readMicLevels
-    .mockReturnValueOnce(firstRead.promise)
-    .mockReturnValueOnce(secondRead.promise)
-    .mockReturnValueOnce(thirdRead.promise)
-
-  instance.setAnimation(true, 1)
-  const animation = instance.doAnimate()
-  firstRead.resolve({
-    micAnalyzerData: new Uint8Array([160]),
-    remoteAnalyzerData: new Uint8Array([128]),
-  })
-  await flushAnimation()
+  testState.listener?.(createRenderState({ animationEnabled: true }), false)
+  await Promise.resolve()
+  await Promise.resolve()
+  await Promise.resolve()
+  await Promise.resolve()
 
   expect(readMicLevels).toHaveBeenCalledTimes(2)
-  expect(instance.getCss()).toContain('scale(1.8)')
-
-  secondRead.resolve({
-    micAnalyzerData: new Uint8Array([128]),
-    remoteAnalyzerData: new Uint8Array([144]),
-  })
-  await flushAnimation()
-
-  expect(readMicLevels).toHaveBeenCalledTimes(3)
-  expect(instance.getCss()).toContain('scale(1.4)')
-
-  instance.setAnimation(false, 1)
-  thirdRead.resolve({
-    micAnalyzerData: new Uint8Array([255]),
-    remoteAnalyzerData: new Uint8Array([128]),
-  })
-  await animation
-  expect(instance.getCss()).toContain('scale(1)')
-})
-
-test('instance - switches models while idle', async () => {
-  const instance = await createInstance()
-
-  instance.setRealtimeModelMini()
-  instance.setRealtimeModelStandard()
-  instance.setRealtimeModelStandard()
-  expect(instance.render()).toContainEqual(
-    text('Model: Realtime 2.1 (better quality)'),
-  )
-  instance.setRealtimeModelMini()
-  expect(instance.render()).toContainEqual(
-    text('Model: Realtime 2.1 mini (cheaper)'),
-  )
-})
-
-test('instance - handles tool call without connected data channel', async () => {
-  const instance = await createInstance()
-  const consoleError = jest
-    .spyOn(console, 'error')
-    .mockImplementation(() => undefined)
-
-  instance.handleData(
-    JSON.stringify({
-      arguments: JSON.stringify({ location: 'Paris' }),
-      call_id: 'call',
-      name: 'getweather',
-      type: 'response.function_call_arguments.done',
-    }),
-  )
-  await flushAnimation()
-
-  expect(consoleError).toHaveBeenCalledWith(expect.any(Error))
-  expect(instance.render()).toContainEqual(text('Ran getweather'))
-  instance.toggleToolCall('call')
-  expect(instance.render()).toContainEqual(text('{\n  "temperature": 21\n}'))
-  instance.toggleToolCall('missing')
-  instance.updateTranscript('call', 'ignored')
-})
-
-test('instance - shows a tool call while it is running and ignores duplicate events', async () => {
-  const instance = await createInstance()
-  const response = Promise.withResolvers<readonly string[]>()
-  executeFunctionToolCall.mockReturnValueOnce(response.promise)
-  jest.spyOn(console, 'error').mockImplementation(() => undefined)
-  const event = {
-    arguments: JSON.stringify({ path: 'src' }),
-    call_id: 'pending-call',
-    name: 'list_workspace_directory',
-    type: 'response.function_call_arguments.done',
-  }
-
-  instance.handleData(JSON.stringify(event))
-  instance.handleData(JSON.stringify(event))
-
-  expect(instance.render()).toContainEqual(
-    text('Running list_workspace_directory…'),
-  )
-  expect(executeFunctionToolCall).toHaveBeenCalledTimes(1)
-
-  response.resolve([
-    createToolOutput('pending-call', JSON.stringify({ files: ['a.ts'] })),
-  ])
-  await flushAnimation()
-
-  expect(instance.render()).toContainEqual(text('Ran list_workspace_directory'))
-})
-
-test('instance - stops talking when the stop talking tool is called', async () => {
-  const instance = await createInstance()
-  executeFunctionToolCall.mockResolvedValueOnce([
-    createToolOutput('stop-call', JSON.stringify({ stopped: true })),
-  ])
-
-  instance.handleData(
-    JSON.stringify({
-      arguments: '{}',
-      call_id: 'stop-call',
-      name: 'stop_talking',
-      type: 'response.function_call_arguments.done',
-    }),
-  )
-  await flushAnimation()
-
-  expect(instance.render()).toContainEqual(text('Start talking'))
-  expect(instance.render()).toContainEqual(text('Ran stop_talking'))
-  expect(stopWebRtcAudioStream).toHaveBeenCalledWith(-1)
-})
-
-test('instance - hides silent wait tool calls', async () => {
-  const instance = await createInstance()
-  jest.spyOn(console, 'error').mockImplementation(() => undefined)
-  executeFunctionToolCall.mockResolvedValueOnce([
-    createToolOutput('wait-call', JSON.stringify({ waiting: true })),
-  ])
-
-  instance.handleData(
-    JSON.stringify({
-      arguments: '{}',
-      call_id: 'wait-call',
-      name: 'wait_for_user',
-      type: 'response.function_call_arguments.done',
-    }),
-  )
-  instance.handleData(
-    JSON.stringify({
-      item: {
-        arguments: '{}',
-        call_id: 'wait-call',
-        name: 'wait_for_user',
-        type: 'function_call',
-      },
-      type: 'response.output_item.done',
-    }),
-  )
-  await flushAnimation()
-
-  expect(executeFunctionToolCall).toHaveBeenCalledTimes(1)
-  expect(instance.render()).not.toContainEqual(text('Ran wait_for_user'))
-})
-
-test('instance - shows failed tool calls', async () => {
-  const instance = await createInstance()
-  const consoleError = jest
-    .spyOn(console, 'error')
-    .mockImplementation(() => undefined)
-  executeFunctionToolCall
-    .mockRejectedValueOnce(new Error('tool failed'))
-    .mockRejectedValueOnce('worker stopped')
-
-  instance.handleData(
-    JSON.stringify({
-      arguments: '{}',
-      call_id: 'failed-call',
-      name: 'read_workspace_file',
-      type: 'response.function_call_arguments.done',
-    }),
-  )
-  instance.handleData(
-    JSON.stringify({
-      arguments: '{}',
-      call_id: 'stopped-call',
-      name: 'read_workspace_file',
-      type: 'response.function_call_arguments.done',
-    }),
-  )
-  await flushAnimation()
-
-  expect(instance.render()).toContainEqual(text('Failed read_workspace_file'))
-  instance.toggleToolCall('failed-call')
-  expect(instance.render()).toContainEqual(text('tool failed'))
-  instance.toggleToolCall('stopped-call')
-  expect(instance.render()).toContainEqual(text('worker stopped'))
-  expect(consoleError).toHaveBeenCalledTimes(2)
-})
-
-test('instance - shows a failed tool call when the worker returns an error output', async () => {
-  const instance = await createInstance()
-  executeFunctionToolCall.mockResolvedValueOnce([
-    createToolOutput(
-      'missing-file-call',
-      JSON.stringify({ error: 'Workspace file was not found.' }),
-    ),
-  ])
-
-  instance.handleData(
-    JSON.stringify({
-      arguments: '{"path":"missing.ts"}',
-      call_id: 'missing-file-call',
-      name: 'open_workspace_file',
-      type: 'response.function_call_arguments.done',
-    }),
-  )
-  await flushAnimation()
-
-  expect(instance.render()).toContainEqual(text('Failed open_workspace_file'))
-  instance.toggleToolCall('missing-file-call')
-  expect(instance.render()).toContainEqual(
-    text('{\n  "error": "Workspace file was not found."\n}'),
-  )
-})
-
-test('instance - replays a fixture through tool handling and reports mismatches', async () => {
-  const instance = await createInstance()
-  const fixture = {
-    schemaVersion: 1,
-    trace: [
-      {
-        atMs: 0,
-        direction: 'server',
-        event: {
-          delta: 'Weather?',
-          item_id: 'user',
-          type: 'conversation.item.input_audio_transcription.delta',
-        },
-      },
-      {
-        atMs: 1,
-        direction: 'server',
-        event: {
-          arguments: '{"location":"Paris"}',
-          call_id: 'call',
-          name: 'getweather',
-          type: 'response.function_call_arguments.done',
-        },
-      },
-      {
-        atMs: 2,
-        direction: 'client',
-        event: {
-          item: {
-            call_id: 'call',
-            output: '{"temperature":21}',
-            type: 'function_call_output',
-          },
-          type: 'conversation.item.create',
-        },
-      },
-      {
-        atMs: 3,
-        direction: 'client',
-        event: { type: 'response.create' },
-      },
-      {
-        atMs: 4,
-        direction: 'server',
-        event: {
-          delta: '21 degrees',
-          item_id: 'assistant',
-          type: 'response.output_audio_transcript.delta',
-        },
-      },
-    ],
-  }
-
-  await instance.replayFixture(fixture)
-  expect(instance.render()).toContainEqual(text('Weather?'))
-  expect(instance.render()).toContainEqual(text('Ran getweather'))
-  expect(instance.render()).toContainEqual(text('21 degrees'))
-
-  await expect(
-    instance.replayFixture({
-      schemaVersion: 1,
-      trace: [
-        {
-          atMs: 0,
-          direction: 'client',
-          event: { type: 'missing' },
-        },
-      ],
-    }),
-  ).rejects.toThrow('Missing client event')
-})
-
-test('instance - records a live fixture and writes it after completion', async () => {
-  const instance = await createInstance()
-  readMicLevels.mockReturnValue(new Promise(() => {}))
-  jest
-    .spyOn(globalThis, 'fetch')
-    .mockResolvedValueOnce({
-      json: async () => ({ value: 'ephemeral-key' }),
-      ok: true,
-    } as Response)
-    .mockResolvedValueOnce({
-      ok: true,
-      text: async () => 'answer-sdp',
-    } as Response)
-
-  const capture = instance.captureFixture({
-    outputUri: 'file:///tmp/raw-recording.json',
-    source: { name: 'arithmetic', text: 'What is 1+1?' },
-  })
-  await flushAnimation()
-  await flushAnimation()
-  if (!latestPort2?.onmessage) {
-    throw new Error('Expected fixture capture data channel')
-  }
-  latestPort2.onmessage({
-    data: JSON.stringify({
-      delta: 'What is 1+1?',
-      item_id: 'user',
-      type: 'conversation.item.input_audio_transcription.delta',
-    }),
-  })
-  latestPort2.onmessage({
-    data: JSON.stringify({
-      delta: '2',
-      item_id: 'assistant',
-      type: 'response.output_audio_transcript.delta',
-    }),
-  })
-  latestPort2.onmessage({ data: JSON.stringify({ type: 'response.done' }) })
-  await capture
-
-  expect(writeFile).toHaveBeenCalledWith(
-    'file:///tmp/raw-recording.json',
-    expect.stringContaining('"direction": "server"'),
-  )
-  expect(stopWebRtcAudioStream).toHaveBeenCalledWith(-1)
-})
-
-test('instance - enters test mode before and after creation', async () => {
-  const createdBeforeTestMode = await createInstance()
-  enableTestMode()
-
-  await createdBeforeTestMode.handleClickStart()
-  expect(createdBeforeTestMode.render()).toContainEqual(text('Stop talking'))
-  await createdBeforeTestMode.handleClickStart()
-
-  getSecret.mockResolvedValueOnce(undefined)
-  const createdInTestMode = await createInstance()
-  await createdInTestMode.handleClickStart()
-  expect(createdInTestMode.render()).toContainEqual(text('Stop talking'))
-  createdInTestMode.handleData(
-    JSON.stringify({
-      arguments: JSON.stringify({ location: 'Paris' }),
-      call_id: 'test-call',
-      name: 'getweather',
-      type: 'response.function_call_arguments.done',
-    }),
-  )
-  await flushAnimation()
-  expect(createdInTestMode.render()).toContainEqual(text('Ran getweather'))
-  await createdInTestMode.stop()
-  expect(stopWebRtcAudioStream).not.toHaveBeenCalled()
-})
-
-test('instance - funded test mode does not require a stored API key', async () => {
-  enableTestMode('funded')
-  getSecret.mockRejectedValueOnce(new Error('storage unavailable'))
-
-  const instance = await createInstance()
-  await instance.handleClickStart()
-
-  expect(instance.render()).toContainEqual(text('Stop talking'))
 })
