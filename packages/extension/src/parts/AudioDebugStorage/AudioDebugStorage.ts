@@ -136,7 +136,10 @@ export const createAudioDebugStorage = (
         getCacheUrl(name),
         new Response(blob, {
           headers: {
+            'content-length': String(blob.size),
+            'content-type': blob.type,
             [createdAtHeader]: String(createdAt),
+            'last-modified': new Date(createdAt).toUTCString(),
           },
         }),
       )

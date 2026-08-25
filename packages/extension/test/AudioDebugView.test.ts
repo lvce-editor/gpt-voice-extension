@@ -30,8 +30,19 @@ const createStorage = (
   save: jest.fn<(blob: Blob) => Promise<typeof recording>>(),
 })
 
+const createDependencies = (
+  overrides: Readonly<Record<string, unknown>> = {},
+): Parameters<typeof createAudioDebugViewInstance>[1] => ({
+  executeCommand: jest.fn(async () => undefined),
+  getPreference: jest.fn(async () => true),
+  openUri: jest.fn<(uri: string) => Promise<void>>(),
+  storage: createStorage(),
+  ...overrides,
+})
+
 test('explains how to enable audio debugging', async () => {
   const instance = await createAudioDebugViewInstance(undefined, {
+    executeCommand: jest.fn(async () => undefined),
     getPreference: jest.fn(async () => false),
     openUri: jest.fn<(uri: string) => Promise<void>>(),
     storage: createStorage(),
@@ -51,6 +62,7 @@ test('lists cached recordings and opens a clicked provider uri', async () => {
   const instance = await createAudioDebugViewInstance(
     { requestRerender } as unknown as Api.ViewContext,
     {
+      executeCommand: jest.fn(async () => undefined),
       getPreference: jest.fn(async () => true),
       openUri,
       storage: {
@@ -97,12 +109,10 @@ test('shows recording context menu entries', async () => {
       requestRerender: jest.fn(async () => undefined),
       showContextMenu,
     } as unknown as Api.ViewContext,
-    {
+    createDependencies({
       downloadRecording,
-      getPreference: jest.fn(async () => true),
-      openUri: jest.fn<(uri: string) => Promise<void>>(),
       storage,
-    },
+    }),
   )
 
   await instance.handleEvent?.({
@@ -154,11 +164,7 @@ test('removes a cached recording and refreshes the view', async () => {
   const requestRerender = jest.fn(async () => undefined)
   const instance = await createAudioDebugViewInstance(
     { requestRerender } as unknown as Api.ViewContext,
-    {
-      getPreference: jest.fn(async () => true),
-      openUri: jest.fn<(uri: string) => Promise<void>>(),
-      storage,
-    },
+    createDependencies({ storage }),
   )
 
   await instance.remove(recording.uri)
@@ -174,12 +180,13 @@ test('runs recording menu commands', async () => {
   const downloadRecording = jest.fn<
     (storage: AudioDebugStorage, uri: string, name: string) => Promise<void>
   >(async () => undefined)
-  const instance = await createAudioDebugViewInstance(undefined, {
-    downloadRecording,
-    getPreference: jest.fn(async () => true),
-    openUri: jest.fn<(uri: string) => Promise<void>>(),
-    storage,
-  })
+  const instance = await createAudioDebugViewInstance(
+    undefined,
+    createDependencies({
+      downloadRecording,
+      storage,
+    }),
+  )
   const downloadCommand =
     audioDebugView.commands?.['GptVoice.downloadAudioDebugRecording']
   const removeCommand =
@@ -202,6 +209,7 @@ test('runs recording menu commands', async () => {
 
 test('shows an empty enabled view and formats byte-sized recordings', async () => {
   const emptyInstance = await createAudioDebugViewInstance(undefined, {
+    executeCommand: jest.fn(async () => undefined),
     getPreference: jest.fn(async () => true),
     openUri: jest.fn<(uri: string) => Promise<void>>(),
     storage: createStorage(),
@@ -212,6 +220,7 @@ test('shows an empty enabled view and formats byte-sized recordings', async () =
   emptyInstance.dispose?.()
 
   const smallInstance = await createAudioDebugViewInstance(undefined, {
+    executeCommand: jest.fn(async () => undefined),
     getPreference: jest.fn(async () => true),
     openUri: jest.fn<(uri: string) => Promise<void>>(),
     storage: createStorage(async () => [{ ...recording, size: 5 }]),
@@ -224,6 +233,7 @@ test('shows an empty enabled view and formats byte-sized recordings', async () =
 
 test('shows cache errors without failing the view', async () => {
   const instance = await createAudioDebugViewInstance(undefined, {
+    executeCommand: jest.fn(async () => undefined),
     getPreference: jest.fn(async () => true),
     openUri: jest.fn<(uri: string) => Promise<void>>(),
     storage: {
@@ -239,6 +249,7 @@ test('shows cache errors without failing the view', async () => {
 
 test('renders non-error cache failures', async () => {
   const instance = await createAudioDebugViewInstance(undefined, {
+    executeCommand: jest.fn(async () => undefined),
     getPreference: jest.fn(async () => true),
     openUri: jest.fn<(uri: string) => Promise<void>>(),
     storage: createStorage(async () => {
@@ -248,4 +259,45 @@ test('renders non-error cache failures', async () => {
 
   expect(instance.render()).toContainEqual(text('cache stopped'))
   instance.dispose?.()
+})
+
+test('renders actions and opens settings', async () => {
+  const executeCommand = jest.fn<(command: string) => Promise<unknown>>(
+    async () => undefined,
+  )
+  const instance = await createAudioDebugViewInstance(
+    undefined,
+    createDependencies({ executeCommand }),
+  )
+
+  expect(instance.renderActionsDom()).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        'data-command': 'GptVoiceAudioDebug.refresh',
+      }),
+      expect.objectContaining({
+        'data-command': 'GptVoiceAudioDebug.openSettings',
+      }),
+    ]),
+  )
+  await instance.openSettings()
+
+  expect(executeCommand).toHaveBeenCalledWith('Preferences.openSettingsUi')
+  instance.dispose?.()
+})
+
+test('executes audio debug view commands', async () => {
+  const openSettings = jest.fn(async () => undefined)
+  const refresh = jest.fn(async () => undefined)
+  const instance = { openSettings, refresh } as never
+
+  await expect(
+    audioDebugView.commands['GptVoiceAudioDebug.openSettings'](instance),
+  ).resolves.toBe(instance)
+  await expect(
+    audioDebugView.commands['GptVoiceAudioDebug.refresh'](instance),
+  ).resolves.toBe(instance)
+
+  expect(openSettings).toHaveBeenCalledTimes(1)
+  expect(refresh).toHaveBeenCalledTimes(1)
 })
