@@ -1,5 +1,6 @@
 import type { VirtualDomNode } from '@lvce-editor/virtual-dom-worker'
 import {
+  executeCommand,
   getPreference,
   openUri,
   type View,
@@ -13,6 +14,7 @@ import {
   audioDebugScheme,
   audioDebugViewId,
 } from '../AudioDebugConstants/AudioDebugConstants.ts'
+import { renderAudioDebugActionsDom } from '../RenderAudioDebugActionsDom/RenderAudioDebugActionsDom.ts'
 import {
   renderAudioDebugView,
   type AudioDebugViewState,
@@ -20,12 +22,14 @@ import {
 import { audioDebugStorage } from '../VoiceSessionWorker/VoiceSessionWorker.ts'
 
 interface AudioDebugViewDependencies {
+  readonly executeCommand: typeof executeCommand
   readonly getPreference: typeof getPreference
   readonly openUri: typeof openUri
   readonly storage: AudioDebugStorage
 }
 
 const defaultDependencies: AudioDebugViewDependencies = {
+  executeCommand,
   getPreference,
   openUri,
   storage: audioDebugStorage,
@@ -33,7 +37,9 @@ const defaultDependencies: AudioDebugViewDependencies = {
 
 export interface ActiveAudioDebugViewInstance extends VirtualDomViewInstance {
   readonly handleClick: (uri: string) => Promise<void>
+  readonly openSettings: () => Promise<void>
   readonly refresh: () => Promise<void>
+  readonly renderActionsDom: () => readonly VirtualDomNode[]
 }
 
 const activeInstances = new Set<ActiveAudioDebugViewInstance>()
@@ -87,11 +93,17 @@ export const createAudioDebugViewInstance = async (
         await instance.handleClick(event.name)
       }
     },
+    async openSettings(): Promise<void> {
+      await dependencies.executeCommand('Preferences.openSettingsUi')
+    },
     async refresh(): Promise<void> {
       await refresh()
     },
     render(): readonly VirtualDomNode[] {
       return renderAudioDebugView(state)
+    },
+    renderActionsDom(): readonly VirtualDomNode[] {
+      return renderAudioDebugActionsDom()
     },
   }
   activeInstances.add(instance)
@@ -99,7 +111,21 @@ export const createAudioDebugViewInstance = async (
   return instance
 }
 
-export const audioDebugView: View<ActiveAudioDebugViewInstance> = {
+type AudioDebugView = Omit<View<ActiveAudioDebugViewInstance>, 'commands'> & {
+  readonly commands: NonNullable<View<ActiveAudioDebugViewInstance>['commands']>
+}
+
+export const audioDebugView: AudioDebugView = {
+  commands: {
+    async 'GptVoiceAudioDebug.openSettings'(instance) {
+      await instance.openSettings()
+      return instance
+    },
+    async 'GptVoiceAudioDebug.refresh'(instance) {
+      await instance.refresh()
+      return instance
+    },
+  },
   create: createAudioDebugViewInstance,
   displayName: 'Voice Audio Recordings',
   eventListeners: [
