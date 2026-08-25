@@ -2,8 +2,8 @@ import { test, expect } from '@jest/globals'
 import { text, VirtualDomElements } from '@lvce-editor/virtual-dom-worker'
 import * as DomEventListenerFunctions from '../src/parts/DomEventListenerFunctions/DomEventListenerFunctions.ts'
 import { mergeClassNames } from '../src/parts/MergeClassNames/MergeClassNames.ts'
+import { RealtimeModelPreset } from '../src/parts/RealtimeModelPreset/RealtimeModelPreset.ts'
 import { renderModelSettings } from '../src/parts/RenderModelSettings/RenderModelSettings.ts'
-import { RealtimeModelPreset } from '../src/parts/WebRtc/WebRtc.ts'
 
 test('renderModelSettings - mini model is selected', () => {
   const result = renderModelSettings({

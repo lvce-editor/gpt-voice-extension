@@ -1,9 +1,14 @@
-import type { FunctionToolDefinition } from '../VoiceFunctionCallingWorker/VoiceFunctionCallingWorker.ts'
+import type {
+  FunctionToolDefinition,
+  RealtimeModelPreset as RealtimeModelPresetType,
+} from 'voice-shared'
 
-export enum RealtimeModelPreset {
-  Mini = 'gpt-realtime-2.1-mini',
-  Standard = 'gpt-realtime-2.1',
-}
+export const RealtimeModelPreset = {
+  Mini: 'gpt-realtime-2.1-mini',
+  Standard: 'gpt-realtime-2.1',
+} as const satisfies Readonly<Record<string, RealtimeModelPresetType>>
+
+export type RealtimeModelPreset = RealtimeModelPresetType
 
 type TranscriptionModel = 'gpt-4o-mini-transcribe' | 'gpt-4o-transcribe'
 type ServerVadMode = 'server_vad'

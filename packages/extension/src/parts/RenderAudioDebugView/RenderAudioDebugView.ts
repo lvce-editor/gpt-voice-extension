@@ -1,9 +1,9 @@
+import type { AudioDebugRecording } from 'voice-shared'
 import {
   text,
   VirtualDomElements,
   type VirtualDomNode,
 } from '@lvce-editor/virtual-dom-worker'
-import type { AudioDebugRecording } from '../AudioDebugStorage/AudioDebugStorage.ts'
 
 const handleClick = 'handleClick'
 const handleContextMenu = 'handleContextMenu'

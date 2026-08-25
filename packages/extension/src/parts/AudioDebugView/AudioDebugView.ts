@@ -1,4 +1,5 @@
 import type { VirtualDomNode } from '@lvce-editor/virtual-dom-worker'
+import type { AudioDebugStorage } from 'voice-shared'
 import {
   executeCommand,
   getPreference,
@@ -9,7 +10,6 @@ import {
   type ViewEvent,
   type VirtualDomViewInstance,
 } from '@lvce-editor/api'
-import type { AudioDebugStorage } from '../AudioDebugStorage/AudioDebugStorage.ts'
 import {
   audioDebugPreference,
   audioDebugScheme,

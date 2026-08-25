@@ -1,27 +1,33 @@
 /* eslint-disable @typescript-eslint/prefer-readonly-parameter-types */
+import type {
+  BackendVoiceConfiguration,
+  CaptureFixtureOptions,
+  VoiceSessionState,
+} from 'voice-shared'
 import {
   createFixtureRecording,
   type FixtureRecording,
-} from '../../../../extension/src/parts/FixtureRecording/FixtureRecording.ts'
+} from '../FixtureRecording/FixtureRecording.ts'
 import {
   createFixtureReplay,
   type FixtureReplay,
-} from '../../../../extension/src/parts/FixtureReplay/FixtureReplay.ts'
+} from '../FixtureReplay/FixtureReplay.ts'
 import {
   formatFundedVoiceError,
   FundedVoiceError,
   getFundedVoiceError,
   openFundedVoiceSocket,
   waitForFundedSessionCreated,
-} from '../../../../extension/src/parts/FundedVoice/FundedVoice.ts'
-import * as GptVoiceStrings from '../../../../extension/src/parts/GptVoiceStrings/GptVoiceStrings.ts'
-import { isOfflineConnectionError } from '../../../../extension/src/parts/OfflineError/OfflineError.ts'
-import { createOpenAiApiKeyStorage } from '../../../../extension/src/parts/OpenAiApiKeyStorage/OpenAiApiKeyStorage.ts'
+} from '../FundedVoice/FundedVoice.ts'
+import * as GptVoiceStrings from '../GptVoiceStrings/GptVoiceStrings.ts'
+import { isOfflineConnectionError } from '../OfflineError/OfflineError.ts'
+import { createOpenAiApiKeyStorage } from '../OpenAiApiKeyStorage/OpenAiApiKeyStorage.ts'
+import * as Rpc from '../Rpc/Rpc.ts'
 import {
   getToolCallOutput,
   isToolCallErrorOutput,
   parseToolCall,
-} from '../../../../extension/src/parts/ToolCall/ToolCall.ts'
+} from '../ToolCall/ToolCall.ts'
 import {
   createSessionConfig,
   defaultSessionModel,
@@ -29,62 +35,9 @@ import {
   getOpenAiErrorMessage,
   getSdp,
   RealtimeModelPreset,
-} from '../../../../extension/src/parts/WebRtc/WebRtc.ts'
-import * as Rpc from '../Rpc/Rpc.ts'
+} from '../WebRtc/WebRtc.ts'
 
 const fundedConfigurationRefreshInterval = 1000
-
-interface BackendVoiceConfiguration {
-  readonly accessToken: string
-  readonly baseUrl: string
-}
-
-export interface TranscriptMessage {
-  readonly id: string
-  readonly text: string
-  readonly type: 'user' | 'ai'
-}
-
-export interface ToolCallMessage {
-  readonly argumentsValue: string
-  readonly expanded: boolean
-  readonly id: string
-  readonly name: string
-  readonly output: string
-  readonly status: 'completed' | 'failed' | 'in-progress'
-  readonly type: 'tool'
-}
-
-export type VoiceMessage = TranscriptMessage | ToolCallMessage
-
-export interface VoiceSessionState {
-  readonly allowanceExceeded: boolean
-  readonly animationEnabled: boolean
-  readonly animationFrame: number
-  readonly animationScale: number
-  readonly apiKeyError: string
-  readonly apiKeyInput: string
-  readonly fundedAvailable: boolean
-  readonly fundedError: string
-  readonly hasOpenAiApiKey: boolean
-  readonly inProgress: boolean
-  readonly isCreatingToken: boolean
-  readonly isSavingApiKey: boolean
-  readonly isTest: boolean
-  readonly messages: readonly VoiceMessage[]
-  readonly offlineError: boolean
-  readonly parsedData: readonly unknown[]
-  readonly sessionModel: RealtimeModelPreset
-  readonly tokenError: string
-  readonly transcribedText: string
-  readonly uid: number
-  readonly voiceProvider: 'byok' | 'funded'
-}
-
-export interface CaptureFixtureOptions {
-  readonly outputUri: string
-  readonly source: Readonly<Record<string, unknown>>
-}
 
 interface Session {
   disposed: boolean

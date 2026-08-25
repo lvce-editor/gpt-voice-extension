@@ -37,7 +37,8 @@
   },
   "dependencies": {
     "@lvce-editor/rpc": "^6.16.0",
-    "ignore": "^7.0.6"
+    "ignore": "^7.0.6",
+    "voice-shared": "0.0.0-dev"
   },
   "devDependencies": {
     "@jest/globals": "^30.4.1",

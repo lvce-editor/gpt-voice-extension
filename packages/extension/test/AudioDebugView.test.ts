@@ -1,7 +1,7 @@
 import type * as Api from '@lvce-editor/api'
+import type { AudioDebugStorage } from 'voice-shared'
 import { expect, jest, test } from '@jest/globals'
 import { text } from '@lvce-editor/virtual-dom-worker'
-import type { AudioDebugStorage } from '../src/parts/AudioDebugStorage/AudioDebugStorage.ts'
 import {
   audioDebugView,
   createAudioDebugViewInstance,

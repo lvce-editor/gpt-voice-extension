@@ -1,3 +1,4 @@
+import type { FunctionToolDefinition } from 'voice-shared'
 import { editorFunctionTools } from '../EditorFunctionTools/EditorFunctionTools.ts'
 import { getFakeWeather } from '../FakeWeather/FakeWeather.ts'
 import { layoutFunctionTools } from '../LayoutFunctionTools/LayoutFunctionTools.ts'
@@ -11,12 +12,7 @@ import { terminalFunctionTools } from '../TerminalFunctionTools/TerminalFunction
 import { workspaceFileFunctionTools } from '../WorkspaceFileFunctionTools/WorkspaceFileFunctionTools.ts'
 import { workspaceFunctionTools } from '../WorkspaceFunctionTools/WorkspaceFunctionTools.ts'
 
-export interface FunctionToolDefinition {
-  readonly description: string
-  readonly name: string
-  readonly parameters: Readonly<Record<string, unknown>>
-  readonly type: 'function'
-}
+export type { FunctionToolDefinition } from 'voice-shared'
 
 interface RegisteredFunctionTool {
   readonly definition: FunctionToolDefinition

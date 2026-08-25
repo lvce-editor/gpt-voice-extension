@@ -1,4 +1,4 @@
-import type { BackendVoiceConfiguration } from '../BackendConfiguration/BackendConfiguration.ts'
+import type { BackendVoiceConfiguration } from 'voice-shared'
 
 export const fundedVoiceProtocol = 'lvce.realtime.voice.v1'
 

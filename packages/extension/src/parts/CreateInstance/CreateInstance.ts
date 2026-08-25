@@ -4,6 +4,13 @@ import type {
   VirtualDomViewInstance,
 } from '@lvce-editor/api'
 import type { VirtualDomNode } from '@lvce-editor/virtual-dom-worker'
+import type {
+  CaptureFixtureOptions as SharedCaptureFixtureOptions,
+  ToolCallMessage as SharedToolCallMessage,
+  TranscriptMessage as SharedTranscriptMessage,
+  VoiceMessage as SharedVoiceMessage,
+  VoiceSessionState as SharedVoiceSessionState,
+} from 'voice-shared'
 import { readMicLevels } from '@lvce-editor/api'
 import type { MenuEntry } from '../MenuEntries/MenuEntries.ts'
 import { animateBubble } from '../AnimateBubble/AnimateBubble.ts'
@@ -11,62 +18,21 @@ import * as ClassNames from '../ClassNames/ClassNames.ts'
 import { getCss } from '../GetCss/GetCss.ts'
 import { getTitle } from '../GetTitle/GetTitle.ts'
 import { readLevel } from '../ReadLevel/ReadLevel.ts'
+import { RealtimeModelPreset } from '../RealtimeModelPreset/RealtimeModelPreset.ts'
 import { render } from '../Render/Render.ts'
 import { renderActionsDom } from '../RenderActionsDom/RenderActionsDom.ts'
 import { getTestVoiceProvider, isInTestMode } from '../TestMode/TestMode.ts'
 import * as VoiceSessionWorker from '../VoiceSessionWorker/VoiceSessionWorker.ts'
-import { RealtimeModelPreset } from '../WebRtc/WebRtc.ts'
 
 const focusSelector = `.${ClassNames.Main}`
 const transcriptSelector = `.${ClassNames.GptVoiceTranscript}`
 const maxScrollTop = 9_999_999
 
-export interface CaptureFixtureOptions {
-  readonly outputUri: string
-  readonly source: Readonly<Record<string, unknown>>
-}
-
-export interface ITranscript {
-  readonly id: string
-  readonly text: string
-  readonly type: 'user' | 'ai'
-}
-
-export interface IToolCallMessage {
-  readonly argumentsValue: string
-  readonly expanded: boolean
-  readonly id: string
-  readonly name: string
-  readonly output: string
-  readonly status: 'completed' | 'failed' | 'in-progress'
-  readonly type: 'tool'
-}
-
-export type IMessage = ITranscript | IToolCallMessage
-
-export interface IState {
-  readonly allowanceExceeded: boolean
-  readonly animationEnabled: boolean
-  readonly animationFrame: number
-  readonly animationScale: number
-  readonly apiKeyError: string
-  readonly apiKeyInput: string
-  readonly fundedAvailable: boolean
-  readonly fundedError: string
-  readonly hasOpenAiApiKey: boolean
-  readonly inProgress: boolean
-  readonly isCreatingToken: boolean
-  readonly isSavingApiKey: boolean
-  readonly isTest: boolean
-  readonly messages: readonly IMessage[]
-  readonly offlineError: boolean
-  readonly parsedData: readonly unknown[]
-  readonly sessionModel: RealtimeModelPreset
-  readonly tokenError: string
-  readonly transcribedText: string
-  readonly uid: number
-  readonly voiceProvider: 'byok' | 'funded'
-}
+export type CaptureFixtureOptions = SharedCaptureFixtureOptions
+export type ITranscript = SharedTranscriptMessage
+export type IToolCallMessage = SharedToolCallMessage
+export type IMessage = SharedVoiceMessage
+export type IState = SharedVoiceSessionState
 
 export interface ActiveGptVoiceViewInstance extends VirtualDomViewInstance {
   readonly addTranscript: (

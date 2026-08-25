@@ -1,25 +1,11 @@
-import { audioDebugScheme } from '../AudioDebugConstants/AudioDebugConstants.ts'
+import type { AudioDebugRecording, AudioDebugStorage } from 'voice-shared'
+
+const audioDebugScheme = 'gpt-voice-audio'
 
 const cacheName = 'gpt-voice-audio-debug-v1'
 const cacheUrlPrefix = 'https://gpt-voice-audio.invalid/'
 const createdAtHeader = 'x-gpt-voice-created-at'
 const recordingNamePattern = /^voice-message-(\d+)\.[^.]+$/
-
-export interface AudioDebugRecording {
-  readonly createdAt: number
-  readonly mimeType: string
-  readonly name: string
-  readonly sequence: number
-  readonly size: number
-  readonly uri: string
-}
-
-export interface AudioDebugStorage {
-  readonly list: () => Promise<readonly AudioDebugRecording[]>
-  readonly read: (uri: string) => Promise<Blob>
-  readonly remove: (uri: string) => Promise<void>
-  readonly save: (blob: Blob) => Promise<AudioDebugRecording>
-}
 
 interface AudioDebugStorageDependencies {
   readonly cacheStorage: Pick<CacheStorage, 'open'> | undefined

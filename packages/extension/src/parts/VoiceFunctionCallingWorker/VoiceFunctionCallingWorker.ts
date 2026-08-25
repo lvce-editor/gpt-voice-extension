@@ -1,3 +1,4 @@
+import type { FunctionToolDefinition } from 'voice-shared'
 import {
   closeUri,
   createRpc,
@@ -27,12 +28,7 @@ import {
 } from '@lvce-editor/api'
 import * as TerminalNode from '../TerminalNode/TerminalNode.ts'
 
-export interface FunctionToolDefinition {
-  readonly description: string
-  readonly name: string
-  readonly parameters: Readonly<Record<string, unknown>>
-  readonly type: 'function'
-}
+export type { FunctionToolDefinition } from 'voice-shared'
 
 interface Rpc {
   readonly invoke: (

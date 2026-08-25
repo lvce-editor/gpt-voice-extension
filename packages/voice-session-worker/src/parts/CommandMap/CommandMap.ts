@@ -1,4 +1,4 @@
-import * as AudioDebugStorage from '../../../../extension/src/parts/AudioDebugStorage/AudioDebugStorage.ts'
+import * as AudioDebugStorage from '../AudioDebugStorage/AudioDebugStorage.ts'
 import * as VoiceSession from '../VoiceSession/VoiceSession.ts'
 
 export const commandMap: Readonly<Record<string, unknown>> = {

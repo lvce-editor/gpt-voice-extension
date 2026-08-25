@@ -1,9 +1,7 @@
+import type { BackendVoiceConfiguration } from 'voice-shared'
 import { executeCommand, getAccessToken } from '@lvce-editor/api'
 
-export interface BackendVoiceConfiguration {
-  readonly accessToken: string
-  readonly baseUrl: string
-}
+export type { BackendVoiceConfiguration } from 'voice-shared'
 
 export interface BackendConfigurationHost {
   readonly executeCommand: (

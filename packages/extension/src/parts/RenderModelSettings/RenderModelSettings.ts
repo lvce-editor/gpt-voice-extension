@@ -7,7 +7,7 @@ import * as ClassNames from '../ClassNames/ClassNames.ts'
 import * as DomEventListenerFunctions from '../DomEventListenerFunctions/DomEventListenerFunctions.ts'
 import * as GptVoiceStrings from '../GptVoiceStrings/GptVoiceStrings.ts'
 import * as MergeClassNames from '../MergeClassNames/MergeClassNames.ts'
-import { RealtimeModelPreset } from '../WebRtc/WebRtc.ts'
+import { RealtimeModelPreset } from '../RealtimeModelPreset/RealtimeModelPreset.ts'
 
 const modelSettingsNode: VirtualDomNode = {
   childCount: 3,

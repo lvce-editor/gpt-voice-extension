@@ -46,5 +46,8 @@
     "@lvce-editor/virtual-dom-worker": "^11.15.0",
     "jest": "^30.4.2",
     "ts-jest": "^29.4.12"
+  },
+  "dependencies": {
+    "voice-shared": "0.0.0-dev"
   }
 }

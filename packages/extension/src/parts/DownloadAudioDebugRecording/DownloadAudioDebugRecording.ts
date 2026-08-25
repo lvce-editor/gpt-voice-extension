@@ -1,5 +1,5 @@
+import type { AudioDebugStorage } from 'voice-shared'
 import { executeCommand } from '@lvce-editor/api'
-import type { AudioDebugStorage } from '../AudioDebugStorage/AudioDebugStorage.ts'
 
 interface DownloadAudioDebugRecordingDependencies {
   readonly createObjectUrl: (blob: Blob) => string

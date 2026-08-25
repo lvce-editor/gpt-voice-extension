@@ -7,6 +7,7 @@
     { "path": "./packages/fixture-generator/e2e" },
     { "path": "./packages/extension" },
     { "path": "./packages/node" },
+    { "path": "./packages/shared" },
     { "path": "./packages/voice-function-calling-worker" },
     { "path": "./packages/voice-session-worker" },
     { "path": "./packages/build" }

@@ -3,9 +3,9 @@ import { text, VirtualDomElements } from '@lvce-editor/virtual-dom-worker'
 import type { ITranscript } from '../src/parts/CreateInstance/CreateInstance.ts'
 import * as DomEventListenerFunctions from '../src/parts/DomEventListenerFunctions/DomEventListenerFunctions.ts'
 import { mergeClassNames } from '../src/parts/MergeClassNames/MergeClassNames.ts'
+import { RealtimeModelPreset } from '../src/parts/RealtimeModelPreset/RealtimeModelPreset.ts'
 import { render } from '../src/parts/Render/Render.ts'
 import { createRenderState } from '../src/parts/RenderTestHelpers.ts'
-import { RealtimeModelPreset } from '../src/parts/WebRtc/WebRtc.ts'
 
 test('render - returns virtual dom tree for idle mini state', () => {
   const state = createRenderState()
