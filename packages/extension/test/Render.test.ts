@@ -217,6 +217,19 @@ test('render - directs an exhausted funded user to LVCE plans', () => {
   expect(result).not.toContainEqual(text('Use your own API key'))
 })
 
+test('render - falls back when allowance error details are incomplete', () => {
+  const result = render(
+    createRenderState({
+      allowanceExceeded: true,
+      fundedError: 'Monthly allowance exceeded',
+      voiceProvider: 'funded',
+    }),
+  )
+
+  expect(result).toContainEqual(text('Not provided'))
+  expect(result).toContainEqual(text('E_LVCE_USAGE_EXCEEDED'))
+})
+
 test('render - allows funded voice to start without a personal API key', () => {
   const result = render(
     createRenderState({
