@@ -4,8 +4,8 @@ import {
   VirtualDomElements,
   type VirtualDomNode,
 } from '@lvce-editor/virtual-dom-worker'
+import * as DomEventListenerFunctions from '../DomEventListenerFunctions/DomEventListenerFunctions.ts'
 
-const handleClick = 'handleClick'
 const handleContextMenu = 'handleContextMenu'
 
 export interface AudioDebugViewState {
@@ -64,7 +64,7 @@ const renderRecording = (
       childCount: 2,
       className: 'GptVoiceAudioDebugRecording',
       name: recording.uri,
-      onClick: handleClick,
+      onClick: DomEventListenerFunctions.HandleAudioDebugClick,
       onContextMenu: handleContextMenu,
       title: `Open ${recording.name}`,
       type: VirtualDomElements.Button,

@@ -67,6 +67,19 @@ test('uses a distinct audio recordings view icon', () => {
   ).toContain('aria-label="Audio recordings"')
 })
 
+test('contributes internal audio debug view commands', () => {
+  const commandIds = [
+    'GptVoiceAudioDebug.clearAll',
+    'GptVoiceAudioDebug.openSettings',
+    'GptVoiceAudioDebug.refresh',
+    'GptVoiceAudioDebug.saveForTest',
+  ]
+  for (const id of commandIds) {
+    expect(extensionManifest.activation).toContain(`onCommand:${id}`)
+    expect(extensionManifest.commands).toContainEqual({ id, internal: true })
+  }
+})
+
 test('declares audio processing settings and the opt-in terminal tool', () => {
   expect(extensionManifest.configuration).toEqual({
     'gptvoice.audio.autoGainControl': {

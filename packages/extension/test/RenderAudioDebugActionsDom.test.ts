@@ -4,6 +4,7 @@ import {
   mergeClassNames,
   VirtualDomElements,
 } from '@lvce-editor/virtual-dom-worker'
+import * as DomEventListenerFunctions from '../src/parts/DomEventListenerFunctions/DomEventListenerFunctions.ts'
 import { renderAudioDebugActionsDom } from '../src/parts/RenderAudioDebugActionsDom/RenderAudioDebugActionsDom.ts'
 
 test('renders refresh, clear all, and settings actions', () => {
@@ -20,12 +21,15 @@ test('renders refresh, clear all, and settings actions', () => {
       childCount: 1,
       className: 'IconButton',
       'data-command': 'GptVoiceAudioDebug.refresh',
+      name: 'refresh',
+      onClick: DomEventListenerFunctions.HandleAudioDebugClick,
       title: 'Refresh Recordings',
       type: VirtualDomElements.Button,
     },
     {
       childCount: 0,
       className: mergeClassNames('MaskIcon', 'MaskIconRefresh'),
+      name: 'refresh',
       role: AriaRoles.None,
       type: VirtualDomElements.Div,
     },
@@ -34,12 +38,15 @@ test('renders refresh, clear all, and settings actions', () => {
       childCount: 1,
       className: 'IconButton',
       'data-command': 'GptVoiceAudioDebug.clearAll',
+      name: 'clearAll',
+      onClick: DomEventListenerFunctions.HandleAudioDebugClick,
       title: 'Clear All Recordings',
       type: VirtualDomElements.Button,
     },
     {
       childCount: 0,
       className: mergeClassNames('MaskIcon', 'MaskIconClearAll'),
+      name: 'clearAll',
       role: AriaRoles.None,
       type: VirtualDomElements.Div,
     },
@@ -48,12 +55,15 @@ test('renders refresh, clear all, and settings actions', () => {
       childCount: 1,
       className: 'IconButton',
       'data-command': 'GptVoiceAudioDebug.openSettings',
+      name: 'openSettings',
+      onClick: DomEventListenerFunctions.HandleAudioDebugClick,
       title: 'Open Audio Debug Settings',
       type: VirtualDomElements.Button,
     },
     {
       childCount: 0,
       className: mergeClassNames('MaskIcon', 'MaskIconSettingsGear'),
+      name: 'openSettings',
       role: AriaRoles.None,
       type: VirtualDomElements.Div,
     },
