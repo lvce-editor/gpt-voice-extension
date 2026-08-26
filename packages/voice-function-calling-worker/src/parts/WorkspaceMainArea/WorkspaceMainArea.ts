@@ -9,7 +9,9 @@ export interface WorkspaceMainAreaApi {
   readonly closeUri: (uri: string) => Promise<void>
   readonly getWorkspaceUri: () => Promise<string>
   readonly openUri: (uri: string) => Promise<void>
-  readonly readOpenTextDocument: (uri: string) => Promise<string | undefined>
+  readonly readOpenTextDocument: (
+    uri: string,
+  ) => Promise<string | null | undefined>
   readonly setQuickPickValue: (value: string) => Promise<void>
   readonly showFileQuickPick: () => Promise<void>
   readonly writeOpenTextDocument: (
@@ -24,10 +26,7 @@ const defaultApi: WorkspaceMainAreaApi = {
     Rpc.invoke<string>('WorkspaceMainArea.getWorkspaceUri'),
   openUri: (uri) => Rpc.invoke<void>('WorkspaceMainArea.openUri', uri),
   readOpenTextDocument: (uri) =>
-    Rpc.invoke<string | undefined>(
-      'WorkspaceMainArea.readOpenTextDocument',
-      uri,
-    ),
+    Rpc.invoke<string | null>('WorkspaceMainArea.readOpenTextDocument', uri),
   setQuickPickValue: (value) =>
     Rpc.invoke<void>('WorkspaceMainArea.setQuickPickValue', value),
   showFileQuickPick: () =>
@@ -46,7 +45,8 @@ export const readOpenWorkspaceFile = async (
 ): Promise<string | undefined> => {
   const workspaceUri = await api.getWorkspaceUri()
   const uri = resolveWorkspaceFileUri(workspaceUri, relativePath)
-  return api.readOpenTextDocument(uri)
+  const content = await api.readOpenTextDocument(uri)
+  return typeof content === 'string' ? content : undefined
 }
 
 export const writeOpenWorkspaceFile = async (

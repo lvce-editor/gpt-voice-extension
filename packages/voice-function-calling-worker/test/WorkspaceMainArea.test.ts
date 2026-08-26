@@ -72,6 +72,15 @@ test('readOpenWorkspaceFile reads a resolved URI through the editor', async () =
   )
 })
 
+test('readOpenWorkspaceFile normalizes a null RPC result', async () => {
+  const api = createApi()
+  jest.mocked(api.readOpenTextDocument).mockResolvedValue(null)
+
+  await expect(
+    readOpenWorkspaceFile('src/index.ts', api),
+  ).resolves.toBeUndefined()
+})
+
 test('openWorkspaceFile opens a resolved workspace URI', async () => {
   const api = createApi()
   const fileSystemApi = createFileSystemApi()
