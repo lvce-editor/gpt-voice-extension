@@ -77,6 +77,7 @@ test('uses GPT-5.6 Luna to execute tools and returns a structured summary', asyn
       configuration,
       task: 'Create a mountain scene',
       tools,
+      workId: 7,
     }),
   ).resolves.toEqual({
     success: true,
@@ -88,6 +89,17 @@ test('uses GPT-5.6 Luna to execute tools and returns a structured summary', asyn
     'read_workspace_file',
     '{"path":"index.html"}',
   )
+  expect(invoke).toHaveBeenCalledWith('VoiceWorkHost.reportToolCall', 7, {
+    argumentsValue: '{"path":"index.html"}',
+    callId: 'call-1',
+    name: 'read_workspace_file',
+    type: 'started',
+  })
+  expect(invoke).toHaveBeenCalledWith('VoiceWorkHost.reportToolCall', 7, {
+    callId: 'call-1',
+    output: '{"content":"old"}',
+    type: 'completed',
+  })
   const firstRequestBody = fetch.mock.calls[0]?.[1]?.body
   expect(typeof firstRequestBody).toBe('string')
   const firstRequest = JSON.parse(firstRequestBody as string)
@@ -132,7 +144,7 @@ test('accepts top-level output_text and trims the result', async () => {
   )
 
   await expect(
-    WorkTask.execute({ configuration, task: 'Do it', tools: [] }),
+    WorkTask.execute({ configuration, task: 'Do it', tools: [], workId: 1 }),
   ).resolves.toEqual({ success: true, summary: 'Finished.' })
 })
 
@@ -162,7 +174,7 @@ test('returns tool failures to the model so it can recover', async () => {
     )
 
   await expect(
-    WorkTask.execute({ configuration, task: 'Read it', tools }),
+    WorkTask.execute({ configuration, task: 'Read it', tools, workId: 1 }),
   ).resolves.toEqual({
     success: false,
     summary: 'The file remained locked.',
@@ -190,7 +202,7 @@ test.each([
     jest.spyOn(globalThis, 'fetch').mockResolvedValue(response)
 
     await expect(
-      WorkTask.execute({ configuration, task: 'Do it', tools: [] }),
+      WorkTask.execute({ configuration, task: 'Do it', tools: [], workId: 1 }),
     ).resolves.toEqual({ success: false, summary })
   },
 )
@@ -205,7 +217,7 @@ test('returns invalid JSON response failures', async () => {
   } as unknown as Response)
 
   await expect(
-    WorkTask.execute({ configuration, task: 'Do it', tools: [] }),
+    WorkTask.execute({ configuration, task: 'Do it', tools: [], workId: 1 }),
   ).resolves.toEqual({
     success: false,
     summary: 'Coding request failed (502).',
@@ -214,7 +226,7 @@ test('returns invalid JSON response failures', async () => {
 
 test.each([
   [
-    { configuration, task: ' ', tools: [] },
+    { configuration, task: ' ', tools: [], workId: 1 },
     'The delegated task must not be empty.',
   ],
   [
@@ -222,6 +234,7 @@ test.each([
       configuration: { accessToken: '', endpoint: '' },
       task: 'Do it',
       tools: [],
+      workId: 1,
     },
     'Coding model authentication is unavailable.',
   ],
@@ -251,13 +264,13 @@ test('reports incomplete and malformed model completions', async () => {
     .mockResolvedValueOnce(jsonResponse({ output: [], status: 'completed' }))
 
   await expect(
-    WorkTask.execute({ configuration, task: 'First', tools: [] }),
+    WorkTask.execute({ configuration, task: 'First', tools: [], workId: 1 }),
   ).resolves.toEqual({
     success: false,
     summary: 'output token limit reached',
   })
   await expect(
-    WorkTask.execute({ configuration, task: 'Second', tools: [] }),
+    WorkTask.execute({ configuration, task: 'Second', tools: [], workId: 1 }),
   ).resolves.toEqual({
     success: false,
     summary: 'The coding model returned an invalid completion summary.',

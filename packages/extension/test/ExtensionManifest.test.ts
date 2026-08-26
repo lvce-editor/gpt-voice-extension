@@ -94,6 +94,12 @@ test('contributes internal audio debug view commands', () => {
   }
 })
 
+test('contributes the internal delegated tool-call test command', () => {
+  const id = 'GptVoice.reportWorkToolCall'
+  expect(extensionManifest.activation).toContain(`onCommand:${id}`)
+  expect(extensionManifest.commands).toContainEqual({ id, internal: true })
+})
+
 test('declares audio processing settings and the opt-in terminal tool', () => {
   expect(extensionManifest.configuration).toEqual({
     'gptvoice.audio.autoGainControl': {

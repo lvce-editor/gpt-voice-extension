@@ -10,6 +10,7 @@ import type {
   TranscriptMessage as SharedTranscriptMessage,
   VoiceMessage as SharedVoiceMessage,
   VoiceSessionState as SharedVoiceSessionState,
+  VoiceWorkToolCallEvent,
 } from 'voice-shared'
 import { readMicLevels } from '@lvce-editor/api'
 import type { MenuEntry } from '../MenuEntries/MenuEntries.ts'
@@ -58,6 +59,10 @@ export interface ActiveGptVoiceViewInstance extends VirtualDomViewInstance {
     | readonly [selector: string, scrollTop: number]
   readonly renderTitle: () => string
   readonly replayFixture: (fixture: unknown) => Promise<void>
+  readonly reportWorkToolCall: (
+    parentCallId: string,
+    event: VoiceWorkToolCallEvent,
+  ) => Promise<void>
   readonly setAnimation: (enabled: boolean, scale: number) => void
   readonly setFundedError: (error: unknown) => Promise<void>
   readonly setOfflineError: (error: unknown) => Promise<void>
@@ -198,6 +203,9 @@ export const createInstance = async (
     },
     async replayFixture(fixture): Promise<void> {
       await dispatch('replayFixture', fixture)
+    },
+    async reportWorkToolCall(parentCallId, event): Promise<void> {
+      await dispatch('reportWorkToolCall', parentCallId, event)
     },
     saveState(): unknown {
       return {}

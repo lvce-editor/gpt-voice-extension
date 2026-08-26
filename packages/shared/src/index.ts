@@ -42,6 +42,19 @@ export interface VoiceWorkResult {
   readonly summary: string
 }
 
+export type VoiceWorkToolCallEvent =
+  | {
+      readonly argumentsValue: string
+      readonly callId: string
+      readonly name: string
+      readonly type: 'started'
+    }
+  | {
+      readonly callId: string
+      readonly output: string
+      readonly type: 'completed'
+    }
+
 export type RealtimeModelPreset = 'gpt-realtime-2.1-mini' | 'gpt-realtime-2.1'
 
 export interface TranscriptMessage {

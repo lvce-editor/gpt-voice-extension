@@ -1,4 +1,9 @@
 import type * as Api from '@lvce-editor/api'
+import type {
+  VoiceWorkConfiguration,
+  VoiceWorkResult,
+  VoiceWorkToolCallEvent,
+} from 'voice-shared'
 import { beforeAll, beforeEach, expect, jest, test } from '@jest/globals'
 import { createRenderState } from '../src/parts/RenderTestHelpers.ts'
 
@@ -13,7 +18,13 @@ const storeSecret = jest.fn<typeof Api.storeSecret>()
 const writeFile = jest.fn<typeof Api.writeFile>()
 const getRealtimeTools = jest.fn(async () => [])
 const executeFunctionToolCall = jest.fn(async () => [])
-const executeWorkTask = jest.fn(async () => ({
+const executeWorkTask = jest.fn<
+  (
+    task: string,
+    configuration: VoiceWorkConfiguration,
+    onToolCall: (event: VoiceWorkToolCallEvent) => Promise<void>,
+  ) => Promise<VoiceWorkResult>
+>(async () => ({
   success: true,
   summary: 'finished',
 }))
@@ -175,14 +186,40 @@ test('exposes delegated work and only realtime-safe tools to the session worker'
     [{ name: 'do_work', type: 'function' }],
   )
   await expect(
-    commandMap['VoiceHost.executeWorkTask']?.('task', {
+    commandMap['VoiceHost.executeWorkTask']?.(1, 'work-call', 'task', {
       accessToken: 'token',
       endpoint: 'https://api.openai.com/v1/responses',
     }),
   ).resolves.toEqual({ success: true, summary: 'finished' })
   expect(getRealtimeTools).toHaveBeenCalled()
   expect(getWorkToolDefinition).toHaveBeenCalled()
-  expect(executeWorkTask).toHaveBeenCalled()
+  expect(executeWorkTask).toHaveBeenCalledWith(
+    'task',
+    {
+      accessToken: 'token',
+      endpoint: 'https://api.openai.com/v1/responses',
+    },
+    expect.any(Function),
+  )
+  const onToolCall = executeWorkTask.mock.calls[0]?.[2]
+  await onToolCall?.({
+    argumentsValue: '{}',
+    callId: 'read-call',
+    name: 'read_workspace_file',
+    type: 'started',
+  })
+  expect(invoke).toHaveBeenCalledWith(
+    'VoiceSession.dispatch',
+    1,
+    'reportWorkToolCall',
+    'work-call',
+    {
+      argumentsValue: '{}',
+      callId: 'read-call',
+      name: 'read_workspace_file',
+      type: 'started',
+    },
+  )
 })
 
 test('adapts WebRTC data channels and worker state updates', async () => {
