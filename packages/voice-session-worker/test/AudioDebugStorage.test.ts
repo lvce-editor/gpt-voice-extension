@@ -63,7 +63,7 @@ const createStorage = (
   })
 }
 
-test('saves, lists, and reads a WebM recording', async () => {
+test('saves, lists, and reads an audio-only WebM recording', async () => {
   const cache = new FakeCache()
   const storage = createStorage(cache)
   const audio = new Blob(['recorded audio'], { type: 'audio/webm' })
@@ -71,13 +71,13 @@ test('saves, lists, and reads a WebM recording', async () => {
   await expect(storage.save(audio)).resolves.toEqual({
     createdAt: 123,
     mimeType: 'audio/webm',
-    name: 'voice-message-1.webm',
+    name: 'voice-message-1.weba',
     sequence: 1,
     size: 14,
-    uri: 'gpt-voice-audio:///voice-message-1.webm',
+    uri: 'gpt-voice-audio:///voice-message-1.weba',
   })
   const cachedResponse = cache.entries.get(
-    'https://gpt-voice-audio.invalid/voice-message-1.webm',
+    'https://gpt-voice-audio.invalid/voice-message-1.weba',
   )
   expect(cachedResponse?.headers.get('content-length')).toBe('14')
   expect(cachedResponse?.headers.get('content-type')).toBe('audio/webm')
@@ -89,13 +89,13 @@ test('saves, lists, and reads a WebM recording', async () => {
     {
       createdAt: 123,
       mimeType: 'audio/webm',
-      name: 'voice-message-1.webm',
+      name: 'voice-message-1.weba',
       sequence: 1,
       size: 14,
-      uri: 'gpt-voice-audio:///voice-message-1.webm',
+      uri: 'gpt-voice-audio:///voice-message-1.weba',
     },
   ])
-  const result = await storage.read('gpt-voice-audio:///voice-message-1.webm')
+  const result = await storage.read('gpt-voice-audio:///voice-message-1.weba')
   expect(result.type).toBe('audio/webm')
   await expect(result.text()).resolves.toBe('recorded audio')
 })
@@ -151,11 +151,11 @@ test('keeps stable sequential names and lists the highest number first', async (
 
   const recordings = await createStorage(cache).list()
 
-  expect(first.name).toBe('voice-message-1.webm')
-  expect(second.name).toBe('voice-message-2.webm')
+  expect(first.name).toBe('voice-message-1.weba')
+  expect(second.name).toBe('voice-message-2.weba')
   expect(recordings.map((recording) => recording.name)).toEqual([
-    'voice-message-2.webm',
-    'voice-message-1.webm',
+    'voice-message-2.weba',
+    'voice-message-1.weba',
   ])
   expect(recordings.map((recording) => recording.sequence)).toEqual([2, 1])
 })
@@ -176,13 +176,13 @@ test('continues numbering after legacy recordings', async () => {
     storage.save(new Blob(['new'], { type: 'audio/webm' })),
   ).resolves.toEqual(
     expect.objectContaining({
-      name: 'voice-message-2.webm',
+      name: 'voice-message-2.weba',
       sequence: 2,
     }),
   )
   await expect(storage.list()).resolves.toEqual([
-    expect.objectContaining({ name: 'voice-message-2.webm', sequence: 2 }),
-    expect.objectContaining({ name: '123-recording-id.webm', sequence: 1 }),
+    expect.objectContaining({ name: 'voice-message-2.weba', sequence: 2 }),
+    expect.objectContaining({ name: '123-recording-id.weba', sequence: 1 }),
   ])
 })
 
@@ -207,9 +207,9 @@ test('sorts equal timestamps and sequence numbers deterministically', async () =
 
   expect(recordings.map((recording) => recording.name)).toEqual([
     'voice-message-4.ogg',
-    'voice-message-4.webm',
-    'legacy-b.webm',
-    'legacy-a.webm',
+    'voice-message-4.weba',
+    'legacy-b.weba',
+    'legacy-a.weba',
   ])
 })
 
@@ -229,9 +229,25 @@ test('ignores unrelated and disappeared cache entries', async () => {
   await expect(createStorage(cache).list()).resolves.toEqual([
     expect.objectContaining({
       createdAt: 0,
-      name: 'no-date.webm',
+      name: 'no-date.weba',
     }),
   ])
+})
+
+test('reads and removes legacy audio-only WebM recordings through audio URIs', async () => {
+  const cache = new FakeCache()
+  cache.entries.set(
+    'https://gpt-voice-audio.invalid/voice-message-1.webm',
+    new Response(new Blob(['legacy audio'], { type: 'audio/webm' })),
+  )
+  const storage = createStorage(cache)
+
+  const recording = await storage.read(
+    'gpt-voice-audio:///voice-message-1.weba',
+  )
+  await expect(recording.text()).resolves.toBe('legacy audio')
+  await storage.remove('gpt-voice-audio:///voice-message-1.weba')
+  await expect(storage.list()).resolves.toEqual([])
 })
 
 test('rejects missing recordings and invalid uris', async () => {

@@ -23,6 +23,8 @@ const getExtension = (mimeType: string): string => {
       return 'mp3'
     case 'audio/ogg':
       return 'ogg'
+    case 'audio/webm':
+      return 'weba'
     default:
       return 'webm'
   }
@@ -37,6 +39,36 @@ const getNameFromCacheUrl = (url: string): string | undefined => {
     return undefined
   }
   return decodeURIComponent(url.slice(cacheUrlPrefix.length))
+}
+
+const getPublicName = (name: string, mimeType: string): string => {
+  if (mimeType === 'audio/webm' && name.endsWith('.webm')) {
+    return `${name.slice(0, -'.webm'.length)}.weba`
+  }
+  return name
+}
+
+const getLegacyName = (name: string): string | undefined => {
+  if (name.endsWith('.weba')) {
+    return `${name.slice(0, -'.weba'.length)}.webm`
+  }
+  return undefined
+}
+
+const matchRecording = async (
+  // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types
+  cache: Cache,
+  name: string,
+): Promise<Response | undefined> => {
+  const response = await cache.match(getCacheUrl(name))
+  if (response) {
+    return response
+  }
+  const legacyName = getLegacyName(name)
+  if (!legacyName) {
+    return undefined
+  }
+  return cache.match(getCacheUrl(legacyName))
 }
 
 const getNameFromUri = (uri: string): string => {
@@ -93,8 +125,8 @@ const listRecordings = async (
         // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types
         request: Readonly<Request>,
       ): Promise<StoredAudioDebugRecording | undefined> => {
-        const name = getNameFromCacheUrl(request.url)
-        if (!name) {
+        const storedName = getNameFromCacheUrl(request.url)
+        if (!storedName) {
           return undefined
         }
         const response = await cache.match(request)
@@ -102,11 +134,12 @@ const listRecordings = async (
           return undefined
         }
         const blob = await response.blob()
+        const name = getPublicName(storedName, blob.type)
         return {
           createdAt: Number(response.headers.get(createdAtHeader)) || 0,
           mimeType: blob.type,
           name,
-          sequence: getSequenceFromName(name),
+          sequence: getSequenceFromName(storedName),
           size: blob.size,
           uri: `${audioDebugScheme}:///${name}`,
         }
@@ -153,7 +186,7 @@ export const createAudioDebugStorage = (
     async read(uri: string): Promise<Blob> {
       const cache = await getCache()
       const name = getNameFromUri(uri)
-      const response = await cache.match(getCacheUrl(name))
+      const response = await matchRecording(cache, name)
       if (!response) {
         throw new Error(`Gpt Voice audio recording not found: ${name}`)
       }
@@ -162,7 +195,13 @@ export const createAudioDebugStorage = (
     async remove(uri: string): Promise<void> {
       const cache = await getCache()
       const name = getNameFromUri(uri)
-      await cache.delete(getCacheUrl(name))
+      if (await cache.delete(getCacheUrl(name))) {
+        return
+      }
+      const legacyName = getLegacyName(name)
+      if (legacyName) {
+        await cache.delete(getCacheUrl(legacyName))
+      }
     },
     async save(blob: Blob): Promise<AudioDebugRecording> {
       const cache = await getCache()
