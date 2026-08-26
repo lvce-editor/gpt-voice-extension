@@ -12,9 +12,9 @@ shared monthly AI allowance by default. Audio still flows directly between the
 editor and OpenAI over WebRTC; the authenticated backend control connection
 creates and meters the session without exposing an OpenAI credential.
 
-If the allowance is exhausted, the session stops and the view offers an explicit
-**Use your own API key** action. The extension never switches to personal billing
-automatically.
+If the allowance is exhausted, the session stops and the view links to LVCE plans
+and pricing so the user can upgrade. The extension never switches to personal
+billing automatically.
 
 Logged-out users can use their own OpenAI API key. The key is stored using
 extension secret storage when available (`Extensions.storeSecret`) and falls

@@ -335,9 +335,36 @@ test('surfaces funded WebSocket errors with their source', async () => {
     type: 'error',
   })
 
-  const { fundedError } = state
+  const { fundedError, fundedErrorDetails } = state
   expect(fundedError).toBe(
     'OpenAI closed its Realtime WebSocket connection to the LVCE voice backend unexpectedly. (Error code: E_OPENAI_CLOSED_WEBSOCKET; HTTP status: 502)',
   )
+  expect(fundedErrorDetails).toEqual({
+    code: 'E_OPENAI_CLOSED_WEBSOCKET',
+    description:
+      'OpenAI closed its Realtime WebSocket connection to the LVCE voice backend unexpectedly.',
+    statusCode: 502,
+  })
   await VoiceSession.dispose(5)
+})
+
+test('recognizes an allowance error by its stable error code', async () => {
+  await VoiceSession.create(6, true, 'funded')
+  const state = await VoiceSession.dispatch(6, 'setFundedError', {
+    error: {
+      code: 'E_LVCE_USAGE_EXCEEDED',
+      message: 'Monthly virtual token allowance exceeded for your Free plan.',
+      statusCode: 402,
+    },
+    type: 'error',
+  })
+
+  const { allowanceExceeded, fundedErrorDetails } = state
+  expect(allowanceExceeded).toBe(true)
+  expect(fundedErrorDetails).toEqual({
+    code: 'E_LVCE_USAGE_EXCEEDED',
+    description: 'Monthly virtual token allowance exceeded for your Free plan.',
+    statusCode: 402,
+  })
+  await VoiceSession.dispose(6)
 })
