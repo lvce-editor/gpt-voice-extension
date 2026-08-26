@@ -135,6 +135,17 @@ export const createAudioDebugStorage = (
   }
 
   return {
+    async clearAll(): Promise<void> {
+      const cache = await getCache()
+      const requests = await cache.keys()
+      const deletions: Promise<boolean>[] = []
+      for (const request of requests) {
+        if (getNameFromCacheUrl(request.url) !== undefined) {
+          deletions.push(cache.delete(request))
+        }
+      }
+      await Promise.all(deletions)
+    },
     async list(): Promise<readonly AudioDebugRecording[]> {
       const cache = await getCache()
       return listRecordings(cache)

@@ -88,6 +88,8 @@ beforeEach(() => {
   getSecret.mockReset().mockResolvedValue('')
   invoke.mockReset().mockImplementation(async (method) => {
     switch (method) {
+      case 'AudioDebug.clearAll':
+        return undefined
       case 'AudioDebug.list':
         return []
       case 'AudioDebug.read':
@@ -241,6 +243,9 @@ test('routes audio-debug capture and storage through the worker', async () => {
   expect(invoke).toHaveBeenCalledWith('AudioDebug.save', audio)
   expect(refresh).toHaveBeenCalled()
 
+  await expect(
+    VoiceSessionWorker.audioDebugStorage.clearAll(),
+  ).resolves.toBeUndefined()
   await expect(VoiceSessionWorker.audioDebugStorage.list()).resolves.toEqual([])
   await expect(
     VoiceSessionWorker.audioDebugStorage.read('gpt-voice-audio:///test.webm'),
@@ -248,6 +253,7 @@ test('routes audio-debug capture and storage through the worker', async () => {
   await expect(
     VoiceSessionWorker.audioDebugStorage.save(audio),
   ).resolves.toEqual({ name: 'recording.webm' })
+  expect(invoke).toHaveBeenCalledWith('AudioDebug.clearAll')
 })
 
 test('closes a partially created transport when WebRTC startup fails', async () => {

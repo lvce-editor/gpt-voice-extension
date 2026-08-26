@@ -8,6 +8,7 @@ export interface AudioDebugRecording {
 }
 
 export interface AudioDebugStorage {
+  readonly clearAll: () => Promise<void>
   readonly list: () => Promise<readonly AudioDebugRecording[]>
   readonly read: (uri: string) => Promise<Blob>
   readonly remove: (uri: string) => Promise<void>

@@ -6,11 +6,11 @@ import {
 } from '@lvce-editor/virtual-dom-worker'
 import { renderAudioDebugActionsDom } from '../src/parts/RenderAudioDebugActionsDom/RenderAudioDebugActionsDom.ts'
 
-test('renders refresh and settings actions', () => {
+test('renders refresh, clear all, and settings actions', () => {
   expect(renderAudioDebugActionsDom()).toEqual([
     {
       ariaLabel: 'Voice audio recording actions',
-      childCount: 2,
+      childCount: 3,
       className: 'Actions',
       role: AriaRoles.ToolBar,
       type: VirtualDomElements.Div,
@@ -26,6 +26,20 @@ test('renders refresh and settings actions', () => {
     {
       childCount: 0,
       className: mergeClassNames('MaskIcon', 'MaskIconRefresh'),
+      role: AriaRoles.None,
+      type: VirtualDomElements.Div,
+    },
+    {
+      ariaLabel: 'Clear All Recordings',
+      childCount: 1,
+      className: 'IconButton',
+      'data-command': 'GptVoiceAudioDebug.clearAll',
+      title: 'Clear All Recordings',
+      type: VirtualDomElements.Button,
+    },
+    {
+      childCount: 0,
+      className: mergeClassNames('MaskIcon', 'MaskIconClearAll'),
       role: AriaRoles.None,
       type: VirtualDomElements.Div,
     },

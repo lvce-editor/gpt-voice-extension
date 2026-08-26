@@ -20,11 +20,13 @@ const recording = {
 const createStorage = (
   list: () => Promise<readonly (typeof recording)[]> = async () => [],
 ): {
+  readonly clearAll: jest.Mock<() => Promise<void>>
   readonly list: jest.Mock<() => Promise<readonly (typeof recording)[]>>
   readonly read: jest.Mock<(uri: string) => Promise<Blob>>
   readonly remove: jest.Mock<(uri: string) => Promise<void>>
   readonly save: jest.Mock<(blob: Blob) => Promise<typeof recording>>
 } => ({
+  clearAll: jest.fn(async () => undefined),
   list: jest.fn(list),
   read: jest.fn<(uri: string) => Promise<Blob>>(),
   remove: jest.fn(async () => undefined),
@@ -176,6 +178,22 @@ test('removes a cached recording and refreshes the view', async () => {
   instance.dispose?.()
 })
 
+test('clears all cached recordings and refreshes the view', async () => {
+  const storage = createStorage(async () => [recording])
+  const requestRerender = jest.fn(async () => undefined)
+  const instance = await createAudioDebugViewInstance(
+    { requestRerender } as unknown as Api.ViewContext,
+    createDependencies({ storage }),
+  )
+
+  await instance.clearAll()
+
+  expect(storage.clearAll).toHaveBeenCalledTimes(1)
+  expect(storage.list).toHaveBeenCalledTimes(2)
+  expect(requestRerender).toHaveBeenCalledTimes(2)
+  instance.dispose?.()
+})
+
 test('runs recording menu commands', async () => {
   const storage = createStorage(async () => [recording])
   const downloadRecording = jest.fn<
@@ -277,6 +295,9 @@ test('renders actions and opens settings', async () => {
         'data-command': 'GptVoiceAudioDebug.refresh',
       }),
       expect.objectContaining({
+        'data-command': 'GptVoiceAudioDebug.clearAll',
+      }),
+      expect.objectContaining({
         'data-command': 'GptVoiceAudioDebug.openSettings',
       }),
     ]),
@@ -288,10 +309,14 @@ test('renders actions and opens settings', async () => {
 })
 
 test('executes audio debug view commands', async () => {
+  const clearAll = jest.fn(async () => undefined)
   const openSettings = jest.fn(async () => undefined)
   const refresh = jest.fn(async () => undefined)
-  const instance = { openSettings, refresh } as never
+  const instance = { clearAll, openSettings, refresh } as never
 
+  await expect(
+    audioDebugView.commands['GptVoiceAudioDebug.clearAll'](instance),
+  ).resolves.toBe(instance)
   await expect(
     audioDebugView.commands['GptVoiceAudioDebug.openSettings'](instance),
   ).resolves.toBe(instance)
@@ -299,6 +324,7 @@ test('executes audio debug view commands', async () => {
     audioDebugView.commands['GptVoiceAudioDebug.refresh'](instance),
   ).resolves.toBe(instance)
 
+  expect(clearAll).toHaveBeenCalledTimes(1)
   expect(openSettings).toHaveBeenCalledTimes(1)
   expect(refresh).toHaveBeenCalledTimes(1)
 })

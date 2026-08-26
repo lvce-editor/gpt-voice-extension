@@ -232,6 +232,12 @@ export const create = async (
 }
 
 export const audioDebugStorage: AudioDebugStorage = {
+  async clearAll() {
+    const rpc = await getRpc()
+    return rpc.invoke('AudioDebug.clearAll') as ReturnType<
+      AudioDebugStorage['clearAll']
+    >
+  },
   async list() {
     const rpc = await getRpc()
     return rpc.invoke('AudioDebug.list') as ReturnType<

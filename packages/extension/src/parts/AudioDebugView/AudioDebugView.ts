@@ -40,6 +40,7 @@ const defaultDependencies: AudioDebugViewDependencies = {
 }
 
 export interface ActiveAudioDebugViewInstance extends VirtualDomViewInstance {
+  readonly clearAll: () => Promise<void>
   readonly download: (uri: string, name: string) => Promise<void>
   readonly getMenuEntries: (menuId: string) => readonly MenuEntry[]
   readonly handleClick: (uri: string) => Promise<void>
@@ -87,6 +88,10 @@ export const createAudioDebugViewInstance = async (
   }
 
   const instance: ActiveAudioDebugViewInstance = {
+    async clearAll(): Promise<void> {
+      await dependencies.storage.clearAll()
+      await refreshActiveAudioDebugViewInstances()
+    },
     dispose(): void {
       activeInstances.delete(instance)
     },
@@ -177,6 +182,10 @@ export const audioDebugView: AudioDebugView = {
       if (typeof uri === 'string') {
         await instance.remove(uri)
       }
+      return instance
+    },
+    async 'GptVoiceAudioDebug.clearAll'(instance) {
+      await instance.clearAll()
       return instance
     },
     async 'GptVoiceAudioDebug.openSettings'(instance) {

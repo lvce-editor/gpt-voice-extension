@@ -7,7 +7,7 @@ import {
 
 const actionsNode: VirtualDomNode = {
   ariaLabel: 'Voice audio recording actions',
-  childCount: 2,
+  childCount: 3,
   className: 'Actions',
   role: AriaRoles.ToolBar,
   type: VirtualDomElements.Div,
@@ -43,6 +43,11 @@ export const renderAudioDebugActionsDom = (): readonly VirtualDomNode[] => {
       'GptVoiceAudioDebug.refresh',
       'MaskIconRefresh',
       'Refresh Recordings',
+    ),
+    ...renderAction(
+      'GptVoiceAudioDebug.clearAll',
+      'MaskIconClearAll',
+      'Clear All Recordings',
     ),
     ...renderAction(
       'GptVoiceAudioDebug.openSettings',
