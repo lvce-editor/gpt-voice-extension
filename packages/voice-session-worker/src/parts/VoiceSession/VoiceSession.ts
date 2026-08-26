@@ -460,7 +460,24 @@ const getAnswerSdp = async (
   return result.answerSdp
 }
 
+const refreshFundedConfigurationForSession = async (
+  session: Session,
+): Promise<void> => {
+  if (session.state.voiceProvider !== 'funded') {
+    return
+  }
+  const configuration = await resolveBackendConfiguration()
+  session.fundedConfiguration = configuration
+  if (!configuration) {
+    throw new FundedVoiceError(
+      'Backend-funded voice is unavailable.',
+      'configuration_unavailable',
+    )
+  }
+}
+
 const beginVoiceSession = async (session: Session): Promise<void> => {
+  await refreshFundedConfigurationForSession(session)
   const registeredTools = await Rpc.invoke<readonly unknown[]>(
     'VoiceHost.getRegisteredTools',
   )
