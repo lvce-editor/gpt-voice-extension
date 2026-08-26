@@ -124,6 +124,22 @@ test('removes a recording', async () => {
   await expect(storage.list()).resolves.toEqual([])
 })
 
+test('clears all recordings and preserves unrelated cache entries', async () => {
+  const cache = new FakeCache()
+  const storage = createStorage(cache)
+  await storage.save(new Blob(['first'], { type: 'audio/webm' }))
+  await storage.save(new Blob(['second'], { type: 'audio/ogg' }))
+  cache.entries.set(
+    'https://unrelated.invalid/entry',
+    new Response(new Blob(['unrelated'])),
+  )
+
+  await storage.clearAll()
+
+  await expect(storage.list()).resolves.toEqual([])
+  expect(cache.entries.has('https://unrelated.invalid/entry')).toBe(true)
+})
+
 test('keeps stable sequential names and lists the highest number first', async () => {
   const cache = new FakeCache()
   const first = await createStorage(cache, 20).save(

@@ -15,6 +15,16 @@ export const test: Test = async ({ expect, Locator, SideBar }) => {
   )
   await expect(refreshButton.locator('.MaskIconRefresh')).toHaveCount(1)
 
+  const clearAllButton = Locator(
+    '.SideBarTitleArea .IconButton[title="Clear All Recordings"]',
+  )
+  await expect(clearAllButton).toBeVisible()
+  await expect(clearAllButton).toHaveAttribute(
+    'data-command',
+    'GptVoiceAudioDebug.clearAll',
+  )
+  await expect(clearAllButton.locator('.MaskIconClearAll')).toHaveCount(1)
+
   const settingsButton = Locator(
     '.SideBarTitleArea .IconButton[title="Open Audio Debug Settings"]',
   )

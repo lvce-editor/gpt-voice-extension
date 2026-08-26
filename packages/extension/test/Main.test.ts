@@ -104,6 +104,7 @@ jest.unstable_mockModule(
   '../src/parts/VoiceSessionWorker/VoiceSessionWorker.ts',
   () => ({
     audioDebugStorage: {
+      clearAll: jest.fn(async () => undefined),
       list: jest.fn(async () => []),
       read: jest.fn(),
       save: jest.fn(),
