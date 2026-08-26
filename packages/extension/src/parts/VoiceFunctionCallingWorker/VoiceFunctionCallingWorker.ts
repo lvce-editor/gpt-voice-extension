@@ -82,6 +82,10 @@ const openPreview = async (uri: string): Promise<void> => {
   await executeCommand('Layout.showPreview', uri)
 }
 
+const closePreview = async (): Promise<void> => {
+  await executeCommand('Layout.hidePreview')
+}
+
 const getPreviewRuntimeDiagnostics = async (): Promise<unknown> => {
   return executeCommand('Preview.getRuntimeDiagnostics')
 }
@@ -103,6 +107,7 @@ const commandMap = {
   'PanelView.openDebugConsole': openDebugConsole,
   'PanelView.openOutputView': openOutputView,
   'PanelView.openProblemsView': openProblemsView,
+  'Preview.close': closePreview,
   'Preview.getRuntimeDiagnostics': getPreviewRuntimeDiagnostics,
   'Preview.open': openPreview,
   'ProcessExplorer.open': openProcessExplorer,

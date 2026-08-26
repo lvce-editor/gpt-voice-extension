@@ -31,6 +31,9 @@ test('createSessionConfig - includes registered function tools', () => {
     'Use open_html_preview whenever the user asks to show, open, or preview an HTML page in the editor preview area.',
   )
   expect(config.session.instructions).toContain(
+    'Use close_html_preview whenever the user asks to close, hide, or dismiss the HTML preview.',
+  )
+  expect(config.session.instructions).toContain(
     'After creating or modifying code that runs in the preview, refresh or open the preview, call get_preview_runtime_diagnostics, and fix any reported runtime errors before finishing.',
   )
   expect(config.session.instructions).toContain(

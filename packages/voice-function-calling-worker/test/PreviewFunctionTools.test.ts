@@ -5,12 +5,14 @@ import {
 } from '../src/parts/PreviewFunctionTools/PreviewFunctionTools.ts'
 
 interface TestApi {
+  readonly close: () => Promise<void>
   readonly getOpenEditorUris: () => Promise<readonly string[]>
   readonly getRuntimeDiagnostics: () => Promise<unknown>
   readonly open: (uri: string) => Promise<void>
 }
 
 const createApi = (uris: readonly string[] = []): TestApi => ({
+  close: jest.fn(async () => undefined),
   getOpenEditorUris: jest.fn(async () => uris),
   getRuntimeDiagnostics: jest.fn(async () => ({ entries: [], errorCount: 0 })),
   open: jest.fn(async () => undefined),
@@ -20,6 +22,7 @@ const execute = (
   argumentsValue: string,
   api: TestApi,
   name:
+    | 'close_html_preview'
     | 'get_preview_runtime_diagnostics'
     | 'open_html_preview' = 'open_html_preview',
 ): Promise<readonly string[] | undefined> => {
@@ -60,6 +63,17 @@ test('defines the HTML preview tool', () => {
     },
     {
       description:
+        'Close and hide the active LVCE Editor HTML preview area. Use this when the user asks to close, hide, or dismiss the preview.',
+      name: 'close_html_preview',
+      parameters: {
+        additionalProperties: false,
+        properties: {},
+        type: 'object',
+      },
+      type: 'function',
+    },
+    {
+      description:
         'Get recent console output and uncaught exceptions from the active LVCE Editor preview. Call this after creating or modifying preview code and refreshing the preview, then fix any reported runtime errors before finishing.',
       name: 'get_preview_runtime_diagnostics',
       parameters: {
@@ -70,6 +84,47 @@ test('defines the HTML preview tool', () => {
       type: 'function',
     },
   ])
+})
+
+test('closes the active HTML preview', async () => {
+  const api = createApi()
+
+  const messages = await execute('{}', api, 'close_html_preview')
+
+  expect(api.close).toHaveBeenCalledWith()
+  expect(parseOutput(messages)).toEqual({ closed: true })
+})
+
+test('returns a useful error when closing the preview fails', async () => {
+  const api = createApi()
+  jest
+    .mocked(api.close)
+    .mockRejectedValue(new Error('Preview is still loading'))
+
+  const messages = await execute('{}', api, 'close_html_preview')
+
+  expect(parseOutput(messages)).toEqual({
+    error: 'Preview is still loading',
+    hint: 'Retry after the preview has finished loading.',
+    tool: 'close_html_preview',
+  })
+})
+
+test('rejects close preview arguments', async () => {
+  const api = createApi()
+
+  const messages = await execute(
+    '{"uri":"file:///workspace/index.html"}',
+    api,
+    'close_html_preview',
+  )
+
+  expect(api.close).not.toHaveBeenCalled()
+  expect(parseOutput(messages)).toEqual({
+    error: 'Function tool argument "uri" is not supported.',
+    hint: 'Retry after the preview has finished loading.',
+    tool: 'close_html_preview',
+  })
 })
 
 test('gets runtime diagnostics from the active preview', async () => {

@@ -8,12 +8,14 @@ interface FunctionCallArguments {
 }
 
 interface PreviewApi {
+  readonly close: () => Promise<void>
   readonly getOpenEditorUris: () => Promise<readonly string[]>
   readonly getRuntimeDiagnostics: () => Promise<unknown>
   readonly open: (uri: string) => Promise<void>
 }
 
 const defaultApi: PreviewApi = {
+  close: () => Rpc.invoke<void>('Preview.close'),
   getOpenEditorUris: () =>
     Rpc.invoke<readonly string[]>('MainArea.getOpenEditorUris'),
   getRuntimeDiagnostics: () =>
@@ -23,6 +25,7 @@ const defaultApi: PreviewApi = {
 
 const htmlUriRegex = /\.html?(?:[?#].*)?$/i
 const previewToolNames = [
+  'close_html_preview',
   'get_preview_runtime_diagnostics',
   'open_html_preview',
 ] as const
@@ -42,6 +45,17 @@ export const previewFunctionTools: readonly FunctionToolDefinition[] = [
           type: 'string',
         },
       },
+      type: 'object',
+    },
+    type: 'function',
+  },
+  {
+    description:
+      'Close and hide the active LVCE Editor HTML preview area. Use this when the user asks to close, hide, or dismiss the preview.',
+    name: 'close_html_preview',
+    parameters: {
+      additionalProperties: false,
+      properties: {},
       type: 'object',
     },
     type: 'function',
@@ -193,6 +207,16 @@ const getErrorMessage = (error: unknown): string => {
   return error instanceof Error ? error.message : String(error)
 }
 
+const getErrorHint = (name: PreviewToolName): string => {
+  if (name === 'get_preview_runtime_diagnostics') {
+    return 'Open an HTML preview first, then retry after the preview has loaded.'
+  }
+  if (name === 'close_html_preview') {
+    return 'Retry after the preview has finished loading.'
+  }
+  return 'Open an HTML editor tab first. Pass its full URI when more than one HTML tab is open.'
+}
+
 export const executePreviewFunctionToolCall = async (
   functionCallEvent: unknown,
   api: PreviewApi = defaultApi,
@@ -206,6 +230,10 @@ export const executePreviewFunctionToolCall = async (
     if (functionCall.name === 'get_preview_runtime_diagnostics') {
       parseEmptyArguments(functionCall.argumentsValue)
       output = await api.getRuntimeDiagnostics()
+    } else if (functionCall.name === 'close_html_preview') {
+      parseEmptyArguments(functionCall.argumentsValue)
+      await api.close()
+      output = { closed: true }
     } else {
       const requestedUri = parseOpenArguments(functionCall.argumentsValue)
       const uri = await resolveHtmlUri(requestedUri, api)
@@ -215,10 +243,7 @@ export const executePreviewFunctionToolCall = async (
   } catch (error) {
     output = {
       error: getErrorMessage(error),
-      hint:
-        functionCall.name === 'get_preview_runtime_diagnostics'
-          ? 'Open an HTML preview first, then retry after the preview has loaded.'
-          : 'Open an HTML editor tab first. Pass its full URI when more than one HTML tab is open.',
+      hint: getErrorHint(functionCall.name),
       tool: functionCall.name,
     }
   }
