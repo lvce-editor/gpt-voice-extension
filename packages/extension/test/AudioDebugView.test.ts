@@ -7,6 +7,8 @@ import {
   createAudioDebugViewInstance,
   refreshActiveAudioDebugViewInstances,
 } from '../src/parts/AudioDebugView/AudioDebugView.ts'
+import * as DomEventListenerFunctions from '../src/parts/DomEventListenerFunctions/DomEventListenerFunctions.ts'
+import { enableTestMode } from '../src/parts/TestMode/TestMode.ts'
 
 const recording = {
   createdAt: 1_777_072_496_000,
@@ -82,7 +84,7 @@ test('lists cached recordings and opens a clicked provider uri', async () => {
     expect.objectContaining({
       className: 'GptVoiceAudioDebugRecording',
       name: recording.uri,
-      onClick: 'handleClick',
+      onClick: DomEventListenerFunctions.HandleAudioDebugClick,
       onContextMenu: 'handleContextMenu',
     }),
   )
@@ -189,6 +191,49 @@ test('clears all cached recordings and refreshes the view', async () => {
   await instance.clearAll()
 
   expect(storage.clearAll).toHaveBeenCalledTimes(1)
+  expect(storage.list).toHaveBeenCalledTimes(2)
+  expect(requestRerender).toHaveBeenCalledTimes(2)
+  instance.dispose?.()
+})
+
+test('handles audio debug title action events', async () => {
+  const executeCommand = jest.fn<(command: string) => Promise<unknown>>(
+    async () => undefined,
+  )
+  const storage = createStorage(async () => [recording])
+  const requestRerender = jest.fn(async () => undefined)
+  const instance = await createAudioDebugViewInstance(
+    { requestRerender } as unknown as Api.ViewContext,
+    createDependencies({ executeCommand, storage }),
+  )
+
+  await instance.handleEvent?.({ name: 'refresh', type: 'click' })
+  await instance.handleEvent?.({ name: 'openSettings', type: 'click' })
+  await instance.handleEvent?.({ name: 'clearAll', type: 'click' })
+
+  expect(storage.clearAll).toHaveBeenCalledTimes(1)
+  expect(storage.list).toHaveBeenCalledTimes(3)
+  expect(executeCommand).toHaveBeenCalledWith('Preferences.openSettingsUi')
+  expect(requestRerender).toHaveBeenCalledTimes(3)
+  instance.dispose?.()
+})
+
+test('seeds an audio recording only in test mode', async () => {
+  const storage = createStorage()
+  const requestRerender = jest.fn(async () => undefined)
+  const instance = await createAudioDebugViewInstance(
+    { requestRerender } as unknown as Api.ViewContext,
+    createDependencies({ storage }),
+  )
+
+  await expect(instance.saveForTest()).rejects.toThrow(
+    'Audio debug test recordings require test mode',
+  )
+  enableTestMode()
+  await instance.saveForTest()
+
+  expect(storage.save).toHaveBeenCalledTimes(1)
+  expect(storage.save.mock.calls[0]?.[0]).toBeInstanceOf(Blob)
   expect(storage.list).toHaveBeenCalledTimes(2)
   expect(requestRerender).toHaveBeenCalledTimes(2)
   instance.dispose?.()
@@ -312,7 +357,8 @@ test('executes audio debug view commands', async () => {
   const clearAll = jest.fn(async () => undefined)
   const openSettings = jest.fn(async () => undefined)
   const refresh = jest.fn(async () => undefined)
-  const instance = { clearAll, openSettings, refresh } as never
+  const saveForTest = jest.fn(async () => undefined)
+  const instance = { clearAll, openSettings, refresh, saveForTest } as never
 
   await expect(
     audioDebugView.commands['GptVoiceAudioDebug.clearAll'](instance),
@@ -323,8 +369,12 @@ test('executes audio debug view commands', async () => {
   await expect(
     audioDebugView.commands['GptVoiceAudioDebug.refresh'](instance),
   ).resolves.toBe(instance)
+  await expect(
+    audioDebugView.commands['GptVoiceAudioDebug.saveForTest'](instance),
+  ).resolves.toBe(instance)
 
   expect(clearAll).toHaveBeenCalledTimes(1)
   expect(openSettings).toHaveBeenCalledTimes(1)
   expect(refresh).toHaveBeenCalledTimes(1)
+  expect(saveForTest).toHaveBeenCalledTimes(1)
 })

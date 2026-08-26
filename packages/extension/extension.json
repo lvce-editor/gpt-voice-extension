@@ -55,6 +55,10 @@
     "onCommand:GptVoice.setRealtimeModelMini",
     "onCommand:GptVoice.setRealtimeModelStandard",
     "onCommand:GptVoice.addTranscript",
+    "onCommand:GptVoiceAudioDebug.clearAll",
+    "onCommand:GptVoiceAudioDebug.openSettings",
+    "onCommand:GptVoiceAudioDebug.refresh",
+    "onCommand:GptVoiceAudioDebug.saveForTest",
     "onCommand:GptVoice.stop"
   ],
   "commands": [
@@ -125,6 +129,22 @@
     {
       "id": "GptVoice.stop",
       "label": "gpt-voice: stop"
+    },
+    {
+      "id": "GptVoiceAudioDebug.clearAll",
+      "internal": true
+    },
+    {
+      "id": "GptVoiceAudioDebug.openSettings",
+      "internal": true
+    },
+    {
+      "id": "GptVoiceAudioDebug.refresh",
+      "internal": true
+    },
+    {
+      "id": "GptVoiceAudioDebug.saveForTest",
+      "internal": true
     }
   ],
   "keybindings": [],
@@ -148,7 +168,7 @@
       "displayName": "Voice Audio Recordings",
       "eventListeners": [
         {
-          "name": "handleClick",
+          "name": 9,
           "params": ["handleClick", "event.currentTarget.name"]
         }
       ],

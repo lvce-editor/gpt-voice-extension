@@ -15,12 +15,14 @@ import {
   audioDebugScheme,
   audioDebugViewId,
 } from '../AudioDebugConstants/AudioDebugConstants.ts'
+import * as DomEventListenerFunctions from '../DomEventListenerFunctions/DomEventListenerFunctions.ts'
 import { downloadAudioDebugRecording } from '../DownloadAudioDebugRecording/DownloadAudioDebugRecording.ts'
 import { renderAudioDebugActionsDom } from '../RenderAudioDebugActionsDom/RenderAudioDebugActionsDom.ts'
 import {
   renderAudioDebugView,
   type AudioDebugViewState,
 } from '../RenderAudioDebugView/RenderAudioDebugView.ts'
+import { isInTestMode } from '../TestMode/TestMode.ts'
 import { audioDebugStorage } from '../VoiceSessionWorker/VoiceSessionWorker.ts'
 
 interface AudioDebugViewDependencies {
@@ -48,6 +50,7 @@ export interface ActiveAudioDebugViewInstance extends VirtualDomViewInstance {
   readonly refresh: () => Promise<void>
   readonly remove: (uri: string) => Promise<void>
   readonly renderActionsDom: () => readonly VirtualDomNode[]
+  readonly saveForTest: () => Promise<void>
 }
 
 const activeInstances = new Set<ActiveAudioDebugViewInstance>()
@@ -123,9 +126,22 @@ export const createAudioDebugViewInstance = async (
         },
       ]
     },
-    async handleClick(uri: string): Promise<void> {
-      if (uri.startsWith(`${audioDebugScheme}:///`)) {
-        await dependencies.openUri(uri)
+    async handleClick(name: string): Promise<void> {
+      switch (name) {
+        case 'clearAll':
+          await instance.clearAll()
+          break
+        case 'openSettings':
+          await instance.openSettings()
+          break
+        case 'refresh':
+          await instance.refresh()
+          break
+        default:
+          if (name.startsWith(`${audioDebugScheme}:///`)) {
+            await dependencies.openUri(name)
+          }
+          break
       }
     },
     async handleEvent(event: Readonly<ViewEvent>): Promise<void> {
@@ -159,6 +175,15 @@ export const createAudioDebugViewInstance = async (
     },
     renderActionsDom(): readonly VirtualDomNode[] {
       return renderAudioDebugActionsDom()
+    },
+    async saveForTest(): Promise<void> {
+      if (!isInTestMode()) {
+        throw new Error('Audio debug test recordings require test mode')
+      }
+      await dependencies.storage.save(
+        new Blob(['test audio'], { type: 'audio/webm' }),
+      )
+      await refreshActiveAudioDebugViewInstances()
     },
   }
   activeInstances.add(instance)
@@ -196,12 +221,16 @@ export const audioDebugView: AudioDebugView = {
       await instance.refresh()
       return instance
     },
+    async 'GptVoiceAudioDebug.saveForTest'(instance) {
+      await instance.saveForTest()
+      return instance
+    },
   },
   create: createAudioDebugViewInstance,
   displayName: 'Voice Audio Recordings',
   eventListeners: [
     {
-      name: 'handleClick',
+      name: DomEventListenerFunctions.HandleAudioDebugClick,
       params: ['handleClick', 'event.currentTarget.name'],
     },
   ],

@@ -6,3 +6,4 @@ export const SetRealtimeModelMini = 5
 export const SetRealtimeModelStandard = 6
 export const ToggleToolCall = 7
 export const HandleUseOwnApiKey = 8
+export const HandleAudioDebugClick = 9
