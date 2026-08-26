@@ -15,6 +15,7 @@ import {
 import {
   formatFundedVoiceError,
   FundedVoiceError,
+  getFundedVoiceCloseError,
   getFundedVoiceError,
   openFundedVoiceSocket,
   waitForFundedSessionCreated,
@@ -406,7 +407,10 @@ const handleFundedControlMessage = (
   }
 }
 
-const handleFundedControlClose = (session: Session): void => {
+const handleFundedControlClose = (
+  session: Session,
+  event: Readonly<CloseEvent>,
+): void => {
   if (session.fundedSocketIntentionalClose) {
     return
   }
@@ -414,10 +418,7 @@ const handleFundedControlClose = (session: Session): void => {
   if (!session.state.inProgress) {
     return
   }
-  const error = new FundedVoiceError(
-    GptVoiceStrings.fundedVoiceClosed(),
-    'connection_closed',
-  )
+  const error = getFundedVoiceCloseError(event)
   if (isOfflineConnectionError(error)) {
     setOfflineErrorState(session, error)
   } else {
@@ -456,7 +457,9 @@ const getAnswerSdp = async (
   socket.addEventListener('message', (event) =>
     handleFundedControlMessage(session, event),
   )
-  socket.addEventListener('close', () => handleFundedControlClose(session))
+  socket.addEventListener('close', (event) =>
+    handleFundedControlClose(session, event),
+  )
   return result.answerSdp
 }
 
@@ -872,6 +875,11 @@ export const dispatch = async (
         animationScale: Number(params[1]),
       }
       await publish(session)
+      break
+    case 'setFundedError':
+      handleFundedControlMessage(session, {
+        data: JSON.stringify(params[0]),
+      })
       break
     case 'setModel':
       if (

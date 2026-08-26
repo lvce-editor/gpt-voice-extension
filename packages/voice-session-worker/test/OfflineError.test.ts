@@ -9,6 +9,15 @@ test('detects funded connection errors while offline', () => {
       false,
     ),
   ).toBe(true)
+  expect(
+    isOfflineConnectionError(
+      new FundedVoiceError(
+        'The backend closed the connection',
+        'E_OUR_BACKEND_CLOSED_WEBSOCKET',
+      ),
+      false,
+    ),
+  ).toBe(true)
 })
 
 test('detects fetch and WebRTC connection failures while offline', () => {

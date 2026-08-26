@@ -3,6 +3,7 @@ import {
   formatFundedVoiceError,
   FundedVoiceError,
   fundedVoiceProtocol,
+  getFundedVoiceCloseError,
   getFundedVoiceError,
   getFundedVoiceUrl,
   openFundedVoiceSocket,
@@ -135,6 +136,33 @@ describe('FundedVoice', () => {
     )
   })
 
+  it('identifies which WebSocket peer closed the connection', () => {
+    const backendError = getFundedVoiceCloseError({
+      code: 1011,
+      reason: 'Voice session failed',
+    })
+    const openAiError = getFundedVoiceError(
+      {
+        error: {
+          code: 'E_OPENAI_CLOSED_WEBSOCKET',
+          message:
+            'OpenAI closed its Realtime WebSocket connection to the LVCE voice backend unexpectedly. WebSocket close code: 1012; reason: Service restart.',
+        },
+        status: 502,
+        type: 'error',
+      },
+      'Backend-funded voice failed.',
+      'unknown_server_error',
+    )
+
+    expect(formatFundedVoiceError(backendError)).toBe(
+      'The LVCE voice backend closed its WebSocket connection to the editor unexpectedly. WebSocket close code: 1011; reason: Voice session failed. (Error code: E_OUR_BACKEND_CLOSED_WEBSOCKET)',
+    )
+    expect(formatFundedVoiceError(openAiError)).toBe(
+      'OpenAI closed its Realtime WebSocket connection to the LVCE voice backend unexpectedly. WebSocket close code: 1012; reason: Service restart. (Error code: E_OPENAI_CLOSED_WEBSOCKET; HTTP status: 502)',
+    )
+  })
+
   it('reports backend connection errors and early closes', async () => {
     await expect(
       openFundedVoiceSocket(
@@ -151,7 +179,9 @@ describe('FundedVoice', () => {
           Parameters<typeof openFundedVoiceSocket>[1]
         >,
       ),
-    ).rejects.toThrow('Backend-funded voice closed while connecting.')
+    ).rejects.toThrow(
+      'The LVCE voice backend closed its WebSocket connection to the editor unexpectedly.',
+    )
   })
 
   it('sends session creation and waits for answer SDP', async () => {

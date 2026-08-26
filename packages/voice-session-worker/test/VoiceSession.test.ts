@@ -230,3 +230,22 @@ test('refreshes backend authentication before starting funded voice', async () =
     Object.assign(globalThis, { WebSocket: originalWebSocket })
   }
 })
+
+test('surfaces funded WebSocket errors with their source', async () => {
+  await VoiceSession.create(5, true, 'funded')
+  const state = await VoiceSession.dispatch(5, 'setFundedError', {
+    error: {
+      code: 'E_OPENAI_CLOSED_WEBSOCKET',
+      message:
+        'OpenAI closed its Realtime WebSocket connection to the LVCE voice backend unexpectedly.',
+    },
+    status: 502,
+    type: 'error',
+  })
+
+  const { fundedError } = state
+  expect(fundedError).toBe(
+    'OpenAI closed its Realtime WebSocket connection to the LVCE voice backend unexpectedly. (Error code: E_OPENAI_CLOSED_WEBSOCKET; HTTP status: 502)',
+  )
+  await VoiceSession.dispose(5)
+})

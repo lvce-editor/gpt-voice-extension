@@ -59,6 +59,7 @@ export interface ActiveGptVoiceViewInstance extends VirtualDomViewInstance {
   readonly renderTitle: () => string
   readonly replayFixture: (fixture: unknown) => Promise<void>
   readonly setAnimation: (enabled: boolean, scale: number) => void
+  readonly setFundedError: (error: unknown) => Promise<void>
   readonly setOfflineError: (error: unknown) => Promise<void>
   readonly setRealtimeModelMini: () => Promise<void>
   readonly setRealtimeModelStandard: () => Promise<void>
@@ -204,6 +205,9 @@ export const createInstance = async (
     setAnimation(enabled, scale): void {
       state = { ...state, animationEnabled: enabled, animationScale: scale }
       void context?.requestRerender()
+    },
+    async setFundedError(error): Promise<void> {
+      await dispatch('setFundedError', error)
     },
     async setOfflineError(error): Promise<void> {
       await dispatch('setOfflineError', error)

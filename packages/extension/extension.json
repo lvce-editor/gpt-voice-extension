@@ -51,6 +51,7 @@
     "onCommand:GptVoice.replayFixture",
     "onCommand:GptVoice.setIsTest",
     "onCommand:GptVoice.setAnimation",
+    "onCommand:GptVoice.setFundedError",
     "onCommand:GptVoice.setOfflineError",
     "onCommand:GptVoice.setRealtimeModelMini",
     "onCommand:GptVoice.setRealtimeModelStandard",
@@ -109,6 +110,10 @@
     {
       "id": "GptVoice.setAnimation",
       "label": "gpt-voice: setAnimation"
+    },
+    {
+      "id": "GptVoice.setFundedError",
+      "label": "gpt-voice: set funded error"
     },
     {
       "id": "GptVoice.setOfflineError",

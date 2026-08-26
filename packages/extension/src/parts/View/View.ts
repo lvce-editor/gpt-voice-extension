@@ -62,6 +62,10 @@ export const view: GptVoiceView = {
       context.setAnimation(enabled, scale)
       return context
     },
+    async 'GptVoice.setFundedError'(context, error: unknown) {
+      await context.setFundedError(error)
+      return context
+    },
     async 'GptVoice.setOfflineError'(context, error: unknown) {
       await context.setOfflineError(error)
       return context

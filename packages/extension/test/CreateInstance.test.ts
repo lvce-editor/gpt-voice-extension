@@ -153,6 +153,7 @@ test('view adapter forwards business commands and disposes worker session', asyn
   await instance.handleSaveOpenAiApiKey()
   await instance.handleUseOwnApiKey()
   await instance.replayFixture(fixture)
+  await instance.setFundedError({ type: 'error' })
   await instance.setOfflineError(new Error('offline'))
   await instance.setRealtimeModelMini()
   await instance.setRealtimeModelStandard()
@@ -169,6 +170,7 @@ test('view adapter forwards business commands and disposes worker session', asyn
     'saveApiKey',
     'useOwnApiKey',
     'replayFixture',
+    'setFundedError',
     'setOfflineError',
     'setModel',
     'setModel',
