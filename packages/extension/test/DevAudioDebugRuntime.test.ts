@@ -32,6 +32,6 @@ test('dev runtime captures one microphone recording per stopped speech turn', ()
 
   expect(rendererBundle).toContain('input_audio_buffer.speech_stopped')
   expect(rendererBundle).toContain('MediaRecorder')
-  expect(rendererBundle).toContain('requestData')
+  expect(rendererBundle).toContain('restartInputAudioRecorder')
   expect(rendererBundle).toContain('audioDebugPort')
 })
