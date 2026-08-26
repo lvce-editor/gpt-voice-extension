@@ -84,8 +84,8 @@ export const isToolCallErrorOutput = (value: string): boolean => {
     return (
       parsed !== null &&
       typeof parsed === 'object' &&
-      'error' in parsed &&
-      typeof parsed.error === 'string'
+      (('error' in parsed && typeof parsed.error === 'string') ||
+        ('success' in parsed && parsed.success === false))
     )
   } catch {
     return false

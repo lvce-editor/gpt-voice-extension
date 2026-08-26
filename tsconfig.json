@@ -10,6 +10,7 @@
     { "path": "./packages/shared" },
     { "path": "./packages/voice-function-calling-worker" },
     { "path": "./packages/voice-session-worker" },
+    { "path": "./packages/voice-work-worker" },
     { "path": "./packages/build" }
   ]
 }

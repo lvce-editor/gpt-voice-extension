@@ -118,6 +118,8 @@ test('getToolCallOutput - ignores unrelated messages and uses a fallback', () =>
 
 test.each([
   ['{"error":"Not found","tool":"open_workspace_file"}', true],
+  ['{"success":false,"summary":"Failed"}', true],
+  ['{"success":true,"summary":"Done"}', false],
   ['{"opened":true}', false],
   ['{"error":1}', false],
   ['plain text', false],

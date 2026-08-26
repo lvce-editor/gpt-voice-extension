@@ -154,3 +154,47 @@ export const executeFunctionToolCall = async (
   }
   return [outputMessage, createFunctionResultResponseMessage()]
 }
+
+const getFunctionToolOutput = (
+  messages: readonly string[],
+  callId: string,
+): string => {
+  for (const message of messages) {
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(message)
+    } catch {
+      continue
+    }
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      'item' in parsed &&
+      parsed.item &&
+      typeof parsed.item === 'object' &&
+      'type' in parsed.item &&
+      parsed.item.type === 'function_call_output' &&
+      'call_id' in parsed.item &&
+      parsed.item.call_id === callId &&
+      'output' in parsed.item &&
+      typeof parsed.item.output === 'string'
+    ) {
+      return parsed.item.output
+    }
+  }
+  throw new Error('Function tool did not return an output.')
+}
+
+export const executeFunctionTool = async (
+  name: string,
+  argumentsValue: string,
+): Promise<string> => {
+  const callId = 'voice-work-call'
+  const messages = await executeFunctionToolCall({
+    arguments: argumentsValue,
+    call_id: callId,
+    name,
+    type: 'response.function_call_arguments.done',
+  })
+  return getFunctionToolOutput(messages, callId)
+}

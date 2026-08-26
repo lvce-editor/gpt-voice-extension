@@ -5,9 +5,14 @@ import * as FunctionToolRegistry from '../src/parts/FunctionToolRegistry/Functio
 
 test('exposes function calling RPC commands', () => {
   expect(commandMap).toEqual({
+    'VoiceFunctionCalling.executeFunctionTool':
+      FunctionCalling.executeFunctionTool,
     'VoiceFunctionCalling.executeFunctionToolCall':
       FunctionCalling.executeFunctionToolCall,
+    'VoiceFunctionCalling.getRealtimeTools':
+      FunctionToolRegistry.getRealtimeTools,
     'VoiceFunctionCalling.getRegisteredTools':
       FunctionToolRegistry.getRegisteredTools,
+    'VoiceFunctionCalling.getWorkTools': FunctionToolRegistry.getWorkTools,
   })
 })
