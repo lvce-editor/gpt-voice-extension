@@ -2,6 +2,7 @@ import * as AudioDebugStorage from '../AudioDebugStorage/AudioDebugStorage.ts'
 import * as VoiceSession from '../VoiceSession/VoiceSession.ts'
 
 export const commandMap: Readonly<Record<string, unknown>> = {
+  'AudioDebug.clearAll': AudioDebugStorage.audioDebugStorage.clearAll,
   'AudioDebug.list': AudioDebugStorage.audioDebugStorage.list,
   'AudioDebug.read': AudioDebugStorage.audioDebugStorage.read,
   'AudioDebug.remove': AudioDebugStorage.audioDebugStorage.remove,

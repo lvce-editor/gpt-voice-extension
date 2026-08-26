@@ -5,6 +5,7 @@ import { downloadAudioDebugRecordingWithDependencies } from '../src/parts/Downlo
 const blob = new Blob(['recorded audio'], { type: 'audio/webm' })
 
 const createStorage = (): AudioDebugStorage => ({
+  clearAll: jest.fn(async () => undefined),
   list: jest.fn(async () => []),
   read: jest.fn(async () => blob),
   remove: jest.fn(async () => undefined),
