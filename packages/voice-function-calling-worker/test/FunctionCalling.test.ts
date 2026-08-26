@@ -181,6 +181,8 @@ test('executes workspace file function calls in the worker', async () => {
   const invoke = jest
     .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
     .mockResolvedValueOnce('file:///workspace')
+    .mockResolvedValueOnce(undefined)
+    .mockResolvedValueOnce('file:///workspace')
     .mockResolvedValueOnce('const value = 1')
   const globalScope = globalThis as typeof globalThis & {
     rpc: { readonly invoke: typeof invoke }
@@ -194,12 +196,18 @@ test('executes workspace file function calls in the worker', async () => {
     type: 'response.function_call_arguments.done',
   })
 
+  expect(invoke).toHaveBeenNthCalledWith(1, 'WorkspaceMainArea.getWorkspaceUri')
   expect(invoke).toHaveBeenNthCalledWith(
-    1,
+    2,
+    'WorkspaceMainArea.readOpenTextDocument',
+    'file:///workspace/src/index.ts',
+  )
+  expect(invoke).toHaveBeenNthCalledWith(
+    3,
     'WorkspaceFileSystem.getWorkspaceUri',
   )
   expect(invoke).toHaveBeenNthCalledWith(
-    2,
+    4,
     'WorkspaceFileSystem.readFile',
     'file:///workspace/src/index.ts',
   )

@@ -23,8 +23,10 @@ const createMainAreaApi = (): WorkspaceMainAreaApi => ({
   closeUri: jest.fn(async () => undefined),
   getWorkspaceUri: jest.fn(async () => 'file:///workspace'),
   openUri: jest.fn(async () => undefined),
+  readOpenTextDocument: jest.fn(async () => undefined),
   setQuickPickValue: jest.fn(async () => undefined),
   showFileQuickPick: jest.fn(async () => undefined),
+  writeOpenTextDocument: jest.fn(async () => false),
 })
 
 const getToolOutput = (messages: readonly string[]): unknown => {
@@ -321,6 +323,7 @@ test('returns recovery guidance when no workspace files match', async () => {
 
 test('reads a workspace file', async () => {
   const fileSystemApi = createFileSystemApi()
+  const mainAreaApi = createMainAreaApi()
   const messages = await executeWorkspaceFileFunctionToolCall(
     {
       arguments: JSON.stringify({ path: 'src/index.ts' }),
@@ -329,9 +332,13 @@ test('reads a workspace file', async () => {
       type: 'response.function_call_arguments.done',
     },
     fileSystemApi,
+    mainAreaApi,
   )
 
   expect(messages).toHaveLength(2)
+  expect(mainAreaApi.readOpenTextDocument).toHaveBeenCalledWith(
+    'file:///workspace/src/index.ts',
+  )
   expect(fileSystemApi.readFile).toHaveBeenCalledWith(
     'file:///workspace/src/index.ts',
   )
@@ -341,8 +348,33 @@ test('reads a workspace file', async () => {
   })
 })
 
+test('reads live contents from an open text editor', async () => {
+  const fileSystemApi = createFileSystemApi()
+  const mainAreaApi = createMainAreaApi()
+  jest
+    .mocked(mainAreaApi.readOpenTextDocument)
+    .mockResolvedValue('const unsaved = true')
+  const messages = await executeWorkspaceFileFunctionToolCall(
+    {
+      arguments: JSON.stringify({ path: 'src/index.ts' }),
+      call_id: 'read-call',
+      name: 'read_workspace_file',
+      type: 'response.function_call_arguments.done',
+    },
+    fileSystemApi,
+    mainAreaApi,
+  )
+
+  expect(fileSystemApi.readFile).not.toHaveBeenCalled()
+  expect(getToolOutput(messages || [])).toEqual({
+    content: 'const unsaved = true',
+    path: 'src/index.ts',
+  })
+})
+
 test('writes a workspace file from an output item event', async () => {
   const fileSystemApi = createFileSystemApi()
+  const mainAreaApi = createMainAreaApi()
   const messages = await executeWorkspaceFileFunctionToolCall(
     {
       item: {
@@ -357,12 +389,46 @@ test('writes a workspace file from an output item event', async () => {
       type: 'response.output_item.done',
     },
     fileSystemApi,
+    mainAreaApi,
   )
 
+  expect(mainAreaApi.writeOpenTextDocument).toHaveBeenCalledWith(
+    'file:///workspace/src/index.ts',
+    'const value = 2',
+  )
   expect(fileSystemApi.writeFile).toHaveBeenCalledWith(
     'file:///workspace/src/index.ts',
     'const value = 2',
   )
+  expect(getToolOutput(messages || [])).toEqual({
+    path: 'src/index.ts',
+    written: true,
+  })
+})
+
+test('writes through an open text editor instead of the filesystem', async () => {
+  const fileSystemApi = createFileSystemApi()
+  const mainAreaApi = createMainAreaApi()
+  jest.mocked(mainAreaApi.writeOpenTextDocument).mockResolvedValue(true)
+  const messages = await executeWorkspaceFileFunctionToolCall(
+    {
+      arguments: JSON.stringify({
+        content: 'const value = 2',
+        path: 'src/index.ts',
+      }),
+      call_id: 'write-call',
+      name: 'write_workspace_file',
+      type: 'response.function_call_arguments.done',
+    },
+    fileSystemApi,
+    mainAreaApi,
+  )
+
+  expect(mainAreaApi.writeOpenTextDocument).toHaveBeenCalledWith(
+    'file:///workspace/src/index.ts',
+    'const value = 2',
+  )
+  expect(fileSystemApi.writeFile).not.toHaveBeenCalled()
   expect(getToolOutput(messages || [])).toEqual({
     path: 'src/index.ts',
     written: true,
@@ -379,6 +445,7 @@ test.each([
   ['{', 'Function tool arguments must be valid JSON.'],
 ])('returns tool errors to the model for %s', async (argumentsValue, error) => {
   const fileSystemApi = createFileSystemApi()
+  const mainAreaApi = createMainAreaApi()
   const messages = await executeWorkspaceFileFunctionToolCall(
     {
       arguments: argumentsValue,
@@ -387,6 +454,7 @@ test.each([
       type: 'response.function_call_arguments.done',
     },
     fileSystemApi,
+    mainAreaApi,
   )
 
   expect(fileSystemApi.readFile).not.toHaveBeenCalled()

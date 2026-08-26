@@ -3,9 +3,11 @@ import type { WorkspaceFileSystemApi } from '../src/parts/WorkspaceFileSystem/Wo
 import {
   closeWorkspaceFile,
   openWorkspaceFile,
+  readOpenWorkspaceFile,
   setQuickPickValue,
   showFileQuickPick,
   type WorkspaceMainAreaApi,
+  writeOpenWorkspaceFile,
 } from '../src/parts/WorkspaceMainArea/WorkspaceMainArea.ts'
 
 const createApi = (
@@ -14,8 +16,10 @@ const createApi = (
   closeUri: jest.fn(async () => undefined),
   getWorkspaceUri: jest.fn(async () => workspaceUri),
   openUri: jest.fn(async () => undefined),
+  readOpenTextDocument: jest.fn(async () => undefined),
   setQuickPickValue: jest.fn(async () => undefined),
   showFileQuickPick: jest.fn(async () => undefined),
+  writeOpenTextDocument: jest.fn(async () => false),
 })
 
 const createFileSystemApi = (): WorkspaceFileSystemApi => ({
@@ -41,6 +45,40 @@ test('showFileQuickPick opens the editor file quick pick', async () => {
 
   await expect(showFileQuickPick(api)).resolves.toEqual({ shown: true })
   expect(api.showFileQuickPick).toHaveBeenCalledWith()
+})
+
+test('writeOpenWorkspaceFile writes a resolved URI through the editor', async () => {
+  const api = createApi()
+  jest.mocked(api.writeOpenTextDocument).mockResolvedValue(true)
+
+  await expect(
+    writeOpenWorkspaceFile('src/index.ts', 'new content', api),
+  ).resolves.toBe(true)
+  expect(api.writeOpenTextDocument).toHaveBeenCalledWith(
+    'file:///workspace/src/index.ts',
+    'new content',
+  )
+})
+
+test('readOpenWorkspaceFile reads a resolved URI through the editor', async () => {
+  const api = createApi()
+  jest.mocked(api.readOpenTextDocument).mockResolvedValue('unsaved content')
+
+  await expect(readOpenWorkspaceFile('src/index.ts', api)).resolves.toBe(
+    'unsaved content',
+  )
+  expect(api.readOpenTextDocument).toHaveBeenCalledWith(
+    'file:///workspace/src/index.ts',
+  )
+})
+
+test('readOpenWorkspaceFile normalizes a null RPC result', async () => {
+  const api = createApi()
+  jest.mocked(api.readOpenTextDocument).mockResolvedValue(null)
+
+  await expect(
+    readOpenWorkspaceFile('src/index.ts', api),
+  ).resolves.toBeUndefined()
 })
 
 test('openWorkspaceFile opens a resolved workspace URI', async () => {
