@@ -9,16 +9,18 @@ jest.unstable_mockModule('../src/parts/Rpc/Rpc.ts', () => ({ invoke }))
 const VoiceSession = await import('../src/parts/VoiceSession/VoiceSession.ts')
 
 const updatedStates: unknown[] = []
-let backendConfigurations: unknown[] = []
+const backendConfigurationState = {
+  requests: 0,
+  values: [] as unknown[],
+}
 
 const normalizeProtocols = (
   protocols: string | readonly string[] | undefined,
 ): readonly string[] => {
-  return Array.isArray(protocols)
-    ? protocols
-    : protocols
-      ? [protocols as string]
-      : []
+  if (Array.isArray(protocols)) {
+    return protocols
+  }
+  return protocols ? [protocols as string] : []
 }
 
 class FakeWebSocket extends EventTarget {
@@ -58,7 +60,8 @@ class FakeWebSocket extends EventTarget {
 
 beforeEach(() => {
   updatedStates.length = 0
-  backendConfigurations = []
+  backendConfigurationState.requests = 0
+  backendConfigurationState.values.length = 0
   FakeWebSocket.sockets.length = 0
   invoke.mockReset().mockImplementation(async (method, ...params) => {
     switch (method) {
@@ -78,8 +81,10 @@ beforeEach(() => {
         return []
       case 'VoiceHost.getSecret':
         return 'sk-abcdefghijk'
-      case 'VoiceHost.resolveBackendConfiguration':
-        return backendConfigurations.shift()
+      case 'VoiceHost.resolveBackendConfiguration': {
+        backendConfigurationState.requests++
+        return backendConfigurationState.values.shift()
+      }
       case 'VoiceHost.startWebRtc':
         return 'offer-sdp'
       case 'VoiceHost.updateState':
@@ -195,7 +200,7 @@ test('handles API key validation and rejects unknown actions', async () => {
 })
 
 test('refreshes backend authentication before starting funded voice', async () => {
-  backendConfigurations.push(
+  backendConfigurationState.values.push(
     {
       accessToken: 'expired-access-token',
       baseUrl: 'https://lvce.example',
@@ -205,7 +210,7 @@ test('refreshes backend authentication before starting funded voice', async () =
       baseUrl: 'https://lvce.example',
     },
   )
-  const originalWebSocket = globalThis.WebSocket
+  const originalWebSocket = WebSocket
   Object.assign(globalThis, { WebSocket: FakeWebSocket })
   try {
     const initial = await VoiceSession.create(4, false, 'funded')
@@ -219,11 +224,7 @@ test('refreshes backend authentication before starting funded voice', async () =
       'lvce.realtime.voice.v1',
       'refreshed-access-token',
     ])
-    expect(
-      invoke.mock.calls.filter(
-        ([method]) => method === 'VoiceHost.resolveBackendConfiguration',
-      ),
-    ).toHaveLength(2)
+    expect(backendConfigurationState.requests).toBe(2)
   } finally {
     await VoiceSession.dispose(4)
     Object.assign(globalThis, { WebSocket: originalWebSocket })
