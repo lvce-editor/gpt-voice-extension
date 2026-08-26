@@ -20,8 +20,8 @@ export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
   const title = Locator('.GptVoiceAllowanceTitle')
   const description = Locator('.GptVoiceAllowanceDescription')
   const details = Locator('.GptVoiceAllowanceDetails')
+  const ownApiKeyButton = Locator('button.GptVoiceButton')
   const pricingLink = Locator('.GptVoiceAllowancePricingLink')
-  const voiceButton = Locator('.GptVoiceButton')
 
   await expect(allowanceCard).toBeVisible()
   await expect(illustration).toBeVisible()
@@ -40,5 +40,5 @@ export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
     'href',
     'https://lvce-editor.dev/pricing',
   )
-  await expect(voiceButton).not.toHaveText('Use your own API key')
+  await expect(ownApiKeyButton).toBeHidden()
 }
