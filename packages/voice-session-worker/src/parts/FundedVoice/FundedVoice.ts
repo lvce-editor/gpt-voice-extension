@@ -141,6 +141,8 @@ export const openFundedVoiceSocket = async (
     )
     socket.addEventListener(
       'close',
+      // The DOM WebSocket listener exposes a mutable CloseEvent.
+      // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types
       (event) => reject(getFundedVoiceCloseError(event)),
       { once: true },
     )

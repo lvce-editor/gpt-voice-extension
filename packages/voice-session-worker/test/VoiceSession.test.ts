@@ -243,7 +243,8 @@ test('surfaces funded WebSocket errors with their source', async () => {
     type: 'error',
   })
 
-  expect(state.fundedError).toBe(
+  const { fundedError } = state
+  expect(fundedError).toBe(
     'OpenAI closed its Realtime WebSocket connection to the LVCE voice backend unexpectedly. (Error code: E_OPENAI_CLOSED_WEBSOCKET; HTTP status: 502)',
   )
   await VoiceSession.dispose(5)
