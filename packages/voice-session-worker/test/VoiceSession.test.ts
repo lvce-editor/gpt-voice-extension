@@ -77,6 +77,11 @@ beforeEach(() => {
           }),
           JSON.stringify({ type: 'response.create' }),
         ]
+      case 'VoiceHost.executeWorkTask':
+        return {
+          success: true,
+          summary: 'Created the requested mountain scene.',
+        }
       case 'VoiceHost.getRegisteredTools':
         return []
       case 'VoiceHost.getSecret':
@@ -182,6 +187,93 @@ test('processes transcript and tool events inside the worker', async () => {
   )
   expect(updatedStates.length).toBeGreaterThan(0)
   await VoiceSession.dispose(2)
+})
+
+test('delegates substantive work with the personal API key', async () => {
+  await VoiceSession.create(20, true, 'byok')
+  const state = await VoiceSession.dispatch(
+    20,
+    'data',
+    JSON.stringify({
+      arguments: '{"task":"Create a mountain scene"}',
+      call_id: 'work-call-1',
+      name: 'do_work',
+      type: 'response.function_call_arguments.done',
+    }),
+  )
+
+  expect(invoke).toHaveBeenCalledWith(
+    'VoiceHost.executeWorkTask',
+    'Create a mountain scene',
+    {
+      accessToken: 'sk-abcdefghijk',
+      endpoint: 'https://api.openai.com/v1/responses',
+    },
+  )
+  const { messages } = state
+  expect(messages).toContainEqual(
+    expect.objectContaining({
+      id: 'work-call-1',
+      output:
+        '{"success":true,"summary":"Created the requested mountain scene."}',
+      status: 'completed',
+    }),
+  )
+  await VoiceSession.dispose(20)
+})
+
+test('refreshes funded authentication before delegated work', async () => {
+  await VoiceSession.create(21, true, 'funded')
+  backendConfigurationState.values.push({
+    accessToken: 'fresh-access-token',
+    baseUrl: 'https://lvce.example/backend/',
+  })
+
+  await VoiceSession.dispatch(
+    21,
+    'data',
+    JSON.stringify({
+      arguments: '{"task":"Run the tests"}',
+      call_id: 'work-call-2',
+      name: 'do_work',
+      type: 'response.function_call_arguments.done',
+    }),
+  )
+
+  expect(invoke).toHaveBeenCalledWith(
+    'VoiceHost.executeWorkTask',
+    'Run the tests',
+    {
+      accessToken: 'fresh-access-token',
+      endpoint: 'https://lvce.example/backend/v1/responses',
+    },
+  )
+  await VoiceSession.dispose(21)
+})
+
+test('returns malformed delegated work requests as failed tool results', async () => {
+  await VoiceSession.create(22, true, 'byok')
+  const state = await VoiceSession.dispatch(
+    22,
+    'data',
+    JSON.stringify({
+      arguments: '{}',
+      call_id: 'work-call-3',
+      name: 'do_work',
+      type: 'response.function_call_arguments.done',
+    }),
+  )
+
+  const { messages } = state
+  expect(messages).toContainEqual(
+    expect.objectContaining({
+      id: 'work-call-3',
+      output:
+        '{"success":false,"summary":"do_work requires a non-empty task."}',
+      status: 'failed',
+    }),
+  )
+  await VoiceSession.dispose(22)
 })
 
 test('handles API key validation and rejects unknown actions', async () => {

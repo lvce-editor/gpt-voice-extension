@@ -16,6 +16,7 @@ import { resolveBackendVoiceConfiguration } from '../BackendConfiguration/Backen
 import * as ClassNames from '../ClassNames/ClassNames.ts'
 import { getMicrophoneAudioConstraints } from '../MicrophoneAudioConstraints/MicrophoneAudioConstraints.ts'
 import * as VoiceFunctionCallingWorker from '../VoiceFunctionCallingWorker/VoiceFunctionCallingWorker.ts'
+import * as VoiceWorkWorker from '../VoiceWorkWorker/VoiceWorkWorker.ts'
 
 interface Rpc {
   readonly dispose: () => void | Promise<void>
@@ -51,6 +52,14 @@ export const state: {
 const listeners = new Map<number, StateListener>()
 const transports = new Map<number, Transport>()
 
+const getRegisteredTools = async (): Promise<readonly unknown[]> => {
+  const [realtimeTools, workTool] = await Promise.all([
+    VoiceFunctionCallingWorker.getRealtimeTools(),
+    VoiceWorkWorker.getToolDefinition(),
+  ])
+  return [...realtimeTools, workTool]
+}
+
 export const setRefreshAudioDebugViews = (
   refresh: () => Promise<void>,
 ): void => {
@@ -71,7 +80,8 @@ const commandMap = {
   'VoiceHost.deleteSecret': deleteSecret,
   'VoiceHost.executeFunctionToolCall':
     VoiceFunctionCallingWorker.executeFunctionToolCall,
-  'VoiceHost.getRegisteredTools': VoiceFunctionCallingWorker.getRegisteredTools,
+  'VoiceHost.executeWorkTask': VoiceWorkWorker.execute,
+  'VoiceHost.getRegisteredTools': getRegisteredTools,
   'VoiceHost.getSecret': getSecret,
   'VoiceHost.resolveBackendConfiguration': resolveBackendVoiceConfiguration,
   async 'VoiceHost.sendWebRtcMessage'(

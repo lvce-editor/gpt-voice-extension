@@ -169,6 +169,38 @@ export const getRegisteredTools = async (): Promise<
   ) as Promise<readonly FunctionToolDefinition[]>
 }
 
+export const getRealtimeTools = async (): Promise<
+  readonly FunctionToolDefinition[]
+> => {
+  const rpc = await getRpc()
+  return rpc.invoke('VoiceFunctionCalling.getRealtimeTools') as Promise<
+    readonly FunctionToolDefinition[]
+  >
+}
+
+export const getWorkTools = async (): Promise<
+  readonly FunctionToolDefinition[]
+> => {
+  const rpc = await getRpc()
+  const terminalEnabled = await TerminalNode.isEnabled()
+  return rpc.invoke(
+    'VoiceFunctionCalling.getWorkTools',
+    terminalEnabled,
+  ) as Promise<readonly FunctionToolDefinition[]>
+}
+
+export const executeFunctionTool = async (
+  name: string,
+  argumentsValue: string,
+): Promise<string> => {
+  const rpc = await getRpc()
+  return rpc.invoke(
+    'VoiceFunctionCalling.executeFunctionTool',
+    name,
+    argumentsValue,
+  ) as Promise<string>
+}
+
 export const executeFunctionToolCall = async (
   functionCallEvent: unknown,
 ): Promise<readonly string[]> => {

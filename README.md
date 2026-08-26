@@ -37,6 +37,13 @@ replay, and audio-debug persistence. It asks the extension adapter to start or
 stop WebRTC through the extension `createRpc` command map. Network permissions
 are therefore scoped to the voice-session worker rather than the view worker.
 
+Substantive editor and coding requests are delegated through the Realtime
+`do_work` tool to the separate `voice-work-worker`. That worker uses GPT-5.6
+Luna through the Responses API, runs the existing editor and workspace tools
+over RPC, and returns a small `{ success, summary }` result for the Realtime
+model to narrate. Realtime retains only conversational controls, while the
+low-level editor tools stay behind the work-worker boundary.
+
 ## Development
 
 ```sh

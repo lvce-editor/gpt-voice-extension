@@ -234,6 +234,35 @@ test('registers the terminal tool only when its setting is enabled', async () =>
   )
 })
 
+test('exposes separate realtime and delegated work tool sets', async () => {
+  invoke.mockResolvedValue([])
+
+  await expect(VoiceFunctionCallingWorker.getRealtimeTools()).resolves.toEqual(
+    [],
+  )
+  expect(invoke).toHaveBeenCalledWith('VoiceFunctionCalling.getRealtimeTools')
+
+  getPreference.mockResolvedValue(true)
+  await expect(VoiceFunctionCallingWorker.getWorkTools()).resolves.toEqual([])
+  expect(invoke).toHaveBeenCalledWith('VoiceFunctionCalling.getWorkTools', true)
+})
+
+test('executes one delegated work tool and returns its raw output', async () => {
+  invoke.mockResolvedValue('{"content":"hello"}')
+
+  await expect(
+    VoiceFunctionCallingWorker.executeFunctionTool(
+      'read_workspace_file',
+      '{"path":"README.md"}',
+    ),
+  ).resolves.toBe('{"content":"hello"}')
+  expect(invoke).toHaveBeenCalledWith(
+    'VoiceFunctionCalling.executeFunctionTool',
+    'read_workspace_file',
+    '{"path":"README.md"}',
+  )
+})
+
 test('bridges panel commands from the function calling worker', async () => {
   invoke.mockResolvedValue([])
   await VoiceFunctionCallingWorker.getRegisteredTools()

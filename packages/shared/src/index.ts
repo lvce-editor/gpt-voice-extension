@@ -32,6 +32,16 @@ export interface FunctionToolDefinition {
   readonly type: 'function'
 }
 
+export interface VoiceWorkConfiguration {
+  readonly accessToken: string
+  readonly endpoint: string
+}
+
+export interface VoiceWorkResult {
+  readonly success: boolean
+  readonly summary: string
+}
+
 export type RealtimeModelPreset = 'gpt-realtime-2.1-mini' | 'gpt-realtime-2.1'
 
 export interface TranscriptMessage {

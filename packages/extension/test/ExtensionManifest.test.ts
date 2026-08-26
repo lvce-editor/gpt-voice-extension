@@ -33,6 +33,20 @@ test('declares the voice function calling web worker', () => {
   })
 })
 
+test('isolates coding model network access in the voice work worker', () => {
+  expect(extensionManifest.rpc).toContainEqual({
+    contentSecurityPolicy: [
+      "default-src 'none'",
+      "script-src 'self'",
+      "connect-src 'self' https://api.openai.com https://lvce-editor.dev",
+    ],
+    id: 'builtin.gpt-voice.voice-work-worker',
+    name: 'Voice Work Worker',
+    type: 'web-worker',
+    url: 'dist/voiceWorkWorkerMain.js',
+  })
+})
+
 test('uses the voice chat view icon', () => {
   expect(extensionManifest.views).toContainEqual(
     expect.objectContaining({

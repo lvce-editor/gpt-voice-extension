@@ -25,5 +25,12 @@ export const getBrowserEntryPoints = (
       'src',
       'voiceSessionWorkerMain.ts',
     ),
+    voiceWorkWorkerMain: path.join(
+      root,
+      'packages',
+      'voice-work-worker',
+      'src',
+      'voiceWorkWorkerMain.ts',
+    ),
   }
 }

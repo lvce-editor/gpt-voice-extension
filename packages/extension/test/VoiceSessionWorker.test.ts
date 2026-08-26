@@ -11,8 +11,16 @@ const startWebRtcAudioStream = jest.fn<typeof Api.startWebRtcAudioStream>()
 const stopWebRtcAudioStream = jest.fn<typeof Api.stopWebRtcAudioStream>()
 const storeSecret = jest.fn<typeof Api.storeSecret>()
 const writeFile = jest.fn<typeof Api.writeFile>()
-const getRegisteredTools = jest.fn(async () => [])
+const getRealtimeTools = jest.fn(async () => [])
 const executeFunctionToolCall = jest.fn(async () => [])
+const executeWorkTask = jest.fn(async () => ({
+  success: true,
+  summary: 'finished',
+}))
+const getWorkToolDefinition = jest.fn(async () => ({
+  name: 'do_work',
+  type: 'function',
+}))
 const invoke =
   jest.fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
 const disposeRpc = jest.fn<() => Promise<void>>()
@@ -48,7 +56,16 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
 // eslint-disable-next-line jest/no-restricted-jest-methods
 jest.unstable_mockModule(
   '../src/parts/VoiceFunctionCallingWorker/VoiceFunctionCallingWorker.ts',
-  () => ({ executeFunctionToolCall, getRegisteredTools }),
+  () => ({ executeFunctionToolCall, getRealtimeTools }),
+)
+
+// eslint-disable-next-line jest/no-restricted-jest-methods
+jest.unstable_mockModule(
+  '../src/parts/VoiceWorkWorker/VoiceWorkWorker.ts',
+  () => ({
+    execute: executeWorkTask,
+    getToolDefinition: getWorkToolDefinition,
+  }),
 )
 
 const VoiceSessionWorker =
@@ -86,6 +103,9 @@ beforeEach(() => {
     }
   })
   getSecret.mockReset().mockResolvedValue('')
+  getRealtimeTools.mockClear()
+  getWorkToolDefinition.mockClear()
+  executeWorkTask.mockClear()
   invoke.mockReset().mockImplementation(async (method) => {
     switch (method) {
       case 'AudioDebug.clearAll':
@@ -145,6 +165,24 @@ test('creates one ID-based worker RPC and forwards session operations', async ()
   await second.session.dispose()
   expect(invoke).toHaveBeenCalledWith('VoiceSession.dispatch', 1, 'start')
   expect(invoke).toHaveBeenCalledWith('VoiceSession.dispose', 1)
+})
+
+test('exposes delegated work and only realtime-safe tools to the session worker', async () => {
+  await VoiceSessionWorker.create(false, 'byok', jest.fn())
+  const commandMap = getCommandMap()
+
+  await expect(commandMap['VoiceHost.getRegisteredTools']?.()).resolves.toEqual(
+    [{ name: 'do_work', type: 'function' }],
+  )
+  await expect(
+    commandMap['VoiceHost.executeWorkTask']?.('task', {
+      accessToken: 'token',
+      endpoint: 'https://api.openai.com/v1/responses',
+    }),
+  ).resolves.toEqual({ success: true, summary: 'finished' })
+  expect(getRealtimeTools).toHaveBeenCalled()
+  expect(getWorkToolDefinition).toHaveBeenCalled()
+  expect(executeWorkTask).toHaveBeenCalled()
 })
 
 test('adapts WebRTC data channels and worker state updates', async () => {

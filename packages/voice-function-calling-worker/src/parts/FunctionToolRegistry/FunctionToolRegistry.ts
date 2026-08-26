@@ -94,8 +94,17 @@ const parseArguments = (value: string): Readonly<Record<string, unknown>> => {
 export const getRegisteredTools = (
   terminalEnabled = false,
 ): readonly FunctionToolDefinition[] => {
+  return [...getRealtimeTools(), ...getWorkTools(terminalEnabled)]
+}
+
+export const getRealtimeTools = (): readonly FunctionToolDefinition[] => {
+  return registeredTools.map((tool) => tool.definition)
+}
+
+export const getWorkTools = (
+  terminalEnabled = false,
+): readonly FunctionToolDefinition[] => {
   return [
-    ...registeredTools.map((tool) => tool.definition),
     ...editorFunctionTools,
     ...layoutFunctionTools,
     ...mainAreaFunctionTools,

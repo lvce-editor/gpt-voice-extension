@@ -17,6 +17,7 @@ const voiceFunctionCallingWorker = path.join(
   'voice-function-calling-worker',
 )
 const voiceSessionWorker = path.join(root, 'packages', 'voice-session-worker')
+const voiceWorkWorker = path.join(root, 'packages', 'voice-work-worker')
 const require = createRequire(import.meta.url)
 const commonjs = require('@rollup/plugin-commonjs') as () => Plugin
 
@@ -81,6 +82,10 @@ await Promise.all([
   buildBundle(
     join(voiceSessionWorker, 'src', 'voiceSessionWorkerMain.ts'),
     join(root, 'dist', 'dist', 'voiceSessionWorkerMain.js'),
+  ),
+  buildBundle(
+    join(voiceWorkWorker, 'src', 'voiceWorkWorkerMain.ts'),
+    join(root, 'dist', 'dist', 'voiceWorkWorkerMain.js'),
   ),
   esbuildBuild({
     banner: {

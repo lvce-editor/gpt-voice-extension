@@ -1,5 +1,19 @@
 import { expect, jest, test } from '@jest/globals'
-import { executeFunctionToolCall } from '../src/parts/FunctionCalling/FunctionCalling.ts'
+import {
+  executeFunctionTool,
+  executeFunctionToolCall,
+} from '../src/parts/FunctionCalling/FunctionCalling.ts'
+
+test('returns raw output for a delegated work tool call', async () => {
+  const output = await executeFunctionTool('getweather', '{"location":"Paris"}')
+  expect(JSON.parse(output)).toEqual({
+    conditions: 'Sunny',
+    humidity: 58,
+    location: 'paris',
+    temperature: 20,
+    unit: 'C',
+  })
+})
 
 test('executes completed function call arguments and creates response messages', async () => {
   const result = await executeFunctionToolCall({

@@ -2,6 +2,8 @@
 import type {
   BackendVoiceConfiguration,
   CaptureFixtureOptions,
+  VoiceWorkConfiguration,
+  VoiceWorkResult,
   VoiceSessionState,
 } from 'voice-shared'
 import {
@@ -39,6 +41,7 @@ import {
 } from '../WebRtc/WebRtc.ts'
 
 const fundedConfigurationRefreshInterval = 1000
+const trailingSlashRegex = /\/$/
 
 interface Session {
   disposed: boolean
@@ -280,10 +283,14 @@ const handleFunctionCall = async (
   }
   let responseMessages: readonly string[]
   try {
-    responseMessages = await Rpc.invoke(
-      'VoiceHost.executeFunctionToolCall',
-      parsed,
-    )
+    responseMessages =
+      toolCall.name === 'do_work'
+        ? await executeWorkTask(
+            session,
+            toolCall.callId,
+            toolCall.argumentsValue,
+          )
+        : await Rpc.invoke('VoiceHost.executeFunctionToolCall', parsed)
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
     session.state = {
@@ -477,6 +484,89 @@ const refreshFundedConfigurationForSession = async (
       'configuration_unavailable',
     )
   }
+}
+
+const getBackendResponsesEndpoint = (baseUrl: string): string => {
+  return `${baseUrl.replace(trailingSlashRegex, '')}/v1/responses`
+}
+
+const getWorkTask = (argumentsValue: string): string => {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(argumentsValue)
+  } catch {
+    throw new TypeError('do_work arguments must be valid JSON.')
+  }
+  if (
+    !parsed ||
+    typeof parsed !== 'object' ||
+    !('task' in parsed) ||
+    typeof parsed.task !== 'string' ||
+    !parsed.task.trim()
+  ) {
+    throw new TypeError('do_work requires a non-empty task.')
+  }
+  return parsed.task.trim()
+}
+
+const createWorkResponseMessages = (
+  callId: string,
+  result: VoiceWorkResult,
+): readonly string[] => {
+  return [
+    JSON.stringify({
+      item: {
+        call_id: callId,
+        output: JSON.stringify(result),
+        type: 'function_call_output',
+      },
+      type: 'conversation.item.create',
+    }),
+    JSON.stringify({ type: 'response.create' }),
+  ]
+}
+
+const getWorkConfiguration = async (
+  session: Session,
+): Promise<VoiceWorkConfiguration> => {
+  if (session.state.voiceProvider === 'byok') {
+    return {
+      accessToken: await getStoredApiKey(session),
+      endpoint: 'https://api.openai.com/v1/responses',
+    }
+  }
+  await refreshFundedConfigurationForSession(session)
+  const configuration = session.fundedConfiguration
+  if (!configuration) {
+    throw new Error('Backend-funded coding is unavailable.')
+  }
+  return {
+    accessToken: configuration.accessToken,
+    endpoint: getBackendResponsesEndpoint(configuration.baseUrl),
+  }
+}
+
+async function executeWorkTask(
+  session: Session,
+  callId: string,
+  argumentsValue: string,
+): Promise<readonly string[]> {
+  let result: VoiceWorkResult
+  try {
+    const task = getWorkTask(argumentsValue)
+    const configuration = await getWorkConfiguration(session)
+    result = await Rpc.invoke<VoiceWorkResult>(
+      'VoiceHost.executeWorkTask',
+      task,
+      configuration,
+    )
+  } catch (error) {
+    result = {
+      success: false,
+      summary: error instanceof Error ? error.message : String(error),
+    }
+  }
+  return createWorkResponseMessages(callId, result)
 }
 
 const beginVoiceSession = async (session: Session): Promise<void> => {

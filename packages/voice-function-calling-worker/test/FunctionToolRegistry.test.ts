@@ -1,7 +1,9 @@
 import { expect, test } from '@jest/globals'
 import {
   executeRegisteredFunctionTool,
+  getRealtimeTools,
   getRegisteredTools,
+  getWorkTools,
 } from '../src/parts/FunctionToolRegistry/FunctionToolRegistry.ts'
 
 test('returns registered function tool definitions', () => {
@@ -77,6 +79,20 @@ test('returns registered function tool definitions', () => {
     expect.objectContaining({ name: 'show_file_quick_pick' }),
     expect.objectContaining({ name: 'set_quick_pick_value' }),
   ])
+})
+
+test('separates conversational tools from delegated work tools', () => {
+  expect(getRealtimeTools().map((tool) => tool.name)).toEqual([
+    'getweather',
+    'stop_talking',
+    'wait_for_user',
+  ])
+  expect(
+    getWorkTools().some((tool) => tool.name === 'write_workspace_file'),
+  ).toBe(true)
+  expect(getWorkTools().some((tool) => tool.name === 'stop_talking')).toBe(
+    false,
+  )
 })
 
 test('includes the terminal tool only when enabled', () => {

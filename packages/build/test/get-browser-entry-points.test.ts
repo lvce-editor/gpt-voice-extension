@@ -28,5 +28,12 @@ test('includes every browser and web-worker entry point', () => {
       'src',
       'voiceSessionWorkerMain.ts',
     ),
+    voiceWorkWorkerMain: path.join(
+      root,
+      'packages',
+      'voice-work-worker',
+      'src',
+      'voiceWorkWorkerMain.ts',
+    ),
   })
 })
