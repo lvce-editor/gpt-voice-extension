@@ -374,16 +374,15 @@ export const executeWorkspaceFileFunctionToolCall = async (
           fileSystemApi,
         )
         break
-      case 'read_workspace_file':
-        {
-          const path = getRequiredString(argumentsValue, 'path')
-          const openContent = await readOpenWorkspaceFile(path, mainAreaApi)
-          output =
-            openContent === undefined
-              ? await readWorkspaceFile(path, fileSystemApi)
-              : { content: openContent, path }
-        }
+      case 'read_workspace_file': {
+        const path = getRequiredString(argumentsValue, 'path')
+        const openContent = await readOpenWorkspaceFile(path, mainAreaApi)
+        output =
+          openContent === undefined
+            ? await readWorkspaceFile(path, fileSystemApi)
+            : { content: openContent, path }
         break
+      }
       case 'search_workspace_files':
         output = await searchWorkspaceFiles(
           getRequiredString(argumentsValue, 'query'),
@@ -399,20 +398,19 @@ export const executeWorkspaceFileFunctionToolCall = async (
       case 'show_file_quick_pick':
         output = await showFileQuickPick(mainAreaApi)
         break
-      case 'write_workspace_file':
-        {
-          const path = getRequiredString(argumentsValue, 'path')
-          const content = getRequiredString(argumentsValue, 'content')
-          const writtenInEditor = await writeOpenWorkspaceFile(
-            path,
-            content,
-            mainAreaApi,
-          )
-          output = writtenInEditor
-            ? { path, written: true }
-            : await writeWorkspaceFile(path, content, fileSystemApi)
-        }
+      case 'write_workspace_file': {
+        const path = getRequiredString(argumentsValue, 'path')
+        const content = getRequiredString(argumentsValue, 'content')
+        const writtenInEditor = await writeOpenWorkspaceFile(
+          path,
+          content,
+          mainAreaApi,
+        )
+        output = writtenInEditor
+          ? { path, written: true }
+          : await writeWorkspaceFile(path, content, fileSystemApi)
         break
+      }
       default:
         throw new Error(`Unknown workspace file tool: ${functionCall.name}`)
     }

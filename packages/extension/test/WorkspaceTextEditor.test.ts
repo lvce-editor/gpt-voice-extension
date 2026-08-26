@@ -18,9 +18,12 @@ test.each([
   ['ab', 'abc', { deleted: 0, inserted: 'c', offset: 2 }],
   ['', 'abc', { deleted: 0, inserted: 'abc', offset: 0 }],
   ['abc', '', { deleted: 3, inserted: '', offset: 0 }],
-])('creates a minimal text edit for %s -> %s', (current, next, expected) => {
-  expect(getTextEdit(current, next)).toEqual(expected)
-})
+] as const)(
+  'creates a minimal text edit for %s -> %s',
+  (current, next, expected) => {
+    expect(getTextEdit(current, next)).toEqual(expected)
+  },
+)
 
 test('returns false when the file is not open', async () => {
   const api = createApi()
