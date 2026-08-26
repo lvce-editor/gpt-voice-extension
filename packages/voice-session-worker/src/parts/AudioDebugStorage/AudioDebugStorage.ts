@@ -19,12 +19,12 @@ const defaultDependencies: AudioDebugStorageDependencies = {
 
 const getExtension = (mimeType: string): string => {
   switch (mimeType) {
-    case 'audio/webm':
-      return 'weba'
     case 'audio/mpeg':
       return 'mp3'
     case 'audio/ogg':
       return 'ogg'
+    case 'audio/webm':
+      return 'weba'
     default:
       return 'webm'
   }
