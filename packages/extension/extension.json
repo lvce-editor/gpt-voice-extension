@@ -49,6 +49,7 @@
     "onCommand:GptVoice.handleSaveOpenAiApiKey",
     "onCommand:GptVoice.handleUseOwnApiKey",
     "onCommand:GptVoice.replayFixture",
+    "onCommand:GptVoice.reportWorkToolCall",
     "onCommand:GptVoice.setIsTest",
     "onCommand:GptVoice.setAnimation",
     "onCommand:GptVoice.setFundedError",
@@ -102,6 +103,10 @@
     {
       "id": "GptVoice.replayFixture",
       "label": "gpt-voice: Replay fixture"
+    },
+    {
+      "id": "GptVoice.reportWorkToolCall",
+      "internal": true
     },
     {
       "id": "GptVoice.setIsTest",

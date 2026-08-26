@@ -2,6 +2,7 @@ import type {
   FunctionToolDefinition,
   VoiceWorkConfiguration,
   VoiceWorkResult,
+  VoiceWorkToolCallEvent,
 } from 'voice-shared'
 import * as Rpc from '../Rpc/Rpc.ts'
 
@@ -21,6 +22,7 @@ interface WorkOptions {
   readonly configuration: VoiceWorkConfiguration
   readonly task: string
   readonly tools: readonly FunctionToolDefinition[]
+  readonly workId: number
 }
 
 interface FunctionCall {
@@ -117,19 +119,46 @@ const parseWorkResult = (text: string): VoiceWorkResult => {
   }
 }
 
-const executeTool = async (call: FunctionCall): Promise<string> => {
+const reportToolCall = async (
+  workId: number,
+  event: VoiceWorkToolCallEvent,
+): Promise<void> => {
   try {
-    return await Rpc.invoke<string>(
+    await Rpc.invoke('VoiceWorkHost.reportToolCall', workId, event)
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+const executeTool = async (
+  workId: number,
+  call: FunctionCall,
+): Promise<string> => {
+  await reportToolCall(workId, {
+    argumentsValue: call.argumentsValue,
+    callId: call.callId,
+    name: call.name,
+    type: 'started',
+  })
+  let output: string
+  try {
+    output = await Rpc.invoke<string>(
       'VoiceWorkHost.executeFunctionTool',
       call.name,
       call.argumentsValue,
     )
   } catch (error) {
-    return JSON.stringify({
+    output = JSON.stringify({
       error: error instanceof Error ? error.message : String(error),
       success: false,
     })
   }
+  await reportToolCall(workId, {
+    callId: call.callId,
+    output,
+    type: 'completed',
+  })
+  return output
 }
 
 const getResponseData = async (
@@ -191,7 +220,7 @@ const getResponseData = async (
 }
 
 const run = async (options: WorkOptions): Promise<VoiceWorkResult> => {
-  const { configuration, task, tools } = options
+  const { configuration, task, tools, workId } = options
   if (!task.trim()) {
     throw new TypeError('The delegated task must not be empty.')
   }
@@ -230,7 +259,7 @@ const run = async (options: WorkOptions): Promise<VoiceWorkResult> => {
     for (const call of functionCalls) {
       toolOutputs.push({
         call_id: call.callId,
-        output: await executeTool(call),
+        output: await executeTool(workId, call),
         type: 'function_call_output',
       })
     }

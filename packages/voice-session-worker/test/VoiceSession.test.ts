@@ -204,6 +204,8 @@ test('delegates substantive work with the personal API key', async () => {
 
   expect(invoke).toHaveBeenCalledWith(
     'VoiceHost.executeWorkTask',
+    20,
+    'work-call-1',
     'Create a mountain scene',
     {
       accessToken: 'sk-abcdefghijk',
@@ -220,6 +222,48 @@ test('delegates substantive work with the personal API key', async () => {
     }),
   )
   await VoiceSession.dispose(20)
+})
+
+test('renders delegated worker tool calls as live transcript entries', async () => {
+  await VoiceSession.create(23, true, 'byok')
+
+  let state = await VoiceSession.dispatch(
+    23,
+    'reportWorkToolCall',
+    'work-call',
+    {
+      argumentsValue: '{"path":"city.html"}',
+      callId: 'read-call',
+      name: 'read_workspace_file',
+      type: 'started',
+    },
+  )
+  const { messages: runningMessages } = state
+  expect(runningMessages).toContainEqual({
+    argumentsValue: '{"path":"city.html"}',
+    expanded: false,
+    id: 'work-call/read-call',
+    name: 'read_workspace_file',
+    output: '',
+    status: 'in-progress',
+    type: 'tool',
+  })
+
+  state = await VoiceSession.dispatch(23, 'reportWorkToolCall', 'work-call', {
+    callId: 'read-call',
+    output: '{"content":"<!DOCTYPE html>"}',
+    type: 'completed',
+  })
+  const { messages: completedMessages } = state
+  expect(completedMessages).toContainEqual(
+    expect.objectContaining({
+      id: 'work-call/read-call',
+      output: '{"content":"<!DOCTYPE html>"}',
+      status: 'completed',
+    }),
+  )
+  expect(updatedStates.length).toBeGreaterThan(0)
+  await VoiceSession.dispose(23)
 })
 
 test('refreshes funded authentication before delegated work', async () => {
@@ -242,6 +286,8 @@ test('refreshes funded authentication before delegated work', async () => {
 
   expect(invoke).toHaveBeenCalledWith(
     'VoiceHost.executeWorkTask',
+    21,
+    'work-call-2',
     'Run the tests',
     {
       accessToken: 'fresh-access-token',

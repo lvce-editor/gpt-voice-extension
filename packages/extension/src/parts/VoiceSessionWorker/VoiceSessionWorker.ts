@@ -1,4 +1,8 @@
-import type { AudioDebugStorage } from 'voice-shared'
+import type {
+  AudioDebugStorage,
+  VoiceWorkConfiguration,
+  VoiceWorkResult,
+} from 'voice-shared'
 import {
   createRpc,
   deleteSecret,
@@ -80,7 +84,26 @@ const commandMap = {
   'VoiceHost.deleteSecret': deleteSecret,
   'VoiceHost.executeFunctionToolCall':
     VoiceFunctionCallingWorker.executeFunctionToolCall,
-  'VoiceHost.executeWorkTask': VoiceWorkWorker.execute,
+  async 'VoiceHost.executeWorkTask'(
+    sessionId: number,
+    parentCallId: string,
+    task: string,
+    configuration: VoiceWorkConfiguration,
+  ): Promise<VoiceWorkResult> {
+    const rpc = await getRpc()
+    return VoiceWorkWorker.execute(
+      task,
+      configuration,
+      (event) =>
+        rpc.invoke(
+          'VoiceSession.dispatch',
+          sessionId,
+          'reportWorkToolCall',
+          parentCallId,
+          event,
+        ) as Promise<void>,
+    )
+  },
   'VoiceHost.getRegisteredTools': getRegisteredTools,
   'VoiceHost.getSecret': getSecret,
   'VoiceHost.resolveBackendConfiguration': resolveBackendVoiceConfiguration,

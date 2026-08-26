@@ -58,6 +58,10 @@ export const view: GptVoiceView = {
       await context.replayFixture(fixture)
       return context
     },
+    async 'GptVoice.reportWorkToolCall'(context, parentCallId, event) {
+      await context.reportWorkToolCall(parentCallId, event)
+      return context
+    },
     async 'GptVoice.setAnimation'(context, enabled: boolean, scale: number) {
       context.setAnimation(enabled, scale)
       return context

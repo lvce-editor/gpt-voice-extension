@@ -4,6 +4,7 @@ import type {
   CaptureFixtureOptions,
   VoiceWorkConfiguration,
   VoiceWorkResult,
+  VoiceWorkToolCallEvent,
   VoiceSessionState,
 } from 'voice-shared'
 import {
@@ -233,6 +234,58 @@ const createOrUpdateTranscript = (
   } else {
     addTranscript(session, itemId, delta, type)
   }
+}
+
+const getWorkToolCallId = (parentCallId: string, callId: string): string =>
+  `${parentCallId}/${callId}`
+
+const reportWorkToolCall = (
+  session: Session,
+  parentCallId: string,
+  event: VoiceWorkToolCallEvent,
+): void => {
+  const id = getWorkToolCallId(parentCallId, event.callId)
+  if (event.type === 'started') {
+    if (
+      session.state.messages.some(
+        (message) => message.type === 'tool' && message.id === id,
+      )
+    ) {
+      return
+    }
+    session.state = {
+      ...session.state,
+      messages: [
+        ...session.state.messages,
+        {
+          argumentsValue: event.argumentsValue,
+          expanded: false,
+          id,
+          name: event.name,
+          output: '',
+          status: 'in-progress',
+          type: 'tool',
+        },
+      ],
+    }
+    publishLater(session, true)
+    return
+  }
+  session.state = {
+    ...session.state,
+    messages: session.state.messages.map((message) =>
+      message.type === 'tool' && message.id === id
+        ? {
+            ...message,
+            output: event.output,
+            status: isToolCallErrorOutput(event.output)
+              ? 'failed'
+              : 'completed',
+          }
+        : message,
+    ),
+  }
+  publishLater(session, true)
 }
 
 const stop = async (session: Session): Promise<void> => {
@@ -557,6 +610,8 @@ async function executeWorkTask(
     const configuration = await getWorkConfiguration(session)
     result = await Rpc.invoke<VoiceWorkResult>(
       'VoiceHost.executeWorkTask',
+      session.id,
+      callId,
       task,
       configuration,
     )
@@ -954,6 +1009,13 @@ export const dispatch = async (
       break
     case 'replayFixture':
       await replayFixture(session, params[0])
+      break
+    case 'reportWorkToolCall':
+      reportWorkToolCall(
+        session,
+        String(params[0]),
+        params[1] as VoiceWorkToolCallEvent,
+      )
       break
     case 'saveApiKey':
       await handleSaveApiKey(session)
