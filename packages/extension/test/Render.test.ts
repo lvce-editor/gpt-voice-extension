@@ -178,22 +178,56 @@ test('render - shows saving state in welcome form', () => {
   expect(result).toContainEqual(text('Saving...'))
 })
 
-test('render - lets an exhausted funded user explicitly choose personal billing', () => {
+test('render - directs an exhausted funded user to LVCE plans', () => {
   const result = render(
     createRenderState({
       allowanceExceeded: true,
       fundedAvailable: true,
-      fundedError: 'Monthly allowance exceeded',
+      fundedError:
+        'Monthly virtual token allowance exceeded. (Error code: E_LVCE_USAGE_EXCEEDED; HTTP status: 402)',
+      fundedErrorDetails: {
+        code: 'E_LVCE_USAGE_EXCEEDED',
+        description: 'Monthly virtual token allowance exceeded.',
+        statusCode: 402,
+      },
       hasOpenAiApiKey: false,
       voiceProvider: 'funded',
     }),
   )
 
+  expect(result).toContainEqual(text('Monthly AI allowance reached'))
   expect(result).toContainEqual(
-    text('Your monthly AI allowance has been used.'),
+    text(
+      "You've used the AI included with your current plan. Upgrade to continue using voice.",
+    ),
   )
-  expect(result).toContainEqual(text('Monthly allowance exceeded'))
-  expect(result).toContainEqual(text('Use your own API key'))
+  expect(result).toContainEqual(text('402'))
+  expect(result).toContainEqual(text('E_LVCE_USAGE_EXCEEDED'))
+  expect(result).toContainEqual(text('Monthly allowance exceeded.'))
+  expect(result).toContainEqual(
+    expect.objectContaining({
+      className: expect.stringContaining('GptVoiceAllowancePricingLink'),
+      href: 'https://lvce-editor.dev/pricing',
+      rel: 'noopener noreferrer',
+      target: '_blank',
+      type: VirtualDomElements.A,
+    }),
+  )
+  expect(result).toContainEqual(text('View plans and pricing'))
+  expect(result).not.toContainEqual(text('Use your own API key'))
+})
+
+test('render - falls back when allowance error details are incomplete', () => {
+  const result = render(
+    createRenderState({
+      allowanceExceeded: true,
+      fundedError: 'Monthly allowance exceeded',
+      voiceProvider: 'funded',
+    }),
+  )
+
+  expect(result).toContainEqual(text('Not provided'))
+  expect(result).toContainEqual(text('E_LVCE_USAGE_EXCEEDED'))
 })
 
 test('render - allows funded voice to start without a personal API key', () => {

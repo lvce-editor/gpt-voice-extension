@@ -7,6 +7,7 @@ import type { IState } from '../CreateInstance/CreateInstance.ts'
 import * as ClassNames from '../ClassNames/ClassNames.ts'
 import * as DomEventListenerFunctions from '../DomEventListenerFunctions/DomEventListenerFunctions.ts'
 import * as GptVoiceStrings from '../GptVoiceStrings/GptVoiceStrings.ts'
+import { renderAllowanceExceeded } from '../RenderAllowanceExceeded/RenderAllowanceExceeded.ts'
 import { renderAudio } from '../RenderAudio/RenderAudio.ts'
 import { renderButton } from '../RenderButton/RenderButton.ts'
 import { renderFundedError } from '../RenderFundedError/RenderFundedError.ts'
@@ -64,6 +65,7 @@ export const render = (state: IState): readonly VirtualDomNode[] => {
   const {
     allowanceExceeded,
     fundedError,
+    fundedErrorDetails,
     hasOpenAiApiKey,
     inProgress,
     offlineError,
@@ -73,10 +75,11 @@ export const render = (state: IState): readonly VirtualDomNode[] => {
     return renderOfflineError()
   }
   if (voiceProvider === 'funded' && fundedError) {
+    if (allowanceExceeded) {
+      return renderAllowanceExceeded(fundedErrorDetails)
+    }
     return renderFundedError(
-      allowanceExceeded
-        ? GptVoiceStrings.monthlyAllowanceExceeded()
-        : GptVoiceStrings.fundedVoiceUnavailable(),
+      GptVoiceStrings.fundedVoiceUnavailable(),
       fundedError,
     )
   }

@@ -75,6 +75,12 @@ export interface ToolCallMessage {
 
 export type VoiceMessage = TranscriptMessage | ToolCallMessage
 
+export interface FundedVoiceErrorDetails {
+  readonly code: string
+  readonly description: string
+  readonly statusCode: number | undefined
+}
+
 export interface VoiceSessionState {
   readonly allowanceExceeded: boolean
   readonly animationEnabled: boolean
@@ -84,6 +90,7 @@ export interface VoiceSessionState {
   readonly apiKeyInput: string
   readonly fundedAvailable: boolean
   readonly fundedError: string
+  readonly fundedErrorDetails: FundedVoiceErrorDetails | undefined
   readonly hasOpenAiApiKey: boolean
   readonly inProgress: boolean
   readonly isCreatingToken: boolean

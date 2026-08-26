@@ -1,4 +1,7 @@
-import type { BackendVoiceConfiguration } from 'voice-shared'
+import type {
+  BackendVoiceConfiguration,
+  FundedVoiceErrorDetails,
+} from 'voice-shared'
 
 export const fundedVoiceProtocol = 'lvce.realtime.voice.v1'
 export const ourBackendClosedWebSocketErrorCode =
@@ -82,6 +85,14 @@ const getFundedVoiceErrorMessage = (
   }
   return error.message
 }
+
+export const getFundedVoiceErrorDetails = (
+  error: Readonly<FundedVoiceError>,
+): FundedVoiceErrorDetails => ({
+  code: error.code,
+  description: getFundedVoiceErrorMessage(error),
+  statusCode: error.statusCode,
+})
 
 export const formatFundedVoiceError = (
   error: Readonly<FundedVoiceError>,

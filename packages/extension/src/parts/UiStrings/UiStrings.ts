@@ -36,8 +36,15 @@ export const SetUpOpenAiApiKey = 'Set up your OpenAI API key'
 export const StartTalking = 'Start talking'
 export const StopTalking = 'Stop talking'
 export const TryAgain = 'Try again'
-export const MonthlyAllowanceExceeded =
-  'Your monthly AI allowance has been used.'
+export const MonthlyAllowanceExceeded = 'Monthly AI allowance reached'
+export const MonthlyAllowanceDescription =
+  "You've used the AI included with your current plan. Upgrade to continue using voice."
+export const MonthlyAllowanceErrorDescription = 'Monthly allowance exceeded.'
+export const ErrorCode = 'Error code'
+export const ErrorDescription = 'Description'
+export const ErrorDetails = 'Error details'
+export const HttpStatus = 'HTTP status'
+export const ViewPlansAndPricing = 'View plans and pricing'
 export const UseOwnApiKey = 'Use your own API key'
 export const UseBetter = 'Use better'
 export const UseCheap = 'Use cheap'

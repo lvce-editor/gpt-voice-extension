@@ -37,6 +37,7 @@ const voiceState = {
   apiKeyInput: '',
   fundedAvailable: false,
   fundedError: '',
+  fundedErrorDetails: undefined,
   hasOpenAiApiKey: true,
   inProgress: false,
   isCreatingToken: false,

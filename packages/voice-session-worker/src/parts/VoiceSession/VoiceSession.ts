@@ -20,6 +20,7 @@ import {
   FundedVoiceError,
   getFundedVoiceCloseError,
   getFundedVoiceError,
+  getFundedVoiceErrorDetails,
   openFundedVoiceSocket,
   waitForFundedSessionCreated,
 } from '../FundedVoice/FundedVoice.ts'
@@ -109,11 +110,22 @@ const createTokenErrorMessage = (error: unknown): string => {
   return error.message || GptVoiceStrings.failedToCreateToken()
 }
 
+const getFundedErrorState = (
+  error: Readonly<FundedVoiceError>,
+): Pick<VoiceSessionState, 'fundedError' | 'fundedErrorDetails'> => ({
+  fundedError: formatFundedVoiceError(error),
+  fundedErrorDetails: getFundedVoiceErrorDetails(error),
+})
+
+const isAllowanceExceededError = (error: Readonly<FundedVoiceError>): boolean =>
+  error.code === 'E_LVCE_USAGE_EXCEEDED'
+
 const setOfflineErrorState = (session: Session, error: unknown): void => {
   session.state = {
     ...session.state,
     allowanceExceeded: false,
     fundedError: '',
+    fundedErrorDetails: undefined,
     inProgress: false,
     isCreatingToken: false,
     offlineError: true,
@@ -151,6 +163,7 @@ const refreshFundedConfiguration = async (session: Session): Promise<void> => {
     ...session.state,
     fundedAvailable: true,
     fundedError: '',
+    fundedErrorDetails: undefined,
     offlineError: false,
     voiceProvider: 'funded',
   }
@@ -442,7 +455,7 @@ const handleFundedControlMessage = (
     session.state = {
       ...session.state,
       allowanceExceeded: true,
-      fundedError: formatFundedVoiceError(error),
+      ...getFundedErrorState(error),
     }
     publishLater(session)
     void stop(session).catch(console.error)
@@ -459,7 +472,8 @@ const handleFundedControlMessage = (
     } else {
       session.state = {
         ...session.state,
-        fundedError: formatFundedVoiceError(error),
+        allowanceExceeded: isAllowanceExceededError(error),
+        ...getFundedErrorState(error),
       }
       publishLater(session)
     }
@@ -482,9 +496,15 @@ const handleFundedControlClose = (
   if (isOfflineConnectionError(error)) {
     setOfflineErrorState(session, error)
   } else {
+    const fundedErrorState = session.state.fundedError
+      ? {
+          fundedError: session.state.fundedError,
+          fundedErrorDetails: session.state.fundedErrorDetails,
+        }
+      : getFundedErrorState(error)
     session.state = {
       ...session.state,
-      fundedError: session.state.fundedError || formatFundedVoiceError(error),
+      ...fundedErrorState,
     }
     publishLater(session)
   }
@@ -689,12 +709,24 @@ const handleVoiceStartError = async (
   }
   const message = createTokenErrorMessage(error)
   const offlineError = isOfflineConnectionError(error)
+  let fundedErrorState: Pick<
+    VoiceSessionState,
+    'fundedError' | 'fundedErrorDetails'
+  > = {
+    fundedError: session.state.fundedError,
+    fundedErrorDetails: session.state.fundedErrorDetails,
+  }
+  if (session.state.voiceProvider === 'funded' && !offlineError) {
+    fundedErrorState =
+      error instanceof FundedVoiceError
+        ? getFundedErrorState(error)
+        : { fundedError: message, fundedErrorDetails: undefined }
+  }
   session.state = {
     ...session.state,
-    fundedError:
-      session.state.voiceProvider === 'funded' && !offlineError
-        ? message
-        : session.state.fundedError,
+    allowanceExceeded:
+      error instanceof FundedVoiceError && isAllowanceExceededError(error),
+    ...fundedErrorState,
     hasOpenAiApiKey: nextApiKeyStatus,
     inProgress: false,
     isCreatingToken: false,
@@ -738,6 +770,8 @@ const handleStart = async (session: Session): Promise<void> => {
   session.state = {
     ...session.state,
     fundedError: voiceProvider === 'funded' ? '' : session.state.fundedError,
+    fundedErrorDetails:
+      voiceProvider === 'funded' ? undefined : session.state.fundedErrorDetails,
     isCreatingToken: true,
     offlineError: false,
     tokenError: '',
@@ -949,6 +983,7 @@ export const create = async (
       apiKeyInput: '',
       fundedAvailable: Boolean(fundedConfiguration),
       fundedError: '',
+      fundedErrorDetails: undefined,
       hasOpenAiApiKey,
       inProgress: false,
       isCreatingToken: false,
@@ -1074,6 +1109,7 @@ export const dispatch = async (
           ...session.state,
           allowanceExceeded: false,
           fundedError: '',
+          fundedErrorDetails: undefined,
           offlineError: false,
           tokenError: '',
           voiceProvider: 'byok',

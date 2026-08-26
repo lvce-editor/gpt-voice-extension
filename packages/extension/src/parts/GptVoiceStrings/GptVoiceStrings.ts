@@ -36,6 +36,15 @@ export const missingOpenAiApiKeyPrompt = (): string =>
 export const networkFailure = (): string => getString(UiStrings.NetworkFailure)
 export const monthlyAllowanceExceeded = (): string =>
   getString(UiStrings.MonthlyAllowanceExceeded)
+export const monthlyAllowanceDescription = (): string =>
+  getString(UiStrings.MonthlyAllowanceDescription)
+export const monthlyAllowanceErrorDescription = (): string =>
+  getString(UiStrings.MonthlyAllowanceErrorDescription)
+export const errorCode = (): string => getString(UiStrings.ErrorCode)
+export const errorDescription = (): string =>
+  getString(UiStrings.ErrorDescription)
+export const errorDetails = (): string => getString(UiStrings.ErrorDetails)
+export const httpStatus = (): string => getString(UiStrings.HttpStatus)
 export const openAiApiKeyRequired = (): string =>
   getString(UiStrings.OpenAiApiKeyRequired)
 export const openAiApiKeyRequiredForVoice = (): string =>
@@ -60,5 +69,7 @@ export const tryAgain = (): string => getString(UiStrings.TryAgain)
 export const useBetter = (): string => getString(UiStrings.UseBetter)
 export const useCheap = (): string => getString(UiStrings.UseCheap)
 export const useOwnApiKey = (): string => getString(UiStrings.UseOwnApiKey)
+export const viewPlansAndPricing = (): string =>
+  getString(UiStrings.ViewPlansAndPricing)
 export const welcomeDescription = (): string =>
   getString(UiStrings.WelcomeDescription)
