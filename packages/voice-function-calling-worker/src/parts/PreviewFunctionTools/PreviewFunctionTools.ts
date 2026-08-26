@@ -207,6 +207,16 @@ const getErrorMessage = (error: unknown): string => {
   return error instanceof Error ? error.message : String(error)
 }
 
+const getErrorHint = (name: PreviewToolName): string => {
+  if (name === 'get_preview_runtime_diagnostics') {
+    return 'Open an HTML preview first, then retry after the preview has loaded.'
+  }
+  if (name === 'close_html_preview') {
+    return 'Retry after the preview has finished loading.'
+  }
+  return 'Open an HTML editor tab first. Pass its full URI when more than one HTML tab is open.'
+}
+
 export const executePreviewFunctionToolCall = async (
   functionCallEvent: unknown,
   api: PreviewApi = defaultApi,
@@ -233,12 +243,7 @@ export const executePreviewFunctionToolCall = async (
   } catch (error) {
     output = {
       error: getErrorMessage(error),
-      hint:
-        functionCall.name === 'get_preview_runtime_diagnostics'
-          ? 'Open an HTML preview first, then retry after the preview has loaded.'
-          : functionCall.name === 'close_html_preview'
-            ? 'Retry after the preview has finished loading.'
-            : 'Open an HTML editor tab first. Pass its full URI when more than one HTML tab is open.',
+      hint: getErrorHint(functionCall.name),
       tool: functionCall.name,
     }
   }
