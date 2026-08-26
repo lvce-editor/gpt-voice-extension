@@ -27,6 +27,10 @@ import {
   writeFile,
 } from '@lvce-editor/api'
 import * as TerminalNode from '../TerminalNode/TerminalNode.ts'
+import {
+  readOpenTextDocument,
+  writeOpenTextDocument,
+} from '../WorkspaceTextEditor/WorkspaceTextEditor.ts'
 
 export type { FunctionToolDefinition } from 'voice-shared'
 
@@ -125,8 +129,10 @@ const commandMap = {
   'WorkspaceMainArea.closeUri': closeUri,
   'WorkspaceMainArea.getWorkspaceUri': getWorkspaceUri,
   'WorkspaceMainArea.openUri': openUri,
+  'WorkspaceMainArea.readOpenTextDocument': readOpenTextDocument,
   'WorkspaceMainArea.setQuickPickValue': setQuickPickValue,
   'WorkspaceMainArea.showFileQuickPick': showFileQuickPick,
+  'WorkspaceMainArea.writeOpenTextDocument': writeOpenTextDocument,
 }
 
 export const state: {

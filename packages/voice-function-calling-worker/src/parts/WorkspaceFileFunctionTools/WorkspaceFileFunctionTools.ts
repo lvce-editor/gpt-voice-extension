@@ -9,9 +9,11 @@ import {
 import {
   closeWorkspaceFile,
   openWorkspaceFile,
+  readOpenWorkspaceFile,
   setQuickPickValue,
   showFileQuickPick,
   type WorkspaceMainAreaApi,
+  writeOpenWorkspaceFile,
 } from '../WorkspaceMainArea/WorkspaceMainArea.ts'
 
 interface FunctionCallArguments {
@@ -176,7 +178,7 @@ const getToolErrorHint = (
 
 const readWorkspaceFileTool: FunctionToolDefinition = {
   description:
-    'Read a UTF-8 text file from the opened workspace. Use a path returned by list_workspace_directory, or another path relative to the workspace. Never pass an absolute path or URI.',
+    'Read the current UTF-8 contents of a file from the opened workspace. If the file is open in a text editor, this includes its live unsaved edits. Use a path returned by list_workspace_directory, or another path relative to the workspace. Never pass an absolute path or URI.',
   name: 'read_workspace_file',
   parameters: {
     additionalProperties: false,
@@ -232,7 +234,7 @@ const searchWorkspaceFilesTool: FunctionToolDefinition = {
 
 const writeWorkspaceFileTool: FunctionToolDefinition = {
   description:
-    'Create or replace a UTF-8 text file in the opened workspace. Call only when the user explicitly asks to create or modify a file. The path must be relative; never pass an absolute path or URI.',
+    'Create or replace a UTF-8 text file in the opened workspace. Before replacing an existing file, call read_workspace_file so the new complete content preserves any live unsaved editor changes. Open text files are updated through an undoable editor edit and then saved; other files are written to the filesystem. Call only when the user explicitly asks to create or modify a file. The path must be relative; never pass an absolute path or URI.',
   name: 'write_workspace_file',
   parameters: {
     additionalProperties: false,
@@ -373,10 +375,14 @@ export const executeWorkspaceFileFunctionToolCall = async (
         )
         break
       case 'read_workspace_file':
-        output = await readWorkspaceFile(
-          getRequiredString(argumentsValue, 'path'),
-          fileSystemApi,
-        )
+        {
+          const path = getRequiredString(argumentsValue, 'path')
+          const openContent = await readOpenWorkspaceFile(path, mainAreaApi)
+          output =
+            openContent === undefined
+              ? await readWorkspaceFile(path, fileSystemApi)
+              : { content: openContent, path }
+        }
         break
       case 'search_workspace_files':
         output = await searchWorkspaceFiles(
@@ -394,11 +400,18 @@ export const executeWorkspaceFileFunctionToolCall = async (
         output = await showFileQuickPick(mainAreaApi)
         break
       case 'write_workspace_file':
-        output = await writeWorkspaceFile(
-          getRequiredString(argumentsValue, 'path'),
-          getRequiredString(argumentsValue, 'content'),
-          fileSystemApi,
-        )
+        {
+          const path = getRequiredString(argumentsValue, 'path')
+          const content = getRequiredString(argumentsValue, 'content')
+          const writtenInEditor = await writeOpenWorkspaceFile(
+            path,
+            content,
+            mainAreaApi,
+          )
+          output = writtenInEditor
+            ? { path, written: true }
+            : await writeWorkspaceFile(path, content, fileSystemApi)
+        }
         break
       default:
         throw new Error(`Unknown workspace file tool: ${functionCall.name}`)
