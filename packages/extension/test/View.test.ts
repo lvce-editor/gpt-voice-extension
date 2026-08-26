@@ -15,6 +15,7 @@ test('view commands forward every event to the view adapter', async () => {
     handleUseOwnApiKey: jest.fn(async () => undefined),
     replayFixture: jest.fn(async () => undefined),
     setAnimation: jest.fn(),
+    setFundedError: jest.fn(async () => undefined),
     setOfflineError: jest.fn(async () => undefined),
     setRealtimeModelMini: jest.fn(async () => undefined),
     setRealtimeModelStandard: jest.fn(async () => undefined),
@@ -36,6 +37,9 @@ test('view commands forward every event to the view adapter', async () => {
   await view.commands['GptVoice.handleUseOwnApiKey'](context)
   await view.commands['GptVoice.replayFixture'](context, {})
   await view.commands['GptVoice.setAnimation'](context, true, 1.5)
+  await view.commands['GptVoice.setFundedError'](context, {
+    type: 'error',
+  })
   await view.commands['GptVoice.setOfflineError'](context, new Error('offline'))
   await view.commands['GptVoice.setRealtimeModelMini'](context)
   await view.commands['GptVoice.setRealtimeModelStandard'](context)
@@ -53,6 +57,7 @@ test('view commands forward every event to the view adapter', async () => {
   expect(context.handleUseOwnApiKey).toHaveBeenCalled()
   expect(context.replayFixture).toHaveBeenCalledWith({})
   expect(context.setAnimation).toHaveBeenCalledWith(true, 1.5)
+  expect(context.setFundedError).toHaveBeenCalledWith({ type: 'error' })
   expect(context.setOfflineError).toHaveBeenCalled()
   expect(context.setRealtimeModelMini).toHaveBeenCalled()
   expect(context.setRealtimeModelStandard).toHaveBeenCalled()

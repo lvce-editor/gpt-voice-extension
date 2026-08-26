@@ -4,6 +4,7 @@ const connectionErrorCodes = new Set([
   'connection_closed',
   'connection_error',
   'err_network',
+  'e_our_backend_closed_websocket',
   'network_error',
 ])
 

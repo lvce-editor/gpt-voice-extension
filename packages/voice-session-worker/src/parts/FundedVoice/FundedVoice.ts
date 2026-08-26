@@ -1,6 +1,8 @@
 import type { BackendVoiceConfiguration } from 'voice-shared'
 
 export const fundedVoiceProtocol = 'lvce.realtime.voice.v1'
+export const ourBackendClosedWebSocketErrorCode =
+  'E_OUR_BACKEND_CLOSED_WEBSOCKET'
 
 export interface FundedSessionCreatedEvent {
   readonly answerSdp: string
@@ -89,6 +91,21 @@ export const formatFundedVoiceError = (
   return `${message} (Error code: ${error.code}${status})`
 }
 
+export const getFundedVoiceCloseError = (
+  event: Readonly<Pick<CloseEvent, 'code' | 'reason'>>,
+): FundedVoiceError => {
+  const closeCode =
+    typeof event.code === 'number' && event.code > 0
+      ? ` WebSocket close code: ${event.code}`
+      : ''
+  const closeReason = event.reason ? `; reason: ${event.reason}` : ''
+  const closeDetails = closeCode ? `${closeCode}${closeReason}.` : ''
+  return new FundedVoiceError(
+    `The LVCE voice backend closed its WebSocket connection to the editor unexpectedly.${closeDetails}`,
+    ourBackendClosedWebSocketErrorCode,
+  )
+}
+
 export const getFundedVoiceUrl = (baseUrl: string): string => {
   const url = new URL(baseUrl)
   url.protocol = url.protocol === 'http:' ? 'ws:' : 'wss:'
@@ -124,13 +141,7 @@ export const openFundedVoiceSocket = async (
     )
     socket.addEventListener(
       'close',
-      () =>
-        reject(
-          new FundedVoiceError(
-            'Backend-funded voice closed while connecting.',
-            'connection_closed',
-          ),
-        ),
+      (event) => reject(getFundedVoiceCloseError(event)),
       { once: true },
     )
   })

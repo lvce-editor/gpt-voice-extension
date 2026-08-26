@@ -12,11 +12,6 @@ export const failedToCreateTokenWithDetails = (): string =>
 export const failedToSaveOpenAiApiKey = (): string =>
   i18nString('Failed to save OpenAI API key.')
 
-export const fundedVoiceClosed = (): string =>
-  i18nString(
-    'The backend-funded voice connection closed. Start again to reconnect.',
-  )
-
 export const fundedVoiceUnavailable = (): string =>
   i18nString('Backend-funded voice is unavailable.')
 
