@@ -172,6 +172,7 @@ test('creates a web worker RPC and queries registered tools', async () => {
       'PanelView.openDebugConsole': expect.any(Function),
       'PanelView.openOutputView': expect.any(Function),
       'PanelView.openProblemsView': expect.any(Function),
+      'Preview.close': expect.any(Function),
       'Preview.getRuntimeDiagnostics': expect.any(Function),
       'Preview.open': expect.any(Function),
       'ProcessExplorer.open': openProcessExplorer,
@@ -279,11 +280,14 @@ test('bridges HTML preview commands from the function calling worker', async () 
     Record<string, (...args: readonly unknown[]) => Promise<void>>
   >
   await commandMap['Preview.open']?.('file:///workspace/index.html')
+  await commandMap['Preview.close']?.()
 
-  expect(executeCommand).toHaveBeenCalledWith(
+  expect(executeCommand).toHaveBeenNthCalledWith(
+    1,
     'Layout.showPreview',
     'file:///workspace/index.html',
   )
+  expect(executeCommand).toHaveBeenNthCalledWith(2, 'Layout.hidePreview')
 })
 
 test('bridges preview runtime diagnostic queries from the function calling worker', async () => {
