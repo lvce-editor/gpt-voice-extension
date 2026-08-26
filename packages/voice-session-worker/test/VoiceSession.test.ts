@@ -9,9 +9,60 @@ jest.unstable_mockModule('../src/parts/Rpc/Rpc.ts', () => ({ invoke }))
 const VoiceSession = await import('../src/parts/VoiceSession/VoiceSession.ts')
 
 const updatedStates: unknown[] = []
+const backendConfigurationState = {
+  requests: 0,
+  values: [] as unknown[],
+}
+
+const normalizeProtocols = (
+  protocols: string | readonly string[] | undefined,
+): readonly string[] => {
+  if (Array.isArray(protocols)) {
+    return protocols
+  }
+  return protocols ? [protocols as string] : []
+}
+
+class FakeWebSocket extends EventTarget {
+  static readonly OPEN = 1
+  static readonly sockets: FakeWebSocket[] = []
+  readonly protocols: readonly string[]
+  readyState = FakeWebSocket.OPEN
+
+  constructor(_url: string | URL, protocols?: string | readonly string[]) {
+    super()
+    this.protocols = normalizeProtocols(protocols)
+    FakeWebSocket.sockets.push(this)
+    queueMicrotask(() => this.dispatchEvent(new Event('open')))
+  }
+
+  close(): void {
+    this.readyState = 3
+    this.dispatchEvent(new Event('close'))
+  }
+
+  send(): void {
+    queueMicrotask(() => {
+      this.dispatchEvent(
+        new MessageEvent('message', {
+          data: JSON.stringify({
+            answerSdp: 'answer-sdp',
+            limitVirtualTokens: 100,
+            remainingVirtualTokens: 90,
+            type: 'lvce.session.created',
+            usedVirtualTokens: 10,
+          }),
+        }),
+      )
+    })
+  }
+}
 
 beforeEach(() => {
   updatedStates.length = 0
+  backendConfigurationState.requests = 0
+  backendConfigurationState.values.length = 0
+  FakeWebSocket.sockets.length = 0
   invoke.mockReset().mockImplementation(async (method, ...params) => {
     switch (method) {
       case 'VoiceHost.executeFunctionToolCall':
@@ -30,8 +81,12 @@ beforeEach(() => {
         return []
       case 'VoiceHost.getSecret':
         return 'sk-abcdefghijk'
-      case 'VoiceHost.resolveBackendConfiguration':
-        return undefined
+      case 'VoiceHost.resolveBackendConfiguration': {
+        backendConfigurationState.requests++
+        return backendConfigurationState.values.shift()
+      }
+      case 'VoiceHost.startWebRtc':
+        return 'offer-sdp'
       case 'VoiceHost.updateState':
         updatedStates.push(params[1])
         return undefined
@@ -142,4 +197,36 @@ test('handles API key validation and rejects unknown actions', async () => {
   await expect(VoiceSession.dispatch(3, 'start')).rejects.toThrow(
     'Voice session not found: 3',
   )
+})
+
+test('refreshes backend authentication before starting funded voice', async () => {
+  backendConfigurationState.values.push(
+    {
+      accessToken: 'expired-access-token',
+      baseUrl: 'https://lvce.example',
+    },
+    {
+      accessToken: 'refreshed-access-token',
+      baseUrl: 'https://lvce.example',
+    },
+  )
+  const originalWebSocket = WebSocket
+  Object.assign(globalThis, { WebSocket: FakeWebSocket })
+  try {
+    const initial = await VoiceSession.create(4, false, 'funded')
+    expect(initial.voiceProvider).toBe('funded')
+
+    const started = await VoiceSession.dispatch(4, 'start')
+
+    expect(started.inProgress).toBe(true)
+    expect(FakeWebSocket.sockets).toHaveLength(1)
+    expect(FakeWebSocket.sockets[0]?.protocols).toEqual([
+      'lvce.realtime.voice.v1',
+      'refreshed-access-token',
+    ])
+    expect(backendConfigurationState.requests).toBe(2)
+  } finally {
+    await VoiceSession.dispose(4)
+    Object.assign(globalThis, { WebSocket: originalWebSocket })
+  }
 })
