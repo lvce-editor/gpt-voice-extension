@@ -378,3 +378,22 @@ test('executes audio debug view commands', async () => {
   expect(refresh).toHaveBeenCalledTimes(1)
   expect(saveForTest).toHaveBeenCalledTimes(1)
 })
+
+test('component state edits the recording view and follows refresh', async () => {
+  const instance = await createAudioDebugViewInstance(
+    undefined,
+    createDependencies({ storage: createStorage(async () => [recording]) }),
+  )
+  instance.setComponentState({
+    ...instance.getComponentState(),
+    error: 'Inspector error',
+  })
+  expect(JSON.stringify(instance.render())).toContain('Inspector error')
+  await instance.refresh()
+  expect(instance.getComponentState()).toEqual({
+    enabled: true,
+    error: '',
+    recordings: [recording],
+  })
+  instance.dispose?.()
+})

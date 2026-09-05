@@ -10,4 +10,6 @@ export const commandMap: Readonly<Record<string, unknown>> = {
   'VoiceSession.create': VoiceSession.create,
   'VoiceSession.dispatch': VoiceSession.dispatch,
   'VoiceSession.dispose': VoiceSession.dispose,
+  'VoiceSession.getComponentState': VoiceSession.getComponentState,
+  'VoiceSession.setComponentState': VoiceSession.setComponentState,
 }

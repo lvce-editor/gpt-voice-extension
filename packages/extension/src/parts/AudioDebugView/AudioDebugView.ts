@@ -5,7 +5,7 @@ import {
   getPreference,
   openUri,
   type MenuEntry,
-  type View,
+  type InstanceView,
   type ViewContext,
   type ViewEvent,
   type VirtualDomViewInstance,
@@ -44,6 +44,7 @@ const defaultDependencies: AudioDebugViewDependencies = {
 export interface ActiveAudioDebugViewInstance extends VirtualDomViewInstance {
   readonly clearAll: () => Promise<void>
   readonly download: (uri: string, name: string) => Promise<void>
+  readonly getComponentState: () => AudioDebugViewState
   readonly getMenuEntries: (menuId: string) => readonly MenuEntry[]
   readonly handleClick: (uri: string) => Promise<void>
   readonly openSettings: () => Promise<void>
@@ -51,6 +52,7 @@ export interface ActiveAudioDebugViewInstance extends VirtualDomViewInstance {
   readonly remove: (uri: string) => Promise<void>
   readonly renderActionsDom: () => readonly VirtualDomNode[]
   readonly saveForTest: () => Promise<void>
+  readonly setComponentState: (state: AudioDebugViewState) => void
 }
 
 const activeInstances = new Set<ActiveAudioDebugViewInstance>()
@@ -104,6 +106,9 @@ export const createAudioDebugViewInstance = async (
         uri,
         name,
       )
+    },
+    getComponentState(): AudioDebugViewState {
+      return state
     },
     getMenuEntries(menuId: string): readonly MenuEntry[] {
       const { recordings } = state
@@ -185,14 +190,22 @@ export const createAudioDebugViewInstance = async (
       )
       await refreshActiveAudioDebugViewInstances()
     },
+    setComponentState(newState: AudioDebugViewState): void {
+      state = newState
+    },
   }
   activeInstances.add(instance)
   await refresh()
   return instance
 }
 
-type AudioDebugView = Omit<View<ActiveAudioDebugViewInstance>, 'commands'> & {
-  readonly commands: NonNullable<View<ActiveAudioDebugViewInstance>['commands']>
+type AudioDebugView = Omit<
+  InstanceView<ActiveAudioDebugViewInstance, AudioDebugViewState>,
+  'commands'
+> & {
+  readonly commands: NonNullable<
+    InstanceView<ActiveAudioDebugViewInstance, AudioDebugViewState>['commands']
+  >
 }
 
 export const audioDebugView: AudioDebugView = {
@@ -234,8 +247,10 @@ export const audioDebugView: AudioDebugView = {
       params: ['handleClick', 'event.currentTarget.name'],
     },
   ],
+  getComponentState: (instance) => instance.getComponentState(),
   icon: 'sound',
   id: audioDebugViewId,
   kind: 'virtualDom',
+  setComponentState: (instance, state) => instance.setComponentState(state),
   title: 'Voice Audio Recordings',
 }

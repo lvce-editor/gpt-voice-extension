@@ -43,6 +43,7 @@ export interface ActiveGptVoiceViewInstance extends VirtualDomViewInstance {
   ) => Promise<void>
   readonly captureFixture: (options: CaptureFixtureOptions) => Promise<void>
   readonly doAnimate: () => Promise<void>
+  readonly getComponentState: () => Promise<IState>
   readonly getContext: () => Readonly<Record<string, boolean>>
   readonly getCss: () => string
   readonly getMenuEntries: (menuId: string) => readonly MenuEntry[]
@@ -64,6 +65,7 @@ export interface ActiveGptVoiceViewInstance extends VirtualDomViewInstance {
     event: VoiceWorkToolCallEvent,
   ) => Promise<void>
   readonly setAnimation: (enabled: boolean, scale: number) => void
+  readonly setComponentState: (state: IState) => Promise<void>
   readonly setFundedError: (error: unknown) => Promise<void>
   readonly setOfflineError: (error: unknown) => Promise<void>
   readonly setRealtimeModelMini: () => Promise<void>
@@ -149,6 +151,11 @@ export const createInstance = async (
         animationLoopRunning = false
       }
     },
+    async getComponentState(): Promise<IState> {
+      const sessionState = await session.getComponentState()
+      const { animationEnabled, animationScale } = state
+      return { ...sessionState, animationEnabled, animationScale }
+    },
     getContext() {
       return {}
     },
@@ -213,6 +220,9 @@ export const createInstance = async (
     setAnimation(enabled, scale): void {
       state = { ...state, animationEnabled: enabled, animationScale: scale }
       void context?.requestRerender()
+    },
+    async setComponentState(newState: IState): Promise<void> {
+      applyState(await session.setComponentState(newState), false)
     },
     async setFundedError(error): Promise<void> {
       await dispatch('setFundedError', error)

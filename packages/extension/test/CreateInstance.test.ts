@@ -34,7 +34,17 @@ const createVoiceSession = jest.fn(
   ) => {
     testState.listener = update
     return {
-      session: { dispatch, dispose },
+      session: {
+        dispatch,
+        dispose,
+        async getComponentState(): Promise<IState> {
+          return testState.current
+        },
+        async setComponentState(state: IState): Promise<IState> {
+          testState.current = state
+          return state
+        },
+      },
       voiceState: testState.current,
     }
   },
@@ -260,4 +270,25 @@ test('view adapter renders live microphone levels', async () => {
   await Promise.resolve()
 
   expect(readMicLevels).toHaveBeenCalledTimes(2)
+})
+
+test('component state reads the owner and applies edits before the next voice event', async () => {
+  const instance = await createInstance()
+  instance.setAnimation(false, 1.5)
+  testState.current = { ...testState.current, tokenError: 'Updated in worker' }
+  expect(await instance.getComponentState()).toMatchObject({
+    animationScale: 1.5,
+    tokenError: 'Updated in worker',
+  })
+  await instance.setComponentState({
+    ...(await instance.getComponentState()),
+    tokenError: 'Inspector error',
+  })
+  expect(JSON.stringify(instance.render())).toContain('Inspector error')
+  await instance.addTranscript('one', 'Hello', 'ai')
+  expect(await instance.getComponentState()).toMatchObject({
+    tokenError: 'Inspector error',
+  })
+  expect(testState.current.messages).toHaveLength(1)
+  await instance.dispose?.()
 })
