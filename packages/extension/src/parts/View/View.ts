@@ -1,4 +1,5 @@
-import type { View } from '@lvce-editor/api'
+import type { InstanceView } from '@lvce-editor/api'
+import type { IState } from '../CreateInstance/CreateInstance.ts'
 import {
   type ActiveGptVoiceViewInstance,
   createInstance,
@@ -6,8 +7,13 @@ import {
 import * as GptVoiceStrings from '../GptVoiceStrings/GptVoiceStrings.ts'
 import { renderEventListeners } from '../RenderEventListeners/RenderEventListeners.ts'
 
-type GptVoiceView = Omit<View<ActiveGptVoiceViewInstance>, 'commands'> & {
-  readonly commands: NonNullable<View<ActiveGptVoiceViewInstance>['commands']>
+type GptVoiceView = Omit<
+  InstanceView<ActiveGptVoiceViewInstance, IState>,
+  'commands'
+> & {
+  readonly commands: NonNullable<
+    InstanceView<ActiveGptVoiceViewInstance, IState>['commands']
+  >
   readonly eventListeners?: ReturnType<typeof renderEventListeners>
 }
 
@@ -94,11 +100,13 @@ export const view: GptVoiceView = {
   create: createInstance,
   displayName: GptVoiceStrings.gptVoiceDisplayName(),
   eventListeners: renderEventListeners(),
+  getComponentState: (instance) => instance.getComponentState(),
   icon: 'list-tree',
-
   id: 'gpt-voice.views.default',
 
   kind: 'virtualDom',
+
   preferredLocation: 'preview',
+  setComponentState: (instance, state) => instance.setComponentState(state),
   title: GptVoiceStrings.gptVoice(),
 }

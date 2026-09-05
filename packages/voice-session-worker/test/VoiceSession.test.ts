@@ -414,3 +414,36 @@ test('recognizes an allowance error by its stable error code', async () => {
   })
   await VoiceSession.dispose(6)
 })
+
+test('component edits update the owning session and survive subsequent dispatch', async () => {
+  const first = await VoiceSession.create(901, true, 'byok')
+  await VoiceSession.create(902, true, 'byok')
+  try {
+    VoiceSession.setComponentState(901, {
+      ...first,
+      isTest: false,
+      tokenError: 'Inspector error',
+      uid: 999,
+    })
+    const state = await VoiceSession.dispatch(
+      901,
+      'addTranscript',
+      'message',
+      'Hello',
+      'ai',
+    )
+    expect(state).toMatchObject({
+      isTest: true,
+      tokenError: 'Inspector error',
+      uid: first.uid,
+    })
+    expect(VoiceSession.getComponentState(901).messages).toHaveLength(1)
+    expect(VoiceSession.getComponentState(902).tokenError).toBe('')
+  } finally {
+    await VoiceSession.dispose(901)
+    await VoiceSession.dispose(902)
+  }
+  expect(() => VoiceSession.getComponentState(901)).toThrow(
+    'Voice session not found',
+  )
+})

@@ -219,6 +219,8 @@ export interface VoiceSession {
     ...params: readonly unknown[]
   ) => Promise<IState>
   readonly dispose: () => Promise<void>
+  readonly getComponentState: () => Promise<IState>
+  readonly setComponentState: (state: IState) => Promise<IState>
 }
 
 export const create = async (
@@ -254,6 +256,19 @@ export const create = async (
             closeTransport(sessionId)
             listeners.delete(sessionId)
           }
+        },
+        async getComponentState(): Promise<IState> {
+          return rpc.invoke(
+            'VoiceSession.getComponentState',
+            sessionId,
+          ) as Promise<IState>
+        },
+        async setComponentState(state: IState): Promise<IState> {
+          return rpc.invoke(
+            'VoiceSession.setComponentState',
+            sessionId,
+            state,
+          ) as Promise<IState>
         },
       },
       voiceState,

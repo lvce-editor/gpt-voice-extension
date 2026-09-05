@@ -1004,6 +1004,23 @@ export const create = async (
   return session.state
 }
 
+export const getComponentState = (id: number): VoiceSessionState => {
+  return getSession(id).state
+}
+
+export const setComponentState = (
+  id: number,
+  state: VoiceSessionState,
+): VoiceSessionState => {
+  const session = getSession(id)
+  session.state = {
+    ...state,
+    isTest: session.state.isTest,
+    uid: session.state.uid,
+  }
+  return session.state
+}
+
 export const dispatch = async (
   id: number,
   action: string,

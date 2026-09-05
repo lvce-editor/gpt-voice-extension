@@ -12,5 +12,7 @@ test('exposes the deep voice session worker interface', () => {
     'VoiceSession.create': VoiceSession.create,
     'VoiceSession.dispatch': VoiceSession.dispatch,
     'VoiceSession.dispose': VoiceSession.dispose,
+    'VoiceSession.getComponentState': VoiceSession.getComponentState,
+    'VoiceSession.setComponentState': VoiceSession.setComponentState,
   })
 })

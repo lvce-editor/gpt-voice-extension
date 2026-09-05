@@ -9,7 +9,6 @@ export const createAudioDebugFileSystemProvider = (
   return {
     id: audioDebugScheme,
     isReadonly: () => true,
-    pathSeparator: '/',
     readFile: (uri: string) => storage.read(uri),
   }
 }
