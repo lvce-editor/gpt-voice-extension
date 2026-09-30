@@ -26,6 +26,7 @@ const createMainAreaApi = (): WorkspaceMainAreaApi => ({
   readOpenTextDocument: jest.fn(async () => undefined),
   setQuickPickValue: jest.fn(async () => undefined),
   showFileQuickPick: jest.fn(async () => undefined),
+  showRecentFoldersQuickPick: jest.fn(async () => undefined),
   writeOpenTextDocument: jest.fn(async () => false),
 })
 
@@ -43,6 +44,7 @@ test('exposes workspace file tool definitions', () => {
     'open_workspace_file',
     'close_workspace_file',
     'show_file_quick_pick',
+    'show_recent_folders_quick_pick',
     'set_quick_pick_value',
   ])
   expect(workspaceFileFunctionTools[0]?.parameters.required).toBeUndefined()
@@ -55,7 +57,7 @@ test('exposes workspace file tool definitions', () => {
   expect(workspaceFileFunctionTools[4]?.parameters.required).toEqual(['path'])
   expect(workspaceFileFunctionTools[5]?.parameters.required).toEqual(['path'])
   expect(workspaceFileFunctionTools[6]?.parameters.required).toBeUndefined()
-  expect(workspaceFileFunctionTools[7]?.parameters.required).toEqual(['value'])
+  expect(workspaceFileFunctionTools[8]?.parameters.required).toEqual(['value'])
 })
 
 test('sets the open quick pick value', async () => {
@@ -114,6 +116,67 @@ test('shows the file quick pick', async () => {
 
   expect(mainAreaApi.showFileQuickPick).toHaveBeenCalledWith()
   expect(getToolOutput(messages || [])).toEqual({ shown: true })
+})
+
+test('shows the recently opened folders quick pick', async () => {
+  const mainAreaApi = createMainAreaApi()
+  const messages = await executeWorkspaceFileFunctionToolCall(
+    {
+      arguments: '{}',
+      call_id: 'show-recent-folders-quick-pick-call',
+      name: 'show_recent_folders_quick_pick',
+      type: 'response.function_call_arguments.done',
+    },
+    createFileSystemApi(),
+    mainAreaApi,
+  )
+
+  expect(mainAreaApi.showRecentFoldersQuickPick).toHaveBeenCalledWith()
+  expect(getToolOutput(messages || [])).toEqual({ shown: true })
+})
+
+test('rejects arguments for the recently opened folders quick pick', async () => {
+  const mainAreaApi = createMainAreaApi()
+  const messages = await executeWorkspaceFileFunctionToolCall(
+    {
+      arguments: '{"folder":"about-view"}',
+      call_id: 'show-recent-folders-quick-pick-call',
+      name: 'show_recent_folders_quick_pick',
+      type: 'response.function_call_arguments.done',
+    },
+    createFileSystemApi(),
+    mainAreaApi,
+  )
+
+  expect(mainAreaApi.showRecentFoldersQuickPick).not.toHaveBeenCalled()
+  expect(getToolOutput(messages || [])).toEqual({
+    error: 'The show_recent_folders_quick_pick tool does not accept arguments.',
+    hint: 'Call show_recent_folders_quick_pick with no arguments: {}.',
+    tool: 'show_recent_folders_quick_pick',
+  })
+})
+
+test('reports failures opening the recently opened folders quick pick', async () => {
+  const mainAreaApi = createMainAreaApi()
+  jest
+    .mocked(mainAreaApi.showRecentFoldersQuickPick)
+    .mockRejectedValue(new Error('Quick pick unavailable'))
+  const messages = await executeWorkspaceFileFunctionToolCall(
+    {
+      arguments: '{}',
+      call_id: 'show-recent-folders-quick-pick-call',
+      name: 'show_recent_folders_quick_pick',
+      type: 'response.function_call_arguments.done',
+    },
+    createFileSystemApi(),
+    mainAreaApi,
+  )
+
+  expect(getToolOutput(messages || [])).toEqual({
+    error: 'Quick pick unavailable',
+    hint: 'Call show_recent_folders_quick_pick with no arguments: {}.',
+    tool: 'show_recent_folders_quick_pick',
+  })
 })
 
 test.each([

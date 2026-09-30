@@ -194,6 +194,7 @@ test('creates a web worker RPC and queries registered tools', async () => {
       'WorkspaceMainArea.readOpenTextDocument': expect.any(Function),
       'WorkspaceMainArea.setQuickPickValue': expect.any(Function),
       'WorkspaceMainArea.showFileQuickPick': showFileQuickPick,
+      'WorkspaceMainArea.showRecentFoldersQuickPick': expect.any(Function),
       'WorkspaceMainArea.writeOpenTextDocument': expect.any(Function),
     },
     contentSecurityPolicy: "default-src 'none'; script-src 'self'",
@@ -220,6 +221,19 @@ test('bridges process explorer commands from the function calling worker', async
   await commandMap['ProcessExplorer.open']?.()
 
   expect(openProcessExplorer).toHaveBeenCalledWith()
+})
+
+test('bridges the recent folders quick pick command from the function calling worker', async () => {
+  invoke.mockResolvedValue([])
+  await VoiceFunctionCallingWorker.getRegisteredTools()
+
+  const options = createRpc.mock.calls[0]?.[0]
+  const commandMap = options?.commandMap as Readonly<
+    Record<string, (...args: readonly unknown[]) => Promise<void>>
+  >
+  await commandMap['WorkspaceMainArea.showRecentFoldersQuickPick']?.()
+
+  expect(executeCommand).toHaveBeenCalledWith('QuickPick.showRecent')
 })
 
 test('registers the terminal tool only when its setting is enabled', async () => {

@@ -66,6 +66,10 @@ const setQuickPickValue = async (value: string): Promise<void> => {
   await executeCommand('QuickPick.setValue', value)
 }
 
+const showRecentFoldersQuickPick = async (): Promise<void> => {
+  await executeCommand('QuickPick.showRecent')
+}
+
 const closeAllEditors = async (): Promise<void> => {
   await executeCommand('Main.closeAllEditors')
 }
@@ -132,6 +136,7 @@ const commandMap = {
   'WorkspaceMainArea.readOpenTextDocument': readOpenTextDocument,
   'WorkspaceMainArea.setQuickPickValue': setQuickPickValue,
   'WorkspaceMainArea.showFileQuickPick': showFileQuickPick,
+  'WorkspaceMainArea.showRecentFoldersQuickPick': showRecentFoldersQuickPick,
   'WorkspaceMainArea.writeOpenTextDocument': writeOpenTextDocument,
 }
 
