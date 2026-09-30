@@ -14,6 +14,7 @@ export interface WorkspaceMainAreaApi {
   ) => Promise<string | null | undefined>
   readonly setQuickPickValue: (value: string) => Promise<void>
   readonly showFileQuickPick: () => Promise<void>
+  readonly showRecentFoldersQuickPick: () => Promise<void>
   readonly writeOpenTextDocument: (
     uri: string,
     content: string,
@@ -31,6 +32,8 @@ const defaultApi: WorkspaceMainAreaApi = {
     Rpc.invoke<void>('WorkspaceMainArea.setQuickPickValue', value),
   showFileQuickPick: () =>
     Rpc.invoke<void>('WorkspaceMainArea.showFileQuickPick'),
+  showRecentFoldersQuickPick: () =>
+    Rpc.invoke<void>('WorkspaceMainArea.showRecentFoldersQuickPick'),
   writeOpenTextDocument: (uri, content) =>
     Rpc.invoke<boolean>(
       'WorkspaceMainArea.writeOpenTextDocument',
@@ -71,6 +74,13 @@ export const showFileQuickPick = async (
   api: WorkspaceMainAreaApi = defaultApi,
 ): Promise<Readonly<{ shown: boolean }>> => {
   await api.showFileQuickPick()
+  return { shown: true }
+}
+
+export const showRecentFoldersQuickPick = async (
+  api: WorkspaceMainAreaApi = defaultApi,
+): Promise<Readonly<{ shown: boolean }>> => {
+  await api.showRecentFoldersQuickPick()
   return { shown: true }
 }
 

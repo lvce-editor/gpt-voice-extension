@@ -6,6 +6,7 @@ import {
   readOpenWorkspaceFile,
   setQuickPickValue,
   showFileQuickPick,
+  showRecentFoldersQuickPick,
   type WorkspaceMainAreaApi,
   writeOpenWorkspaceFile,
 } from '../src/parts/WorkspaceMainArea/WorkspaceMainArea.ts'
@@ -19,6 +20,7 @@ const createApi = (
   readOpenTextDocument: jest.fn(async () => undefined),
   setQuickPickValue: jest.fn(async () => undefined),
   showFileQuickPick: jest.fn(async () => undefined),
+  showRecentFoldersQuickPick: jest.fn(async () => undefined),
   writeOpenTextDocument: jest.fn(async () => false),
 })
 
@@ -45,6 +47,15 @@ test('showFileQuickPick opens the editor file quick pick', async () => {
 
   await expect(showFileQuickPick(api)).resolves.toEqual({ shown: true })
   expect(api.showFileQuickPick).toHaveBeenCalledWith()
+})
+
+test('showRecentFoldersQuickPick opens the editor recent folders quick pick', async () => {
+  const api = createApi()
+
+  await expect(showRecentFoldersQuickPick(api)).resolves.toEqual({
+    shown: true,
+  })
+  expect(api.showRecentFoldersQuickPick).toHaveBeenCalledWith()
 })
 
 test('writeOpenWorkspaceFile writes a resolved URI through the editor', async () => {

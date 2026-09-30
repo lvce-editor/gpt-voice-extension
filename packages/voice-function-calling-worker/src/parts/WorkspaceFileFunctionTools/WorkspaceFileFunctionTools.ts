@@ -12,6 +12,7 @@ import {
   readOpenWorkspaceFile,
   setQuickPickValue,
   showFileQuickPick,
+  showRecentFoldersQuickPick,
   type WorkspaceMainAreaApi,
   writeOpenWorkspaceFile,
 } from '../WorkspaceMainArea/WorkspaceMainArea.ts'
@@ -151,6 +152,9 @@ const getToolErrorHint = (
   toolName: string,
   argumentsValue?: Readonly<Record<string, unknown>>,
 ): string => {
+  if (toolName === 'show_recent_folders_quick_pick') {
+    return 'Call show_recent_folders_quick_pick with no arguments: {}.'
+  }
   if (toolName === 'show_file_quick_pick') {
     return 'Call show_file_quick_pick with no arguments: {}.'
   }
@@ -305,6 +309,18 @@ const showFileQuickPickTool: FunctionToolDefinition = {
   type: 'function',
 }
 
+const showRecentFoldersQuickPickTool: FunctionToolDefinition = {
+  description:
+    'Show the editor quick pick of recently opened workspace folders so the user can filter and choose one. Use this to let the user interactively pick a recent folder; use get_recently_opened_folders to read folder names, or open_workspace_folder to open a specific folder directly.',
+  name: 'show_recent_folders_quick_pick',
+  parameters: {
+    additionalProperties: false,
+    properties: {},
+    type: 'object',
+  },
+  type: 'function',
+}
+
 const setQuickPickValueTool: FunctionToolDefinition = {
   description:
     'Type text into the currently open editor quick pick input. Use this after show_file_quick_pick to filter the displayed files without opening one directly.',
@@ -331,6 +347,7 @@ export const workspaceFileFunctionTools: readonly FunctionToolDefinition[] = [
   openWorkspaceFileTool,
   closeWorkspaceFileTool,
   showFileQuickPickTool,
+  showRecentFoldersQuickPickTool,
   setQuickPickValueTool,
 ]
 
@@ -397,6 +414,14 @@ export const executeWorkspaceFileFunctionToolCall = async (
         break
       case 'show_file_quick_pick':
         output = await showFileQuickPick(mainAreaApi)
+        break
+      case 'show_recent_folders_quick_pick':
+        if (Object.keys(argumentsValue).length > 0) {
+          throw new TypeError(
+            'The show_recent_folders_quick_pick tool does not accept arguments.',
+          )
+        }
+        output = await showRecentFoldersQuickPick(mainAreaApi)
         break
       case 'write_workspace_file': {
         const path = getRequiredString(argumentsValue, 'path')
