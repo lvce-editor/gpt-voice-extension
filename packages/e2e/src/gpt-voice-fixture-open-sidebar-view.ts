@@ -1,6 +1,6 @@
 import type { Test } from '@lvce-editor/test-with-playwright'
 
-const fixture = {
+const createFixture = (callId: string) => ({
   expect: {
     assistantText: 'The Explorer sidebar is open.',
     toolCalls: [
@@ -33,7 +33,7 @@ const fixture = {
       direction: 'server',
       event: {
         arguments: '{"view":"Explorer"}',
-        call_id: 'call_1',
+        call_id: callId,
         name: 'open_sidebar_view',
         type: 'response.function_call_arguments.done',
       },
@@ -43,7 +43,7 @@ const fixture = {
       direction: 'client',
       event: {
         item: {
-          call_id: 'call_1',
+          call_id: callId,
           output: '{"opened":true,"view":"Explorer"}',
           type: 'function_call_output',
         },
@@ -67,7 +67,7 @@ const fixture = {
       },
     },
   ],
-} as const
+} as const)
 
 export const name = 'gpt-voice.fixture-open-sidebar-view'
 
@@ -82,7 +82,10 @@ export const test: Test = async ({ Command, expect, Locator, Settings }) => {
   await expect(voice).toBeVisible()
 
   await Command.execute('Layout.hideSideBar')
-  await Command.executeExtensionCommand('GptVoice.replayFixture', fixture)
+  await Command.executeExtensionCommand(
+    'GptVoice.replayFixture',
+    createFixture('call_1'),
+  )
 
   if ((await Command.execute('Layout.getSideBarVisible')) !== true) {
     throw new Error('Expected the primary sidebar to be visible.')
@@ -92,7 +95,10 @@ export const test: Test = async ({ Command, expect, Locator, Settings }) => {
   }
   await expect(voice).toContainText('Ran open_sidebar_view')
 
-  await Command.executeExtensionCommand('GptVoice.replayFixture', fixture)
+  await Command.executeExtensionCommand(
+    'GptVoice.replayFixture',
+    createFixture('call_2'),
+  )
   if ((await Command.execute('Layout.getSideBarVisible')) !== true) {
     throw new Error('Expected the primary sidebar to remain visible.')
   }
@@ -106,7 +112,10 @@ export const test: Test = async ({ Command, expect, Locator, Settings }) => {
   if ((await Command.execute('Layout.getActiveSideBarView')) !== 'Search') {
     throw new Error('Expected the Search sidebar view to be active.')
   }
-  await Command.executeExtensionCommand('GptVoice.replayFixture', fixture)
+  await Command.executeExtensionCommand(
+    'GptVoice.replayFixture',
+    createFixture('call_3'),
+  )
   if ((await Command.execute('Layout.getActiveSideBarView')) !== 'Explorer') {
     throw new Error('Expected the Explorer sidebar view to be active again.')
   }
