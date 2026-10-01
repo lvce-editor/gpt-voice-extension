@@ -73,12 +73,20 @@ const fixture = {
 
 export const name = 'gpt-voice.fixture-hide-secondary-sidebar'
 
-export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
+export const test: Test = async ({
+  Command,
+  expect,
+  Locator,
+  Settings,
+  SideBar,
+}) => {
+  await Settings.update({ 'workbench.sideBarLocation': 'right' })
+  await Command.execute('Layout.showSideBar')
   await Command.execute('Layout.showSecondarySideBar')
   await SideBar.open('gpt-voice.views.default')
 
   const secondarySideBar = Locator('.SecondarySideBar')
-  const primarySideBar = Locator('.SideBar')
+  const primarySideBar = Locator('.ContentArea > .SideBar + .ActivityBar')
   await expect(secondarySideBar).toBeVisible()
   await expect(primarySideBar).toBeVisible()
 
