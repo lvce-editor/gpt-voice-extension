@@ -1,4 +1,5 @@
 import type { FunctionToolDefinition } from 'voice-shared'
+import { getComputerUseFunctionTools } from '../ComputerUseFunctionTools/ComputerUseFunctionTools.ts'
 import { editorFunctionTools } from '../EditorFunctionTools/EditorFunctionTools.ts'
 import { getFakeWeather } from '../FakeWeather/FakeWeather.ts'
 import { layoutFunctionTools } from '../LayoutFunctionTools/LayoutFunctionTools.ts'
@@ -103,6 +104,7 @@ export const getRealtimeTools = (): readonly FunctionToolDefinition[] => {
 
 export const getWorkTools = (
   terminalEnabled = false,
+  computerUseTools: Parameters<typeof getComputerUseFunctionTools>[0] = [],
 ): readonly FunctionToolDefinition[] => {
   return [
     ...editorFunctionTools,
@@ -116,6 +118,7 @@ export const getWorkTools = (
     ...workspaceFunctionTools,
     ...workspaceFileFunctionTools,
     ...(terminalEnabled ? terminalFunctionTools : []),
+    ...getComputerUseFunctionTools(computerUseTools),
   ]
 }
 

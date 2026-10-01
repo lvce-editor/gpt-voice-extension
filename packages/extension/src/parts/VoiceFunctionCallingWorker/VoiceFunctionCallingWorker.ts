@@ -26,6 +26,7 @@ import {
   showFileQuickPick,
   writeFile,
 } from '@lvce-editor/api'
+import * as ComputerUseNode from '../ComputerUseNode/ComputerUseNode.ts'
 import * as TerminalNode from '../TerminalNode/TerminalNode.ts'
 import {
   readOpenTextDocument,
@@ -107,6 +108,7 @@ const getPreviewRuntimeDiagnostics = async (): Promise<unknown> => {
 }
 
 const commandMap = {
+  'ComputerUse.callTool': ComputerUseNode.callTool,
   'Editor.formatDocument': formatDocument,
   'Editor.getDiagnostics': getDiagnostics,
   'Editor.getSelections': getEditorSelections,
@@ -198,9 +200,11 @@ export const getWorkTools = async (): Promise<
 > => {
   const rpc = await getRpc()
   const terminalEnabled = await TerminalNode.isEnabled()
+  const computerUseTools = await ComputerUseNode.getTools()
   return rpc.invoke(
     'VoiceFunctionCalling.getWorkTools',
     terminalEnabled,
+    computerUseTools,
   ) as Promise<readonly FunctionToolDefinition[]>
 }
 

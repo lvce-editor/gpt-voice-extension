@@ -189,6 +189,65 @@ test('returns tool failures to the model so it can recover', async () => {
   })
 })
 
+test('passes computer-use screenshots as image input with tool text', async () => {
+  invoke.mockResolvedValue(
+    JSON.stringify({
+      images: [{ data: 'cG5n', mimeType: 'image/png' }],
+      text: 'Focused window: Editor',
+      type: 'computer_use_result',
+    }),
+  )
+  const fetch = jest
+    .spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(
+      jsonResponse({
+        output: [
+          {
+            arguments: '{}',
+            call_id: 'call-image',
+            name: 'computer_use_get_app_state',
+            type: 'function_call',
+          },
+        ],
+        status: 'completed',
+      }),
+    )
+    .mockResolvedValueOnce(
+      jsonResponse({
+        output_text: '{"success":true,"summary":"Observed the editor."}',
+        status: 'completed',
+      }),
+    )
+
+  await expect(
+    WorkTask.execute({
+      configuration,
+      task: 'Observe the editor',
+      tools,
+      workId: 8,
+    }),
+  ).resolves.toEqual({ success: true, summary: 'Observed the editor.' })
+
+  const continuationBody = fetch.mock.calls[1]?.[1]?.body
+  expect(typeof continuationBody).toBe('string')
+  const continuation = JSON.parse(continuationBody as string)
+  expect(continuation.input).toContainEqual({
+    content: [
+      {
+        image_url: 'data:image/png;base64,cG5n',
+        type: 'input_image',
+      },
+    ],
+    role: 'user',
+  })
+  expect(continuation.input).toContainEqual({
+    call_id: 'call-image',
+    output:
+      'Focused window: Editor\nScreenshot supplied to the model as visual context.',
+    type: 'function_call_output',
+  })
+})
+
 test.each([
   [
     jsonResponse({ error: { message: 'rate limited' } }, false, 429),

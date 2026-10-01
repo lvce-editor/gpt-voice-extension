@@ -104,6 +104,8 @@ jest.unstable_mockModule('@lvce-editor/api', () => {
 
 const VoiceFunctionCallingWorker =
   await import('../src/parts/VoiceFunctionCallingWorker/VoiceFunctionCallingWorker.ts')
+const ComputerUseNode =
+  await import('../src/parts/ComputerUseNode/ComputerUseNode.ts')
 
 beforeEach(() => {
   createRpc.mockClear()
@@ -127,6 +129,7 @@ beforeEach(() => {
   getPreference.mockReset()
   getPreference.mockResolvedValue(false)
   nodeInvoke.mockReset()
+  nodeInvoke.mockResolvedValue([])
   openUri.mockClear()
   readDirWithFileTypes.mockClear()
   readFile.mockClear()
@@ -137,6 +140,7 @@ beforeEach(() => {
   showFileQuickPick.mockClear()
   writeFile.mockClear()
   VoiceFunctionCallingWorker.state.rpcPromise = undefined
+  ComputerUseNode.state.rpcPromise = undefined
 })
 
 test('creates a web worker RPC and queries registered tools', async () => {
@@ -156,6 +160,7 @@ test('creates a web worker RPC and queries registered tools', async () => {
 
   expect(createRpc).toHaveBeenCalledWith({
     commandMap: {
+      'ComputerUse.callTool': expect.any(Function),
       'Editor.formatDocument': formatDocument,
       'Editor.getDiagnostics': getDiagnostics,
       'Editor.getSelections': getEditorSelections,
@@ -260,7 +265,76 @@ test('exposes separate realtime and delegated work tool sets', async () => {
 
   getPreference.mockResolvedValue(true)
   await expect(VoiceFunctionCallingWorker.getWorkTools()).resolves.toEqual([])
-  expect(invoke).toHaveBeenCalledWith('VoiceFunctionCalling.getWorkTools', true)
+  expect(invoke).toHaveBeenCalledWith(
+    'VoiceFunctionCalling.getWorkTools',
+    true,
+    [],
+  )
+})
+
+test('discovers computer-use tools only after the opt-in setting is enabled', async () => {
+  getPreference.mockResolvedValue(true)
+  nodeInvoke.mockResolvedValue([
+    {
+      inputSchema: { properties: {}, type: 'object' },
+      name: 'list_windows',
+    },
+  ])
+  invoke.mockResolvedValue([])
+
+  await VoiceFunctionCallingWorker.getWorkTools()
+
+  expect(nodeInvoke).toHaveBeenCalledWith('ComputerUse.getTools')
+  expect(invoke).toHaveBeenCalledWith(
+    'VoiceFunctionCalling.getWorkTools',
+    true,
+    [{ inputSchema: { properties: {}, type: 'object' }, name: 'list_windows' }],
+  )
+})
+
+test('does not start the Node backend while computer use is disabled', async () => {
+  await expect(ComputerUseNode.getTools()).resolves.toEqual([])
+  expect(createNodeRpc).not.toHaveBeenCalled()
+})
+
+test('exposes a diagnostic tool when the bundled backend is unavailable', async () => {
+  getPreference.mockResolvedValue(true)
+  nodeInvoke.mockRejectedValue(new Error('computer-use-linux binary missing'))
+
+  await expect(ComputerUseNode.getTools()).resolves.toEqual([
+    expect.objectContaining({
+      description: expect.stringContaining('computer-use-linux binary missing'),
+      name: 'unavailable',
+    }),
+  ])
+})
+
+test('forwards enabled computer-use tool calls to the Node backend', async () => {
+  getPreference.mockResolvedValue(true)
+  nodeInvoke.mockResolvedValue({ content: [{ text: 'clicked' }] })
+
+  await expect(
+    ComputerUseNode.callTool('click', { x: 1, y: 2 }),
+  ).resolves.toEqual({ content: [{ text: 'clicked' }] })
+  expect(nodeInvoke).toHaveBeenCalledWith('ComputerUse.callTool', 'click', {
+    x: 1,
+    y: 2,
+  })
+  nodeInvoke.mockResolvedValue([
+    { inputSchema: { properties: {}, type: 'object' }, name: 'click' },
+  ])
+  await expect(ComputerUseNode.getTools()).resolves.toEqual([
+    { inputSchema: { properties: {}, type: 'object' }, name: 'click' },
+  ])
+})
+
+test('rejects a direct computer-use call after access is disabled', async () => {
+  nodeInvoke.mockResolvedValue(undefined)
+
+  await expect(
+    ComputerUseNode.callTool('click', { x: 1, y: 2 }),
+  ).rejects.toThrow('Computer-use access is disabled.')
+  expect(nodeInvoke).toHaveBeenCalledWith('ComputerUse.stop')
 })
 
 test('executes one delegated work tool and returns its raw output', async () => {
