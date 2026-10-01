@@ -6,16 +6,43 @@ import {
 
 interface TestApi {
   readonly closeSideBar: () => Promise<void>
+  readonly openSideBarView: (view: string) => Promise<void>
   readonly toggleSideBarPosition: () => Promise<void>
 }
 
 const createApi = (): TestApi => ({
   closeSideBar: jest.fn<() => Promise<void>>(async () => undefined),
+  openSideBarView: jest.fn<(view: string) => Promise<void>>(
+    async () => undefined,
+  ),
   toggleSideBarPosition: jest.fn<() => Promise<void>>(async () => undefined),
 })
 
 test('defines sidebar layout tools with distinct descriptions', () => {
   expect(layoutFunctionTools).toEqual([
+    {
+      description: expect.stringContaining('different from Process Explorer'),
+      name: 'open_sidebar_view',
+      parameters: {
+        additionalProperties: false,
+        properties: {
+          view: {
+            description: 'The primary sidebar view to show.',
+            enum: [
+              'Explorer',
+              'Extensions',
+              'Run And Debug',
+              'Search',
+              'Source Control',
+            ],
+            type: 'string',
+          },
+        },
+        required: ['view'],
+        type: 'object',
+      },
+      type: 'function',
+    },
     {
       description:
         'Close and hide the LVCE Editor primary sidebar. Use this when the user asks to close, hide, or dismiss the sidebar; do not move it to the other side.',
@@ -38,6 +65,41 @@ test('defines sidebar layout tools with distinct descriptions', () => {
       },
       type: 'function',
     },
+  ])
+})
+
+test.each([
+  'Explorer',
+  'Search',
+  'Source Control',
+  'Run And Debug',
+  'Extensions',
+])('opens and selects the %s sidebar view', async (view) => {
+  const api = createApi()
+
+  const messages = await executeLayoutFunctionToolCall(
+    {
+      arguments: JSON.stringify({ view }),
+      call_id: 'layout-call',
+      name: 'open_sidebar_view',
+      type: 'response.function_call_arguments.done',
+    },
+    api,
+  )
+
+  expect(api.openSideBarView).toHaveBeenCalledWith(view)
+  expect(api.closeSideBar).not.toHaveBeenCalled()
+  expect(api.toggleSideBarPosition).not.toHaveBeenCalled()
+  expect(messages).toEqual([
+    JSON.stringify({
+      item: {
+        call_id: 'layout-call',
+        output: JSON.stringify({ opened: true, view }),
+        type: 'function_call_output',
+      },
+      type: 'conversation.item.create',
+    }),
+    JSON.stringify({ type: 'response.create' }),
   ])
 })
 
@@ -152,6 +214,21 @@ test.each([
     'toggle_sidebar_position',
     '{"unexpected":true}',
     'The toggle_sidebar_position tool does not accept arguments.',
+  ],
+  [
+    'open_sidebar_view',
+    '{}',
+    'The open_sidebar_view tool requires a supported view: Explorer, Extensions, Run And Debug, Search, Source Control.',
+  ],
+  [
+    'open_sidebar_view',
+    '{"view":"ProcessExplorer"}',
+    'The open_sidebar_view tool requires a supported view: Explorer, Extensions, Run And Debug, Search, Source Control.',
+  ],
+  [
+    'open_sidebar_view',
+    '{"view":"Explorer","extra":true}',
+    'The open_sidebar_view tool only accepts the view argument.',
   ],
 ] as const)(
   'rejects invalid arguments for %s: %s',
