@@ -10,6 +10,7 @@ interface FunctionCallArguments {
 
 interface LayoutApi {
   readonly closeSideBar: () => Promise<void>
+  readonly hideSecondarySideBar: () => Promise<void>
   readonly openSideBarView: (view: SideBarView) => Promise<void>
   readonly toggleSideBarPosition: () => Promise<void>
 }
@@ -26,12 +27,14 @@ type SideBarView = keyof typeof sideBarViews
 
 const defaultApi: LayoutApi = {
   closeSideBar: () => Rpc.invoke<void>('Layout.closeSideBar'),
+  hideSecondarySideBar: () => Rpc.invoke<void>('Layout.hideSecondarySideBar'),
   openSideBarView: (view) => Rpc.invoke<void>('Layout.openSideBarView', view),
   toggleSideBarPosition: () => Rpc.invoke<void>('Layout.toggleSideBarPosition'),
 }
 
 const layoutToolNames = [
   'close_sidebar',
+  'hide_secondary_sidebar',
   'open_sidebar_view',
   'toggle_sidebar_position',
 ] as const
@@ -61,6 +64,17 @@ export const layoutFunctionTools: readonly FunctionToolDefinition[] = [
     description:
       'Close and hide the LVCE Editor primary sidebar. Use this when the user asks to close, hide, or dismiss the sidebar; do not move it to the other side.',
     name: 'close_sidebar',
+    parameters: {
+      additionalProperties: false,
+      properties: {},
+      type: 'object',
+    },
+    type: 'function',
+  },
+  {
+    description:
+      'Hide the LVCE Editor secondary sidebar without changing the primary sidebar. Use this when the user asks to hide or close the secondary sidebar; do not use close_sidebar, which hides the primary sidebar.',
+    name: 'hide_secondary_sidebar',
     parameters: {
       additionalProperties: false,
       properties: {},
@@ -195,15 +209,23 @@ export const executeLayoutFunctionToolCall = async (
   }
   validateArguments(functionCall.name, functionCall.argumentsValue)
   let output: unknown
-  if (functionCall.name === 'close_sidebar') {
-    await api.closeSideBar()
-    output = { closed: true }
-  } else if (functionCall.name === 'toggle_sidebar_position') {
-    await api.toggleSideBarPosition()
-    output = { toggled: true }
-  } else {
-    await api.openSideBarView(functionCall.view!)
-    output = { opened: true, view: functionCall.view }
+  switch (functionCall.name) {
+    case 'close_sidebar':
+      await api.closeSideBar()
+      output = { closed: true }
+      break
+    case 'hide_secondary_sidebar':
+      await api.hideSecondarySideBar()
+      output = { hidden: true }
+      break
+    case 'open_sidebar_view':
+      await api.openSideBarView(functionCall.view!)
+      output = { opened: true, view: functionCall.view }
+      break
+    case 'toggle_sidebar_position':
+      await api.toggleSideBarPosition()
+      output = { toggled: true }
+      break
   }
   return [
     createToolOutputMessage(functionCall.callId, output),

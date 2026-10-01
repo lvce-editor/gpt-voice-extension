@@ -162,6 +162,7 @@ test('creates a web worker RPC and queries registered tools', async () => {
       'Editor.setSelections': setEditorSelections,
       'Editor.showCompletions': showCompletions,
       'Layout.closeSideBar': expect.any(Function),
+      'Layout.hideSecondarySideBar': expect.any(Function),
       'Layout.openSideBarView': expect.any(Function),
       'Layout.toggleSideBarPosition': expect.any(Function),
       'MainArea.closeAllEditors': expect.any(Function),
@@ -308,17 +309,22 @@ test('bridges sidebar commands from the function calling worker', async () => {
     Record<string, (...args: readonly unknown[]) => Promise<void>>
   >
   await commandMap['Layout.closeSideBar']?.()
+  await commandMap['Layout.hideSecondarySideBar']?.()
   await commandMap['Layout.openSideBarView']?.('Explorer')
   await commandMap['Layout.toggleSideBarPosition']?.()
 
   expect(executeCommand).toHaveBeenNthCalledWith(1, 'Layout.hideSideBar')
   expect(executeCommand).toHaveBeenNthCalledWith(
     2,
+    'Layout.hideSecondarySideBar',
+  )
+  expect(executeCommand).toHaveBeenNthCalledWith(
+    3,
     'Layout.showSideBar',
     'Explorer',
   )
   expect(executeCommand).toHaveBeenNthCalledWith(
-    3,
+    4,
     'Layout.toggleSideBarPosition',
   )
 })

@@ -6,12 +6,14 @@ import {
 
 interface TestApi {
   readonly closeSideBar: () => Promise<void>
+  readonly hideSecondarySideBar: () => Promise<void>
   readonly openSideBarView: (view: string) => Promise<void>
   readonly toggleSideBarPosition: () => Promise<void>
 }
 
 const createApi = (): TestApi => ({
   closeSideBar: jest.fn<() => Promise<void>>(async () => undefined),
+  hideSecondarySideBar: jest.fn<() => Promise<void>>(async () => undefined),
   openSideBarView: jest.fn<(view: string) => Promise<void>>(
     async () => undefined,
   ),
@@ -47,6 +49,17 @@ test('defines sidebar layout tools with distinct descriptions', () => {
       description:
         'Close and hide the LVCE Editor primary sidebar. Use this when the user asks to close, hide, or dismiss the sidebar; do not move it to the other side.',
       name: 'close_sidebar',
+      parameters: {
+        additionalProperties: false,
+        properties: {},
+        type: 'object',
+      },
+      type: 'function',
+    },
+    {
+      description:
+        'Hide the LVCE Editor secondary sidebar without changing the primary sidebar. Use this when the user asks to hide or close the secondary sidebar; do not use close_sidebar, which hides the primary sidebar.',
+      name: 'hide_secondary_sidebar',
       parameters: {
         additionalProperties: false,
         properties: {},
@@ -131,6 +144,53 @@ test('closes the sidebar and returns response messages', async () => {
   ])
 })
 
+test('hides only the secondary sidebar and returns response messages', async () => {
+  const api = createApi()
+
+  const messages = await executeLayoutFunctionToolCall(
+    {
+      arguments: '{}',
+      call_id: 'layout-call',
+      name: 'hide_secondary_sidebar',
+      type: 'response.function_call_arguments.done',
+    },
+    api,
+  )
+
+  expect(api.hideSecondarySideBar).toHaveBeenCalledWith()
+  expect(api.closeSideBar).not.toHaveBeenCalled()
+  expect(messages).toEqual([
+    JSON.stringify({
+      item: {
+        call_id: 'layout-call',
+        output: JSON.stringify({ hidden: true }),
+        type: 'function_call_output',
+      },
+      type: 'conversation.item.create',
+    }),
+    JSON.stringify({ type: 'response.create' }),
+  ])
+})
+
+test('repeatedly hides the secondary sidebar', async () => {
+  const api = createApi()
+
+  for (let index = 0; index < 2; index++) {
+    await executeLayoutFunctionToolCall(
+      {
+        arguments: '{}',
+        call_id: `layout-call-${index}`,
+        name: 'hide_secondary_sidebar',
+        type: 'response.function_call_arguments.done',
+      },
+      api,
+    )
+  }
+
+  expect(api.hideSecondarySideBar).toHaveBeenCalledTimes(2)
+  expect(api.closeSideBar).not.toHaveBeenCalled()
+})
+
 test('toggles the sidebar position and returns response messages', async () => {
   const api = createApi()
 
@@ -161,6 +221,7 @@ test('toggles the sidebar position and returns response messages', async () => {
 
 test.each([
   ['close_sidebar', 1, 0],
+  ['hide_secondary_sidebar', 0, 0],
   ['toggle_sidebar_position', 0, 1],
 ] as const)(
   'supports completed output items for %s',
@@ -181,6 +242,9 @@ test.each([
     )
 
     expect(api.closeSideBar).toHaveBeenCalledTimes(closeCallCount)
+    expect(api.hideSecondarySideBar).toHaveBeenCalledTimes(
+      name === 'hide_secondary_sidebar' ? 1 : 0,
+    )
     expect(api.toggleSideBarPosition).toHaveBeenCalledTimes(toggleCallCount)
   },
 )
@@ -204,6 +268,11 @@ test.each([
 
 test.each([
   ['close_sidebar', '{', 'Function tool arguments must be valid JSON.'],
+  [
+    'hide_secondary_sidebar',
+    '{"unexpected":true}',
+    'The hide_secondary_sidebar tool does not accept arguments.',
+  ],
   ['close_sidebar', '[]', 'Function tool arguments must be a JSON object.'],
   [
     'close_sidebar',
