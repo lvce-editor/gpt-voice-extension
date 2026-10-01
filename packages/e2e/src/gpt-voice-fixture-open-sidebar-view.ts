@@ -74,9 +74,8 @@ export const name = 'gpt-voice.fixture-open-sidebar-view'
 export const test: Test = async ({ Command, expect, Locator, Settings }) => {
   await Settings.update({ 'workbench.sideBarLocation': 'left' })
   await Command.executeExtensionCommand('GptVoice.setIsTest')
-  await Command.execute('Layout.showSecondarySideBar')
   await Command.execute(
-    'Layout.openSecondarySideBarViewlet',
+    'Layout.showSecondaryPreview',
     'gpt-voice.views.default',
   )
   const voice = Locator('.GptVoice')
