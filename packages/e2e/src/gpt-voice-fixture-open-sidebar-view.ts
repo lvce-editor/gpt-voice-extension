@@ -86,15 +86,18 @@ export const test: Test = async ({
   await Command.execute('Layout.hideSideBar')
   await Command.executeExtensionCommand('GptVoice.replayFixture', fixture)
 
-  const sideBar = Locator('.ContentArea > .ActivityBar + .SideBar')
-  await expect(sideBar).toBeVisible()
+  if ((await Command.execute('Layout.getSideBarVisible')) !== true) {
+    throw new Error('Expected the primary sidebar to be visible.')
+  }
   if ((await Command.execute('Layout.getActiveSideBarView')) !== 'Explorer') {
     throw new Error('Expected the Explorer sidebar view to be active.')
   }
   await expect(voice).toContainText('Ran open_sidebar_view')
 
   await Command.executeExtensionCommand('GptVoice.replayFixture', fixture)
-  await expect(sideBar).toBeVisible()
+  if ((await Command.execute('Layout.getSideBarVisible')) !== true) {
+    throw new Error('Expected the primary sidebar to remain visible.')
+  }
   if ((await Command.execute('Layout.getActiveSideBarView')) !== 'Explorer') {
     throw new Error(
       'Expected repeated Explorer requests to keep Explorer active.',
