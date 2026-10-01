@@ -3,10 +3,12 @@ import { spawn } from 'node:child_process'
 import path from 'node:path'
 import { getBrowserEntryPoints } from './get-browser-entry-points.ts'
 import { root } from './root.ts'
+import { copyComputerUseLinux } from './copy-computer-use-linux.ts'
 
 const extension = path.join(root, 'packages', 'extension')
 const node = path.join(root, 'packages', 'node')
 const outdir = path.join(extension, 'dist')
+copyComputerUseLinux(path.join(outdir, 'computer-use-linux'))
 
 const browserContext = await esbuild.context({
   bundle: true,

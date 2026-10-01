@@ -120,6 +120,30 @@ test('includes the terminal tool only when enabled', () => {
   )
 })
 
+test('includes supplied computer-use tools in delegated work tools', () => {
+  const computerUseTools = [
+    {
+      inputSchema: {
+        additionalProperties: false,
+        properties: { name: { type: 'string' } },
+        required: ['name'],
+        type: 'object',
+      },
+      name: 'list_windows',
+    },
+  ]
+
+  expect(
+    getWorkTools().some((tool) => tool.name === 'computer_use_list_windows'),
+  ).toBe(false)
+  expect(getWorkTools(false, computerUseTools)).toContainEqual({
+    description: 'Use the Linux desktop tool list_windows.',
+    name: 'computer_use_list_windows',
+    parameters: computerUseTools[0].inputSchema,
+    type: 'function',
+  })
+})
+
 test('executes a registered function tool call', () => {
   expect(
     executeRegisteredFunctionTool('getweather', '{"location":"London"}'),

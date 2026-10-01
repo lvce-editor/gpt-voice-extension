@@ -126,6 +126,12 @@ test('declares audio processing settings and the opt-in terminal tool', () => {
         'Record the microphone audio sent during Gpt Voice messages and keep the recordings in cache storage for playback and transcription debugging.',
       type: 'boolean',
     },
+    'gptvoice.tools.computerUseLinux.enabled': {
+      default: false,
+      description:
+        'Allow Gpt Voice to observe and control applications on this Linux desktop. Enabling this lets the voice model click, type, and perform actions in desktop applications.',
+      type: 'boolean',
+    },
     'gptvoice.tools.terminal.enabled': {
       default: false,
       description:

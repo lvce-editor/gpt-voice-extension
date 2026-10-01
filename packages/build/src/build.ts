@@ -7,6 +7,7 @@ import { type Plugin, rollup } from 'rollup'
 import { build as esbuildBuild } from 'esbuild'
 import esbuild from 'rollup-plugin-esbuild'
 import { root } from './root.ts'
+import { copyComputerUseLinux } from './copy-computer-use-linux.ts'
 
 const extension = path.join(root, 'packages', 'extension')
 const media = path.join(extension, 'media')
@@ -25,6 +26,7 @@ fs.rmSync(join(root, 'dist'), { recursive: true, force: true })
 
 fs.mkdirSync(path.join(root, 'dist'))
 fs.mkdirSync(path.join(root, 'dist', 'media'))
+copyComputerUseLinux(path.join(root, 'dist', 'computer-use-linux'))
 
 fs.copyFileSync(join(root, 'README.md'), join(root, 'dist', 'README.md'))
 fs.copyFileSync(

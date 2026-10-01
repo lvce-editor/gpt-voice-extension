@@ -34,6 +34,11 @@
       "type": "boolean",
       "default": false,
       "description": "Allow Gpt Voice to execute Bash commands in the opened workspace. Enabling this gives the voice model arbitrary code execution access."
+    },
+    "gptvoice.tools.computerUseLinux.enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Allow Gpt Voice to observe and control applications on this Linux desktop. Enabling this lets the voice model click, type, and perform actions in desktop applications."
     }
   },
   "activation": [

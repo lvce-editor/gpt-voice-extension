@@ -25,6 +25,22 @@ interface WorkOptions {
   readonly workId: number
 }
 
+interface ToolImage {
+  readonly data: string
+  readonly mimeType: string
+}
+
+interface ToolExecutionResult {
+  readonly images: readonly ToolImage[]
+  readonly output: string
+}
+
+interface FunctionCallOutput {
+  readonly call_id: string
+  readonly output: string
+  readonly type: 'function_call_output'
+}
+
 interface FunctionCall {
   readonly argumentsValue: string
   readonly callId: string
@@ -130,10 +146,36 @@ const reportToolCall = async (
   }
 }
 
+const getToolExecutionResult = (output: string): ToolExecutionResult => {
+  try {
+    const parsed: unknown = JSON.parse(output)
+    if (
+      !isRecord(parsed) ||
+      parsed.type !== 'computer_use_result' ||
+      !Array.isArray(parsed.images)
+    ) {
+      return { images: [], output }
+    }
+    const images = parsed.images.filter(
+      (image): image is ToolImage =>
+        isRecord(image) &&
+        typeof image.data === 'string' &&
+        typeof image.mimeType === 'string' &&
+        image.mimeType.startsWith('image/'),
+    )
+    let text = typeof parsed.text === 'string' ? parsed.text : ''
+    if (images.length > 0)
+      text += '\nScreenshot supplied to the model as visual context.'
+    return { images, output: text }
+  } catch {
+    return { images: [], output }
+  }
+}
+
 const executeTool = async (
   workId: number,
   call: FunctionCall,
-): Promise<string> => {
+): Promise<ToolExecutionResult> => {
   await reportToolCall(workId, {
     argumentsValue: call.argumentsValue,
     callId: call.callId,
@@ -153,12 +195,13 @@ const executeTool = async (
       success: false,
     })
   }
+  const result = getToolExecutionResult(output)
   await reportToolCall(workId, {
     callId: call.callId,
-    output,
+    output: result.output,
     type: 'completed',
   })
-  return output
+  return result
 }
 
 const getResponseData = async (
@@ -219,6 +262,37 @@ const getResponseData = async (
   return data
 }
 
+const executeFunctionCalls = async (
+  workId: number,
+  functionCalls: readonly FunctionCall[],
+): Promise<
+  Readonly<{
+    imageContent: readonly unknown[]
+    toolOutputs: readonly FunctionCallOutput[]
+  }>
+> => {
+  const toolOutputs: FunctionCallOutput[] = []
+  const imageContent: {
+    readonly image_url: string
+    readonly type: 'input_image'
+  }[] = []
+  for (const call of functionCalls) {
+    const result = await executeTool(workId, call)
+    toolOutputs.push({
+      call_id: call.callId,
+      output: result.output,
+      type: 'function_call_output',
+    })
+    for (const image of result.images) {
+      imageContent.push({
+        image_url: `data:${image.mimeType};base64,${image.data}`,
+        type: 'input_image',
+      })
+    }
+  }
+  return { imageContent, toolOutputs }
+}
+
 const run = async (options: WorkOptions): Promise<VoiceWorkResult> => {
   const { configuration, task, tools, workId } = options
   if (!task.trim()) {
@@ -255,15 +329,14 @@ const run = async (options: WorkOptions): Promise<VoiceWorkResult> => {
     if (toolCallCount > maxToolCalls) {
       throw new Error('The coding task exceeded the tool-call limit.')
     }
-    const toolOutputs = []
-    for (const call of functionCalls) {
-      toolOutputs.push({
-        call_id: call.callId,
-        output: await executeTool(workId, call),
-        type: 'function_call_output',
-      })
-    }
+    const { imageContent, toolOutputs } = await executeFunctionCalls(
+      workId,
+      functionCalls,
+    )
     input = [...input, ...output, ...toolOutputs]
+    if (imageContent.length > 0) {
+      input = [...input, { content: imageContent, role: 'user' }]
+    }
   }
 }
 

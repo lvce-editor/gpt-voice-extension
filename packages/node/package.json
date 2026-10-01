@@ -13,5 +13,8 @@
   },
   "dependencies": {
     "@lvce-editor/rpc": "^6.19.2"
+  },
+  "optionalDependencies": {
+    "@agent-sh/computer-use-linux": "^0.7.8"
   }
 }

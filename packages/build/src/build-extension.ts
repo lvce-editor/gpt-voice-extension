@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { getBrowserEntryPoints } from './get-browser-entry-points.ts'
 import { root } from './root.ts'
+import { copyComputerUseLinux } from './copy-computer-use-linux.ts'
 
 const extension = path.join(root, 'packages', 'extension')
 const node = path.join(root, 'packages', 'node')
@@ -10,6 +11,7 @@ const outdir = path.join(extension, 'dist')
 
 fs.rmSync(outdir, { recursive: true, force: true })
 fs.mkdirSync(outdir, { recursive: true })
+copyComputerUseLinux(path.join(outdir, 'computer-use-linux'))
 
 await esbuild.build({
   bundle: true,

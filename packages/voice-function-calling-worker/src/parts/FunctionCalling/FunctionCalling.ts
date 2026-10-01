@@ -1,3 +1,4 @@
+import { executeComputerUseFunctionTool } from '../ComputerUseFunctionTools/ComputerUseFunctionTools.ts'
 import { executeEditorFunctionToolCall } from '../EditorFunctionTools/EditorFunctionTools.ts'
 import { executeRegisteredFunctionTool } from '../FunctionToolRegistry/FunctionToolRegistry.ts'
 import { executeLayoutFunctionToolCall } from '../LayoutFunctionTools/LayoutFunctionTools.ts'
@@ -6,6 +7,7 @@ import { executePanelFunctionToolCall } from '../PanelFunctionTools/PanelFunctio
 import { executePanelViewFunctionToolCall } from '../PanelViewFunctionTools/PanelViewFunctionTools.ts'
 import { executePreviewFunctionToolCall } from '../PreviewFunctionTools/PreviewFunctionTools.ts'
 import { executeProcessExplorerFunctionToolCall } from '../ProcessExplorerFunctionTools/ProcessExplorerFunctionTools.ts'
+import * as Rpc from '../Rpc/Rpc.ts'
 import { executeSettingsFunctionToolCall } from '../SettingsFunctionTools/SettingsFunctionTools.ts'
 import { executeTerminalFunctionToolCall } from '../TerminalFunctionTools/TerminalFunctionTools.ts'
 import { executeWorkspaceFileFunctionToolCall } from '../WorkspaceFileFunctionTools/WorkspaceFileFunctionTools.ts'
@@ -139,6 +141,23 @@ export const executeFunctionToolCall = async (
   const functionCall = parseFunctionCall(parsed)
   if (!functionCall) {
     return []
+  }
+  const computerUseResult = await executeComputerUseFunctionTool(
+    functionCall.name,
+    functionCall.argumentsValue,
+    {
+      callTool: (name, argumentsValue) =>
+        Rpc.invoke('ComputerUse.callTool', name, argumentsValue),
+    },
+  )
+  if (computerUseResult !== undefined) {
+    return [
+      createToolOutputMessage(
+        functionCall.callId,
+        JSON.stringify(computerUseResult),
+      ),
+      createFunctionResultResponseMessage(),
+    ]
   }
 
   const result = executeRegisteredFunctionTool(
