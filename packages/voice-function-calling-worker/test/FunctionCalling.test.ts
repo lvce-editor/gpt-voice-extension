@@ -471,6 +471,30 @@ test('executes close sidebar calls in the worker', async () => {
   expect(JSON.parse(outputMessage.item.output)).toEqual({ closed: true })
 })
 
+test('executes sidebar view calls in the worker', async () => {
+  const invoke = jest
+    .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()
+    .mockResolvedValue(undefined)
+  const globalScope = globalThis as typeof globalThis & {
+    rpc: { readonly invoke: typeof invoke }
+  }
+  globalScope.rpc = { invoke }
+
+  const result = await executeFunctionToolCall({
+    arguments: '{"view":"Explorer"}',
+    call_id: 'sidebar-view-call',
+    name: 'open_sidebar_view',
+    type: 'response.function_call_arguments.done',
+  })
+
+  expect(invoke).toHaveBeenCalledWith('Layout.openSideBarView', 'Explorer')
+  const outputMessage = JSON.parse(result[0] || '{}')
+  expect(JSON.parse(outputMessage.item.output)).toEqual({
+    opened: true,
+    view: 'Explorer',
+  })
+})
+
 test('executes process explorer calls in the worker', async () => {
   const invoke = jest
     .fn<(method: string, ...params: readonly unknown[]) => Promise<unknown>>()

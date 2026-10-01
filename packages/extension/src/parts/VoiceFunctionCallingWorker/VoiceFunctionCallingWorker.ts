@@ -82,6 +82,10 @@ const closeSideBar = async (): Promise<void> => {
   await executeCommand('Layout.hideSideBar')
 }
 
+const openSideBarView = async (view: string): Promise<void> => {
+  await executeCommand('Layout.showSideBar', view)
+}
+
 const toggleSideBarPosition = async (): Promise<void> => {
   await executeCommand('Layout.toggleSideBarPosition')
 }
@@ -105,6 +109,7 @@ const commandMap = {
   'Editor.setSelections': setEditorSelections,
   'Editor.showCompletions': showCompletions,
   'Layout.closeSideBar': closeSideBar,
+  'Layout.openSideBarView': openSideBarView,
   'Layout.toggleSideBarPosition': toggleSideBarPosition,
   'MainArea.closeAllEditors': closeAllEditors,
   'MainArea.focusNextTab': focusNextTab,
