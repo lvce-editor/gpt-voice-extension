@@ -12,12 +12,14 @@ const stageNode: VirtualDomNode = {
   type: VirtualDomElements.Div,
 }
 
+const listeningBubbleClassName = MergeClassNames.mergeClassNames(
+  ClassNames.GptVoiceBubble,
+  ClassNames.Listening,
+)
+
 const getBubbleClassName = (inProgress: boolean): string => {
   if (inProgress) {
-    return MergeClassNames.mergeClassNames(
-      ClassNames.GptVoiceBubble,
-      ClassNames.Listening,
-    )
+    return listeningBubbleClassName
   }
   return ClassNames.GptVoiceBubble
 }

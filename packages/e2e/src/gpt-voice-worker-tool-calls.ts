@@ -33,6 +33,7 @@ export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
   )
 
   const toolCall = Locator('.GptVoiceToolCall')
+  const toolCallDetails = toolCall.locator('.GptVoiceToolCallDetails')
   await waitForAssertion(() =>
     expect(toolCall).toHaveText('●Running read_workspace_file…⌄'),
   )
@@ -58,10 +59,6 @@ export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
   await waitForAssertion(() =>
     expect(toggle).toHaveAttribute('aria-expanded', 'true'),
   )
-  await expect(toolCall.locator('.GptVoiceToolCallDetails')).toContainText(
-    '"path": "city.html"',
-  )
-  await expect(toolCall.locator('.GptVoiceToolCallDetails')).toContainText(
-    '"content": "<!DOCTYPE html>"',
-  )
+  await expect(toolCallDetails).toContainText('"path": "city.html"')
+  await expect(toolCallDetails).toContainText('"content": "<!DOCTYPE html>"')
 }

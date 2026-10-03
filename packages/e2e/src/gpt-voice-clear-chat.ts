@@ -17,12 +17,13 @@ export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
   await expect(transcriptItems).toHaveText('Clear this message')
 
   const clearChat = Locator('.SideBarTitleArea .IconButton[title="Clear Chat"]')
+  const clearChatIcon = clearChat.locator('.MaskIconClearAll')
   await expect(clearChat).toBeVisible()
   await expect(clearChat).toHaveAttribute(
     'data-command',
     'GptVoice.handleClearChat',
   )
-  await expect(clearChat.locator('.MaskIconClearAll')).toHaveCount(1)
+  await expect(clearChatIcon).toHaveCount(1)
 
   await Command.executeExtensionCommand('GptVoice.handleClearChat')
 

@@ -44,6 +44,7 @@ export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
 
   const toolCall = Locator('.GptVoiceToolCall')
   const toggle = toolCall.locator('.GptVoiceToolCallButton')
+  const toolCallDetails = toolCall.locator('.GptVoiceToolCallDetails')
   await waitForAssertion(() => expect(toolCall).toHaveText('✓Ran getweather⌄'))
   await expect(toggle).toHaveAttribute('aria-expanded', 'false')
   await expect(toggle).toHaveAttribute('name', 'weather-call')
@@ -55,10 +56,6 @@ export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
     expect(toggle).toHaveAttribute('aria-expanded', 'true'),
   )
   await expect(toolCall).toHaveCSS('flex-shrink', '0')
-  await expect(toolCall.locator('.GptVoiceToolCallDetails')).toContainText(
-    '"location": "Paris"',
-  )
-  await expect(toolCall.locator('.GptVoiceToolCallDetails')).toContainText(
-    '"temperature": 20',
-  )
+  await expect(toolCallDetails).toContainText('"location": "Paris"')
+  await expect(toolCallDetails).toContainText('"temperature": 20')
 }
