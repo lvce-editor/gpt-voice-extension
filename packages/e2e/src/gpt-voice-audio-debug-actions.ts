@@ -16,22 +16,24 @@ export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
   const refreshButton = Locator(
     '.SideBarTitleArea .IconButton[title="Refresh Recordings"]',
   )
+  const refreshIcon = refreshButton.locator('.MaskIconRefresh')
   await expect(refreshButton).toBeVisible()
   await expect(refreshButton).toHaveAttribute(
     'data-command',
     'GptVoiceAudioDebug.refresh',
   )
-  await expect(refreshButton.locator('.MaskIconRefresh')).toHaveCount(1)
+  await expect(refreshIcon).toHaveCount(1)
 
   const clearAllButton = Locator(
     '.SideBarTitleArea .IconButton[title="Clear All Recordings"]',
   )
+  const clearAllIcon = clearAllButton.locator('.MaskIconClearAll')
   await expect(clearAllButton).toBeVisible()
   await expect(clearAllButton).toHaveAttribute(
     'data-command',
     'GptVoiceAudioDebug.clearAll',
   )
-  await expect(clearAllButton.locator('.MaskIconClearAll')).toHaveCount(1)
+  await expect(clearAllIcon).toHaveCount(1)
 
   await Command.executeExtensionCommand('GptVoiceAudioDebug.clearAll')
   await expect(recordings).toHaveCount(0)
@@ -39,10 +41,11 @@ export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
   const settingsButton = Locator(
     '.SideBarTitleArea .IconButton[title="Open Audio Debug Settings"]',
   )
+  const settingsIcon = settingsButton.locator('.MaskIconSettingsGear')
   await expect(settingsButton).toBeVisible()
   await expect(settingsButton).toHaveAttribute(
     'data-command',
     'GptVoiceAudioDebug.openSettings',
   )
-  await expect(settingsButton.locator('.MaskIconSettingsGear')).toHaveCount(1)
+  await expect(settingsIcon).toHaveCount(1)
 }
