@@ -34,7 +34,10 @@ export const activate = async (): Promise<void> => {
   registerCommand({
     async execute() {
       await executeCommand('Layout.showPreview', 'simple-browser://')
-      await executeCommand('SimpleBrowser.openOrRevealTab', voiceExtensionViewUrl)
+      await executeCommand(
+        'SimpleBrowser.openOrRevealTab',
+        voiceExtensionViewUrl,
+      )
     },
     id: 'gpt-voice.show',
   })

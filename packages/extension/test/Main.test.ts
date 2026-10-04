@@ -133,8 +133,16 @@ test('gpt-voice.show opens the voice extension view in Simple Browser', async ()
   expect(showVoiceCommand.id).toBe('gpt-voice.show')
   await showVoiceCommand.execute()
 
-  expect(executeCommand).toHaveBeenNthCalledWith(1, 'Layout.showPreview', 'simple-browser://')
-  expect(executeCommand).toHaveBeenNthCalledWith(2, 'SimpleBrowser.openOrRevealTab', 'extension-view:///gpt-voice.views.default')
+  expect(executeCommand).toHaveBeenNthCalledWith(
+    1,
+    'Layout.showPreview',
+    'simple-browser://',
+  )
+  expect(executeCommand).toHaveBeenNthCalledWith(
+    2,
+    'SimpleBrowser.openOrRevealTab',
+    'extension-view:///gpt-voice.views.default',
+  )
   expect(registerView).toHaveBeenCalledTimes(2)
   expect(registerFileSystemProvider).toHaveBeenCalledWith(
     expect.objectContaining({ id: 'gpt-voice-audio' }),
