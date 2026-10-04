@@ -14,8 +14,7 @@ import { enableTestMode } from '../TestMode/TestMode.ts'
 import { view } from '../View/View.ts'
 import { setRefreshAudioDebugViews } from '../VoiceSessionWorker/VoiceSessionWorker.ts'
 
-const floatingWindowUrl =
-  'lvce-oss://-/?floatingWindowMode=extensionView&floatingExtensionViewId=gpt-voice.views.default'
+const voiceExtensionViewUrl = 'extension-view:///gpt-voice.views.default'
 
 const state = {
   isActivated: false,
@@ -34,7 +33,8 @@ export const activate = async (): Promise<void> => {
   registerView(view)
   registerCommand({
     async execute() {
-      await executeCommand('Open.openUrl', floatingWindowUrl)
+      await executeCommand('Layout.showPreview', 'simple-browser://')
+      await executeCommand('SimpleBrowser.openOrRevealTab', voiceExtensionViewUrl)
     },
     id: 'gpt-voice.show',
   })

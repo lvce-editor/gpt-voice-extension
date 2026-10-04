@@ -177,7 +177,7 @@
       "title": "Gpt Voice",
       "icon": "media/voice-chat.svg",
       "kind": "virtualDom",
-      "preferredLocation": "secondaryPreview"
+      "preferredLocation": "preview"
     },
     {
       "css": "media/audio-debug.css",
