@@ -52,7 +52,7 @@ test('uses the voice chat view icon', () => {
     expect.objectContaining({
       icon: 'media/voice-chat.svg',
       id: 'gpt-voice.views.default',
-      preferredLocation: 'secondaryPreview',
+      preferredLocation: 'preview',
     }),
   )
   expect(

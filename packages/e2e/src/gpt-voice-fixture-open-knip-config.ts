@@ -92,7 +92,7 @@ export const test: Test = async ({
     workspaceUri + '/knip.json',
     '{"name":"gpt-voice-extension"}',
   )
-  await Workspace.setPath(workspaceUri)
+  await Workspace.setUri(workspaceUri)
 
   await Command.executeExtensionCommand('GptVoice.setIsTest')
   await SideBar.open('gpt-voice.views.default')

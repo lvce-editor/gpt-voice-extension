@@ -130,7 +130,7 @@ export const test: Test = async ({
     { content: 'name: CI', uri: workspaceUri + '/ci.yaml' },
     { content: '# Workspace', uri: workspaceUri + '/README.md' },
   ])
-  await Workspace.setPath(workspaceUri)
+  await Workspace.setUri(workspaceUri)
 
   await Command.executeExtensionCommand('GptVoice.setIsTest')
   await SideBar.open('gpt-voice.views.default')

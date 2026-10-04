@@ -122,20 +122,26 @@ test('voice view prefers the preview area', () => {
   expect(view.preferredLocation).toBe('preview')
 })
 
-test('gpt-voice.show command opens floating extension window url', async () => {
+test('gpt-voice.show opens the voice extension view in Simple Browser', async () => {
   await Main.activate()
 
   expect(registerCommand).toHaveBeenCalledTimes(2)
-  const openFloatingCommand = registerCommand.mock.calls.at(0)?.[0]
-  if (!openFloatingCommand) {
-    throw new Error('Expected open floating command')
+  const showVoiceCommand = registerCommand.mock.calls.at(0)?.[0]
+  if (!showVoiceCommand) {
+    throw new Error('Expected voice command')
   }
-  expect(openFloatingCommand.id).toBe('gpt-voice.show')
-  await openFloatingCommand.execute()
+  expect(showVoiceCommand.id).toBe('gpt-voice.show')
+  await showVoiceCommand.execute()
 
-  expect(executeCommand).toHaveBeenCalledWith(
-    'Open.openUrl',
-    'lvce-oss://-/?floatingWindowMode=extensionView&floatingExtensionViewId=gpt-voice.views.default',
+  expect(executeCommand).toHaveBeenNthCalledWith(
+    1,
+    'Layout.showPreview',
+    'simple-browser://',
+  )
+  expect(executeCommand).toHaveBeenNthCalledWith(
+    2,
+    'SimpleBrowser.openOrRevealTab',
+    'extension-view:///gpt-voice.views.default',
   )
   expect(registerView).toHaveBeenCalledTimes(2)
   expect(registerFileSystemProvider).toHaveBeenCalledWith(

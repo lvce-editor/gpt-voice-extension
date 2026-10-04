@@ -49,7 +49,7 @@ export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
   await expect(toggle).toHaveAttribute('aria-expanded', 'false')
   await expect(toggle).toHaveAttribute('name', 'weather-call')
 
-  // eslint-disable-next-line e2e/no-direct-click -- verifies the rendered tool disclosure is wired to the view command
+  // eslint-disable-next-line @typescript-eslint/no-deprecated, e2e/no-direct-click -- the view command is scoped to the extension API and has no stable test-worker command
   await toggle.click()
 
   await waitForAssertion(() =>

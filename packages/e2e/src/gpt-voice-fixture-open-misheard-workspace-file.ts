@@ -180,7 +180,7 @@ export const test: Test = async ({
     workspaceUri + '/style.css',
     'Voice fixture workspace file',
   )
-  await Workspace.setPath(workspaceUri)
+  await Workspace.setUri(workspaceUri)
 
   await Command.executeExtensionCommand('GptVoice.setIsTest')
   await SideBar.open('gpt-voice.views.default')
