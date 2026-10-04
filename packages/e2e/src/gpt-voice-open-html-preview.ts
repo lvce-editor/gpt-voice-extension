@@ -84,7 +84,7 @@ export const test: Test = async ({
     '<!doctype html><html><body><h1>Hello Voice Preview</h1></body></html>'
   const htmlUri = `${workspaceUri}/index.html`
   await FileSystem.writeFile(htmlUri, html)
-  await Workspace.setPath(workspaceUri)
+  await Workspace.setUri(workspaceUri)
   await Main.openUri(htmlUri)
   await Command.executeExtensionCommand('GptVoice.setIsTest')
   await SideBar.open('gpt-voice.views.default')

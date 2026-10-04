@@ -135,7 +135,7 @@ export const test: Test = async ({
   const aboutViewUri = `${tmpDir}/about-view`
   await FileSystem.mkdir(currentWorkspaceUri)
   await FileSystem.mkdir(aboutViewUri)
-  await Workspace.setPath(currentWorkspaceUri)
+  await Workspace.setUri(currentWorkspaceUri)
   await Command.execute('RecentlyOpened.clearRecentlyOpened')
   await Command.execute('RecentlyOpened.addToRecentlyOpened', aboutViewUri)
 

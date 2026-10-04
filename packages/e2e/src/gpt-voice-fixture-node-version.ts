@@ -132,7 +132,7 @@ export const test: Test = async ({
 }) => {
   const workspaceUri = await FileSystem.getTmpDir({ scheme: 'file' })
   await FileSystem.writeFile(workspaceUri + '/.nvmrc', '24.19.0\n')
-  await Workspace.setPath(workspaceUri)
+  await Workspace.setUri(workspaceUri)
 
   await Command.executeExtensionCommand('GptVoice.setIsTest')
   await SideBar.open('gpt-voice.views.default')

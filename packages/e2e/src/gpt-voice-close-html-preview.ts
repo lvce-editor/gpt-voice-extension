@@ -85,7 +85,7 @@ export const test: Test = async ({
     htmlUri,
     '<!doctype html><html><body><h1>Hello Voice Preview</h1></body></html>',
   )
-  await Workspace.setPath(workspaceUri)
+  await Workspace.setUri(workspaceUri)
   await Main.openUri(htmlUri)
   await Command.execute('Layout.showPreview', htmlUri)
   await Command.executeExtensionCommand('GptVoice.setIsTest')

@@ -168,7 +168,7 @@ export const test: Test = async ({
   await Main.closeAllEditors()
   const workspaceUri = await FileSystem.getTmpDir({ scheme: 'file' })
   await FileSystem.writeFile(`${workspaceUri}/package.json`, packageJson)
-  await Workspace.setPath(workspaceUri)
+  await Workspace.setUri(workspaceUri)
 
   await Command.executeExtensionCommand('GptVoice.setIsTest')
   await SideBar.open('gpt-voice.views.default')
