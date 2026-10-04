@@ -12,7 +12,7 @@ const fixture = {
           tabs: [
             {
               title: 'settings',
-              uri: 'settings://',
+              uri: 'settings:///',
             },
           ],
         },
@@ -53,7 +53,7 @@ const fixture = {
         item: {
           call_id: 'call_1',
           output:
-            '{"count":1,"tabs":[{"title":"settings","uri":"settings://"}]}',
+            '{"count":1,"tabs":[{"title":"settings","uri":"settings:///"}]}',
           type: 'function_call_output',
         },
         type: 'conversation.item.create',

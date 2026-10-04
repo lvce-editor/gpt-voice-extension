@@ -54,10 +54,9 @@ export const test: Test = async ({ Command, expect, Locator, SideBar }) => {
   )
   await expect(toggle).toHaveAttribute('name', 'work-call/read-call')
 
-  await Command.executeExtensionCommand(
-    'GptVoice.toggleToolCall',
-    'work-call/read-call',
-  )
+  // eslint-disable-next-line @typescript-eslint/no-deprecated, e2e/no-direct-click -- the view command is scoped to the extension API and has no stable test-worker command
+  await toggle.click()
+
   await waitForAssertion(() =>
     expect(toggle).toHaveAttribute('aria-expanded', 'true'),
   )
