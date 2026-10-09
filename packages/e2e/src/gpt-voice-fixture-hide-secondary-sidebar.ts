@@ -86,7 +86,9 @@ export const test: Test = async ({
   await SideBar.open('gpt-voice.views.default')
 
   const secondarySideBar = Locator('.SecondarySideBar')
-  const primarySideBar = Locator('.ContentArea > .SideBar + .ActivityBar')
+  const primarySideBar = Locator(
+    '.ContentArea > .SideBar + .ActivityBarLayout > .ActivityBar',
+  )
   await expect(secondarySideBar).toBeVisible()
   await expect(primarySideBar).toBeVisible()
 
