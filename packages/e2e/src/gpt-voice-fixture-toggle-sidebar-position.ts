@@ -84,12 +84,14 @@ export const test: Test = async ({
   await Command.executeExtensionCommand('GptVoice.setIsTest')
   await SideBar.open('gpt-voice.views.default')
 
-  const rightSideBar = Locator('.ContentArea > .SideBar + .ActivityBar')
+  const rightSideBar = Locator(
+    '.ContentArea > .SideBar + .ActivityBarLayout > .ActivityBar',
+  )
   await expect(rightSideBar).toBeVisible()
 
   await Command.executeExtensionCommand('GptVoice.replayFixture', fixture)
 
-  const leftSideBar = Locator('.ContentArea > .ActivityBar + .SideBar')
+  const leftSideBar = Locator('.ContentArea > .ActivityBarLayout + .SideBar')
   const voice = Locator('.GptVoice')
   const userTranscript = Locator('.GptVoiceTranscriptItemUser')
   const assistantTranscript = Locator('.GptVoiceTranscriptItemAi')

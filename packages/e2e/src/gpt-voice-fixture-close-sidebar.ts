@@ -84,7 +84,9 @@ export const test: Test = async ({
   await Command.executeExtensionCommand('GptVoice.setIsTest')
   await SideBar.open('gpt-voice.views.default')
 
-  const rightSideBar = Locator('.ContentArea > .SideBar + .ActivityBar')
+  const rightSideBar = Locator(
+    '.ContentArea > .SideBar + .ActivityBarLayout > .ActivityBar',
+  )
   await expect(rightSideBar).toBeVisible()
 
   await Command.executeExtensionCommand('GptVoice.replayFixture', fixture)
@@ -93,7 +95,7 @@ export const test: Test = async ({
   await Command.execute('Layout.showSideBar')
   await SideBar.open('gpt-voice.views.default')
 
-  const leftSideBar = Locator('.ContentArea > .ActivityBar + .SideBar')
+  const leftSideBar = Locator('.ContentArea > .ActivityBarLayout + .SideBar')
   await expect(rightSideBar).toBeVisible()
   await expect(leftSideBar).toBeHidden()
 }
